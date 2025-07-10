@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "464337931141",
+    "project_id": "omeeo-wash",
+    "storage_bucket": "omeeo-wash.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:464337931141:android:9bba13821fd8cd71c7d2ec",
+        "android_client_info": {
+          "package_name": "com.omeeowash"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "464337931141-2rdgeqg9lemgm169cn6clhujiqquiav0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.omeeowash",
+            "certificate_hash": "e5d2a95a27b6a9b1978c8bf673642722ac40afec"
+          }
+        },
+        {
+          "client_id": "464337931141-g3l5c60rtusfkpkmpb3jt2rep8o84dlk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXTGJHue1DyE3vLG6Uf6dNVRV2yvHAS5c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "464337931141-g3l5c60rtusfkpkmpb3jt2rep8o84dlk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "464337931141-pl3mo51kfe97sk9331b16fl8l600qdvu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.omeeowash"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

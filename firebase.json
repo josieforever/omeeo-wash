@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"omeeo-wash","appId":"1:464337931141:android:9bba13821fd8cd71c7d2ec","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"omeeo-wash","configurations":{"android":"1:464337931141:android:9bba13821fd8cd71c7d2ec","ios":"1:464337931141:ios:10edba352ae92cd3c7d2ec"}}}}}}
