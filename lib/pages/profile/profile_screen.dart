@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -133,19 +134,21 @@ class ProfileScreenTopBar extends StatelessWidget {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: randomColor,
-                backgroundImage: (user.photoUrl.isNotEmpty)
-                    ? NetworkImage(user.photoUrl)
-                    : null,
-                child: (user.photoUrl.isEmpty)
-                    ? Text(
-                        initials,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
+                backgroundImage:
+                    (user.photoUrl.isNotEmpty)
+                        ? NetworkImage(user.photoUrl)
+                        : null,
+                child:
+                    (user.photoUrl.isEmpty)
+                        ? Text(
+                          initials,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                        : null,
               ),
               const SizedBox(width: 10),
               Column(
@@ -240,7 +243,12 @@ class ProfileScreenMiddleSection extends StatelessWidget {
               textWidget2: 'Push notifications & alerts',
               animation: 'assets/animations/notification.json',
               scale: 12,
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => Notifications()),
+                );
+              },
               iconColor: Theme.of(context).colorScheme.primary,
               iconSize: IconSizes.medium,
             ),
