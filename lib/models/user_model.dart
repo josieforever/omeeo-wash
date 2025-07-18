@@ -2,8 +2,6 @@ class UserModel {
   final String uid;
   final String name;
   final String email;
-  /* final String firstName;
-  final String lastName; */
   final String emailAddress;
   final String phoneNumber;
   final String address;
@@ -14,6 +12,7 @@ class UserModel {
   final double rating;
   final int loyaltyPoints;
   final String photoUrl;
+  final List<Map<String, dynamic>> locations; // New field
 
   UserModel({
     required this.uid,
@@ -29,6 +28,7 @@ class UserModel {
     required this.rating,
     required this.loyaltyPoints,
     required this.photoUrl,
+    required this.locations, // Required in constructor
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -46,6 +46,9 @@ class UserModel {
       rating: (map['rating'] ?? 0).toDouble(),
       loyaltyPoints: map['loyaltyPoints'] ?? 0,
       photoUrl: map['photoUrl'] ?? '',
+      locations: List<Map<String, dynamic>>.from(
+        (map['locations'] ?? []).map((item) => Map<String, dynamic>.from(item)),
+      ),
     );
   }
 
@@ -64,10 +67,10 @@ class UserModel {
       'rating': rating,
       'loyaltyPoints': loyaltyPoints,
       'photoUrl': photoUrl,
+      'locations': locations,
     };
   }
 
-  // ✅ Add this method
   UserModel copyWith({
     String? uid,
     String? name,
@@ -82,6 +85,7 @@ class UserModel {
     double? rating,
     int? loyaltyPoints,
     String? photoUrl,
+    List<Map<String, dynamic>>? locations,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -97,6 +101,7 @@ class UserModel {
       rating: rating ?? this.rating,
       loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
       photoUrl: photoUrl ?? this.photoUrl,
+      locations: locations ?? this.locations,
     );
   }
 }

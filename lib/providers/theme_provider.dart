@@ -19,7 +19,7 @@ class ThemeProvider extends ChangeNotifier {
     brightness: Brightness.light,
     scaffoldBackgroundColor: Colors.transparent,
     colorScheme: ColorScheme.light(
-      primary: AppColors.primaryPurple,
+      primary: Color.fromARGB(255, 144, 56, 211),
       secondary: AppColors.secondary,
       error: AppColors.error,
       tertiary: AppColors.accent,

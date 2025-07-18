@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -155,36 +156,47 @@ class HomeScreenMiddleSection extends StatelessWidget {
             textWidget1: 'Basic Wash',
             textWidget2: 'Exterior wash & dry',
             textWidget3: '⌚30 min',
-            animation: 'assets/animations/white_car.json',
-            scale: 5,
+            icon: Icon(
+              FontAwesomeIcons.shower,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            scale: 1.2,
+            onPressed: () {},
+            price: '20',
+          ),
+
+          const SizedBox(height: 10),
+          ServiceButton(
+            textWidget1: 'Express Clean',
+            textWidget2: 'Quick wash & vacuum',
+            textWidget3: '⌚45 min',
+            icon: Icon(
+              Icons.alarm,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            scale: 1.2,
             onPressed: () {},
             price: '30',
-            iconColor: Theme.of(context).colorScheme.primary,
-            iconSize: IconSizes.medium,
           ),
           const SizedBox(height: 10),
           ServiceButton(
             textWidget1: 'Premium Detail',
             textWidget2: 'Full interior & exterior',
             textWidget3: '⌚90 min',
-            animation: 'assets/animations/premium_animation.json',
-            scale: 3,
+            svg: SvgPicture.asset(
+              'assets/icons/cleaning.svg',
+              height: 24,
+              width: 24,
+              colorFilter: ColorFilter.mode(
+                Theme.of(
+                  context,
+                ).colorScheme.primary, // 🎨 Replace with your desired color
+                BlendMode.srcIn,
+              ),
+            ),
+            scale: 1.5,
             onPressed: () {},
             price: '150',
-            iconColor: Theme.of(context).colorScheme.primary,
-            iconSize: IconSizes.medium,
-          ),
-          const SizedBox(height: 10),
-          ServiceButton(
-            textWidget1: 'Express Clean',
-            textWidget2: 'Quick wash & vacuum',
-            textWidget3: '⌚45 min',
-            animation: 'assets/animations/pulse_slow.json',
-            scale: 3,
-            onPressed: () {},
-            price: '45',
-            iconColor: Theme.of(context).colorScheme.primary,
-            iconSize: IconSizes.large,
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,12 +212,13 @@ class HomeScreenMiddleSection extends StatelessWidget {
               ServiceButton(
                 textWidget1: 'Omeeo Wash',
                 textWidget3: '0.8 mi away',
-                animation: 'assets/animations/location.json',
-                scale: 3,
+                icon: Icon(
+                  Icons.location_on,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                scale: 1.5,
                 onPressed: () {},
                 stars: '4.9',
-                iconColor: Theme.of(context).colorScheme.primary,
-                iconSize: IconSizes.medium,
               ),
               const SizedBox(height: 10),
               PromoButtom(

@@ -25,10 +25,22 @@ class _PersonalInformationState extends State<PersonalInformation> {
   UserModel? user;
 
   @override
+  void initState() {
+    super.initState();
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final provider = Provider.of<UserProvider>(context, listen: false);
+    provider.loadUser(uid: uid).then((_) {
+      setState(() {
+        user = provider.user;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
-    final user = userProvider.user;
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 244, 248, 255),
