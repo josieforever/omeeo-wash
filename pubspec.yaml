@@ -77,7 +77,7 @@ flutter_launcher_icons:
   image_path: "assets/logo.png" # fallback for older Android & iOS
   adaptive_icon_foreground: "assets/logo.png" # your logo with transparent background
   adaptive_icon_background: "#FFFFFF"
-  #flutter pub run flutter_launcher_icons:main
+# flutter pub run flutter_launcher_icons:main
 
 flutter_native_splash:
   color: "#000000"
@@ -86,4 +86,4 @@ flutter_native_splash:
     color: "#FFFFFF"
     image: assets/images/omeeo_wash_black_stripes.png
     icon_background_color: "#FFFFFF"
-    #flutter pub run flutter_native_splash:create
+# flutter pub run flutter_native_splash:create

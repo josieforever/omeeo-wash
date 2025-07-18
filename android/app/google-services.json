@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "464337931141-hrtnk0dr2d676cede7qh1m1ilb58k31u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.omeeowash",
+            "certificate_hash": "6f6a8feab86d77aaece76642f3c283c0800b20eb"
+          }
+        },
+        {
           "client_id": "464337931141-g3l5c60rtusfkpkmpb3jt2rep8o84dlk.apps.googleusercontent.com",
           "client_type": 3
         }

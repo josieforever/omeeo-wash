@@ -1,11 +1,11 @@
 import 'dart:math';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
@@ -134,23 +134,23 @@ class ProfileScreenTopBar extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: randomColor,
-                backgroundImage: (user.photoUrl!.isNotEmpty)
-                    ? NetworkImage(user.photoUrl!)
-                    : null,
-                child: (user.photoUrl!.isEmpty)
-                    ? Text(
-                        initials,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
+             CircleAvatar(
+  radius: 40,
+  backgroundColor: randomColor,
+  backgroundImage: (user.photoUrl.isNotEmpty)
+      ? NetworkImage(user.photoUrl)
+      : null,
+  child: (user.photoUrl.isEmpty)
+      ? Text(
+          initials,
+          style: const TextStyle(
+            fontSize: 24,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        )
+      : null,
+),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
