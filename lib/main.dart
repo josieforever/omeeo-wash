@@ -4,7 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
-import 'package:omeeowash/pages/home_screen.dart';
+import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';

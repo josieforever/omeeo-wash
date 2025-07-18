@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
@@ -31,10 +32,12 @@ class CustomText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      textAlign: textAlign,
-      maxLines: textMaxLines,
-      overflow: textOverflow ?? TextOverflow.visible,
+      textAlign: textAlign ?? TextAlign.start,
       softWrap: true,
+      maxLines: textMaxLines,
+      overflow: textMaxLines != null
+          ? (textOverflow ?? TextOverflow.ellipsis)
+          : null,
       style: TextStyle(
         color: textColor ?? Colors.black,
         fontSize: textSize ?? 16,
@@ -149,9 +152,8 @@ class ServiceButton extends StatelessWidget {
   final String textWidget3;
   final String? price;
   final String? stars;
-  final IconData? icon;
-  final Color iconColor;
-  final double iconSize;
+  final Icon? icon;
+  final SvgPicture? svg;
   final double? scale;
   final VoidCallback onPressed;
   const ServiceButton({
@@ -162,11 +164,10 @@ class ServiceButton extends StatelessWidget {
     this.price,
     this.icon,
     required this.onPressed,
-    required this.iconColor,
-    required this.iconSize,
     this.stars,
     this.animation,
     this.scale,
+    this.svg,
   });
 
   @override
@@ -191,27 +192,14 @@ class ServiceButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(7),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerRight,
-                    end: Alignment.centerLeft,
-                    colors: const [
-                      Color(0xFF6D66F6), // Right (periwinkle blue-purple)
-                      Color(0xFFA558F2), // Left (light pink-purple)
-                    ],
-                  ),
+                  color: Color.fromARGB(32, 137, 43, 226),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                /* child: Icon(icon, size: iconSize, color: iconColor), */
                 child: Transform.scale(
                   scale: scale,
-                  child: Lottie.asset(
-                    animation!,
-                    fit: BoxFit.contain,
-                    height: MediaQuery.of(context).size.height * 0.02,
-                    width: MediaQuery.of(context).size.width * 0.08,
-                  ),
+                  child: Center(child: icon ?? svg),
                 ),
               ),
             ],
@@ -267,7 +255,7 @@ class ServiceButton extends StatelessWidget {
                       text: '₵$price',
                       textColor: Theme.of(context).colorScheme.primary,
                       textSize: TextSizes.subtitle1,
-                      textWeight: FontWeight.bold,
+                      textWeight: FontWeight.w800,
                     ),
                     const SizedBox(height: 30),
                   ],
@@ -642,9 +630,8 @@ class ProfileButton extends StatelessWidget {
   final String? textWidget3;
   final String? price;
   final String? stars;
-  final IconData? icon;
-  final Color iconColor;
-  final double iconSize;
+  final Icon? icon;
+  final SvgPicture? svg;
   final double? scale;
   final VoidCallback onPressed;
   const ProfileButton({
@@ -655,11 +642,10 @@ class ProfileButton extends StatelessWidget {
     this.price,
     this.icon,
     required this.onPressed,
-    required this.iconColor,
-    required this.iconSize,
     this.stars,
     this.animation,
     this.scale,
+    this.svg,
   });
 
   @override
@@ -687,37 +673,14 @@ class ProfileButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(7),
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: const [
-                        Color.fromARGB(
-                          168,
-                          109,
-                          102,
-                          246,
-                        ), // Right (periwinkle blue-purple)
-                        Color.fromARGB(
-                          178,
-                          165,
-                          88,
-                          242,
-                        ), // Left (light pink-purple)
-                      ],
-                    ),
+                    color: Color.fromARGB(32, 137, 43, 226),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  /* child: Icon(icon, size: iconSize, color: iconColor), */
                   child: Transform.scale(
                     scale: scale,
-                    child: Lottie.asset(
-                      animation!,
-                      fit: BoxFit.contain,
-                      height: MediaQuery.of(context).size.height * 0.005,
-                      width: MediaQuery.of(context).size.width * 0.02,
-                    ),
+                    child: Center(child: icon ?? svg),
                   ),
                 ),
               ],
@@ -755,9 +718,8 @@ class SignOut extends StatelessWidget {
   final String? textWidget3;
   final String? price;
   final String? stars;
-  final IconData? icon;
-  final Color iconColor;
-  final double iconSize;
+  final Icon? icon;
+  final SvgPicture? svg;
   final double? scale;
   final VoidCallback onPressed;
   const SignOut({
@@ -768,11 +730,10 @@ class SignOut extends StatelessWidget {
     this.price,
     this.icon,
     required this.onPressed,
-    required this.iconColor,
-    required this.iconSize,
     this.stars,
     this.animation,
     this.scale,
+    this.svg,
   });
 
   @override
@@ -801,20 +762,14 @@ class SignOut extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(7),
-                    color: const Color.fromARGB(177, 255, 220, 220),
+                    color: Color.fromARGB(32, 137, 43, 226),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  /* child: Icon(icon, size: iconSize, color: iconColor), */
                   child: Transform.scale(
                     scale: scale,
-                    child: Lottie.asset(
-                      animation!,
-                      fit: BoxFit.contain,
-                      height: MediaQuery.of(context).size.height * 0.005,
-                      width: MediaQuery.of(context).size.width * 0.02,
-                    ),
+                    child: Center(child: icon ?? svg),
                   ),
                 ),
               ],
@@ -1075,13 +1030,14 @@ class GoBack extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.all(10),
         child: CircleAvatar(
-          backgroundColor: const Color.fromARGB(47, 255, 255, 255),
+          backgroundColor: const Color.fromARGB(78, 255, 255, 255),
           child: Center(
-            child: Lottie.asset(
-              'assets/animations/go_back.json',
-              width: 30,
-              height: 30,
-              fit: BoxFit.contain,
+            child: Transform.scale(
+              scale: 1.2,
+              child: Icon(
+                Icons.arrow_back_rounded,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
             ),
           ),
         ),
@@ -1198,6 +1154,64 @@ class PaymentIconStackTextButton extends StatelessWidget {
               height: imageHeight,
               fit: BoxFit.contain,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RegularIconButton extends StatefulWidget {
+  final dynamic textWidget;
+  final Icon? icon;
+  final VoidCallback onPressed;
+  final Color? backgroundColor;
+  final Gradient? gradient;
+  final BoxBorder? border;
+  final double borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+
+  const RegularIconButton({
+    super.key,
+    required this.onPressed,
+    this.backgroundColor,
+    this.padding,
+    this.margin,
+    this.textWidget,
+    this.border,
+    required this.borderRadius,
+    this.gradient,
+    this.icon,
+  });
+
+  @override
+  State<RegularIconButton> createState() => _RegularIconButtonState();
+}
+
+class _RegularIconButtonState extends State<RegularIconButton> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          border: widget.border,
+          gradient: widget.gradient,
+        ),
+        // fixed height
+        padding: widget.padding,
+        margin: widget.margin,
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              widget.icon!,
+              const SizedBox(width: 10),
+              widget.textWidget,
+            ],
           ),
         ),
       ),

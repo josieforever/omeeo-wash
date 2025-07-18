@@ -2,9 +2,11 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -44,7 +46,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   ProfileScreenTopBar(user: user),
-                  ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
+                  ProfileScreenMiddleSection(
+                    loyaltyPoints: user.loyaltyPoints!,
+                  ),
                 ],
               ),
             ),
@@ -133,10 +137,10 @@ class ProfileScreenTopBar extends StatelessWidget {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: randomColor,
-                backgroundImage: (user.photoUrl.isNotEmpty)
-                    ? NetworkImage(user.photoUrl)
+                backgroundImage: (user.photoUrl!.isNotEmpty)
+                    ? NetworkImage(user.photoUrl!)
                     : null,
-                child: (user.photoUrl.isEmpty)
+                child: (user.photoUrl!.isEmpty)
                     ? Text(
                         initials,
                         style: const TextStyle(
@@ -174,7 +178,85 @@ class ProfileScreenTopBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 15),
-          // Rest of your stats row remains unchanged...
+          Row(
+            children: [
+              Expanded(
+                child: IconStackTextButton(
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
+                  icon: Icon(
+                    Icons.local_car_wash,
+                    size: IconSizes.small,
+                    color: Theme.of(context).textTheme.headlineLarge?.color,
+                  ),
+                  numberWidget: CustomText(
+                    text: user.totalWashes.toString(),
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.subtitle1,
+                    textWeight: FontWeight.w900,
+                  ),
+                  textWidget: CustomText(
+                    text: 'Total Washes',
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.caption,
+                    textWeight: FontWeight.normal,
+                  ),
+                  onPressed: () {},
+                  borderRadius: 7,
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: IconStackTextButton(
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
+                  icon: Icon(
+                    FontAwesomeIcons.calendar,
+                    size: IconSizes.small,
+                    color: Theme.of(context).textTheme.headlineLarge?.color,
+                  ),
+                  numberWidget: CustomText(
+                    text: user.washesThisMonth.toString(),
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.subtitle1,
+                    textWeight: FontWeight.w900,
+                  ),
+                  textWidget: CustomText(
+                    text: 'This month',
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.caption,
+                    textWeight: FontWeight.normal,
+                  ),
+                  onPressed: () {},
+                  borderRadius: 7,
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: IconStackTextButton(
+                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
+                  icon: Icon(
+                    FontAwesomeIcons.solidStar,
+                    size: IconSizes.small,
+                    color: Colors.amber,
+                  ),
+                  numberWidget: CustomText(
+                    text: user.rating.toString(),
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.subtitle1,
+                    textWeight: FontWeight.w900,
+                  ),
+                  textWidget: CustomText(
+                    text: 'Rating',
+                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textSize: TextSizes.caption,
+                    textWeight: FontWeight.normal,
+                  ),
+                  onPressed: () {},
+                  borderRadius: 7,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -201,66 +283,85 @@ class ProfileScreenMiddleSection extends StatelessWidget {
             ProfileButton(
               textWidget1: 'Personal Infomation',
               textWidget2: 'Update your details',
-              animation: 'assets/animations/update_profile.json',
-              scale: 13,
+              icon: Icon(
+                Icons.supervised_user_circle,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.2,
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => PersonalInformation()),
                 );
               },
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             ProfileButton(
               textWidget1: 'Payment Methods',
               textWidget2: 'Manage cards & payments',
-              animation: 'assets/animations/payment_method.json',
-              scale: 15,
+              icon: Icon(
+                Icons.payment,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.2,
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => PaymentMethods()),
                 );
               },
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             ProfileButton(
               textWidget1: 'Addresses',
               textWidget2: 'Home, work & other locations',
-              animation: 'assets/animations/location.json',
-              scale: 10,
-              onPressed: () {},
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
+              icon: Icon(
+                Icons.add_location_alt,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.2,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => Addresses()),
+                );
+              },
             ),
             ProfileButton(
               textWidget1: 'Notifications',
               textWidget2: 'Push notifications & alerts',
-              animation: 'assets/animations/notification.json',
-              scale: 12,
+              svg: SvgPicture.asset(
+                'assets/icons/notification_settings.svg',
+                height: 24,
+                width: 24,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(
+                    context,
+                  ).colorScheme.primary, // 🎨 Replace with your desired color
+                  BlendMode.srcIn,
+                ),
+              ),
+              scale: 1.2,
               onPressed: () {},
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             ProfileButton(
               textWidget1: 'App Settings',
               textWidget2: 'Language, theme & more',
-              animation: 'assets/animations/settings.json',
-              scale: 9,
+              icon: Icon(
+                Icons.settings,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.2,
               onPressed: () {},
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             ProfileButton(
               textWidget1: 'Help & Support',
               textWidget2: 'FAQs & contact us',
-              animation: 'assets/animations/help.json',
-              scale: 9,
+              icon: Icon(
+                Icons.help,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.2,
+
               onPressed: () {},
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             LoyaltyPointsBar(
               padding: const EdgeInsets.all(10),
@@ -289,13 +390,14 @@ class ProfileScreenMiddleSection extends StatelessWidget {
             SignOut(
               textWidget1: 'Sign Out',
               textWidget2: 'Sign out of your account',
-              animation: 'assets/animations/logout.json',
-              scale: 10,
+              icon: Icon(
+                Icons.logout,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              scale: 1.2,
               onPressed: () {
                 FirebaseService().signOut(context);
               },
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
             ),
             const SizedBox(height: 75),
           ],

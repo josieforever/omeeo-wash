@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/pages/bookings_screen.dart';
-import 'package:omeeowash/pages/home_screen.dart';
+import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
 
 class HomeScreenWithNav extends StatefulWidget {
