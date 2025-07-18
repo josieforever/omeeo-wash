@@ -666,6 +666,7 @@ class FirebaseService {
           rating: 0.0,
           loyaltyPoints: 0,
           photoUrl: '',
+          locations: [],
         );
 
         await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -723,6 +724,7 @@ class FirebaseService {
           rating: 5.0,
           loyaltyPoints: 0,
           photoUrl: '',
+          locations: [],
         );
 
         await userRef.set(userModel.toMap());

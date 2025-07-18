@@ -779,6 +779,7 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
         rating: 0.0,
         loyaltyPoints: 0,
         photoUrl: '',
+        locations: [],
       );
 
       await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -830,8 +831,7 @@ Future<void> signUpWithEmail({
       uid: user.uid,
       name: placeholderName,
       email: email,
-      /* firstName: '',
-      lastName: '', */
+
       emailAddress: email,
       phoneNumber: user.phoneNumber ?? '',
       address: '',
@@ -842,6 +842,7 @@ Future<void> signUpWithEmail({
       rating: 0.0,
       loyaltyPoints: 0,
       photoUrl: '',
+      locations: [],
     );
 
     await userRef.set(newUser.toMap());
