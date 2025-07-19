@@ -134,23 +134,23 @@ class ProfileScreenTopBar extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-             CircleAvatar(
-  radius: 40,
-  backgroundColor: randomColor,
-  backgroundImage: (user.photoUrl.isNotEmpty)
-      ? NetworkImage(user.photoUrl)
-      : null,
-  child: (user.photoUrl.isEmpty)
-      ? Text(
-          initials,
-          style: const TextStyle(
-            fontSize: 24,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        )
-      : null,
-),
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: randomColor,
+                backgroundImage: (user.photoUrl.isNotEmpty)
+                    ? NetworkImage(user.photoUrl)
+                    : null,
+                child: (user.photoUrl.isEmpty)
+                    ? Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +340,12 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 ),
               ),
               scale: 1.2,
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => Notifications()),
+                );
+              },
             ),
             ProfileButton(
               textWidget1: 'App Settings',

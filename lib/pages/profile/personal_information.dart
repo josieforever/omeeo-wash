@@ -745,7 +745,7 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                     horizontal: 40,
                   ),
                   textWidget: GradientText(
-                    text: 'Cancel..',
+                    text: 'Cancel',
                     gradient: const LinearGradient(
                       begin: Alignment.centerRight,
                       end: Alignment.centerLeft,
