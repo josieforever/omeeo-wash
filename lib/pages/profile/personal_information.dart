@@ -72,9 +72,9 @@ class _PersonalInformationState extends State<PersonalInformation> {
                   const PersonalInformationTopBar(),
                   ProfilePhotoCard(
                     user: user!,
-                    onUploadTap: () => handleUploadPhoto(context, user!),
+                    onUploadTap: () => handleUploadPhoto(context, user),
                   ),
-                  UpdateBasicInformation(user: user!),
+                  UpdateBasicInformation(user: user),
                   const SizedBox(height: 30),
                 ],
               ),
@@ -151,7 +151,7 @@ class ProfilePhotoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasPhoto = user.photoUrl!.isNotEmpty;
+    final bool hasPhoto = user.photoUrl.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
@@ -174,7 +174,7 @@ class ProfilePhotoCard extends StatelessWidget {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: const Color.fromARGB(255, 226, 226, 226),
-                backgroundImage: hasPhoto ? NetworkImage(user.photoUrl!) : null,
+                backgroundImage: hasPhoto ? NetworkImage(user.photoUrl) : null,
                 child: !hasPhoto
                     ? const Icon(
                         Icons.person,
@@ -745,7 +745,7 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                     horizontal: 40,
                   ),
                   textWidget: GradientText(
-                    text: 'Cancel..',
+                    text: 'Cancel',
                     gradient: const LinearGradient(
                       begin: Alignment.centerRight,
                       end: Alignment.centerLeft,
