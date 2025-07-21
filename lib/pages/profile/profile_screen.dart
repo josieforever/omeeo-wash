@@ -46,9 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   ProfileScreenTopBar(user: user),
-                  ProfileScreenMiddleSection(
-                    loyaltyPoints: user.loyaltyPoints!,
-                  ),
+                  ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
                 ],
               ),
             ),
