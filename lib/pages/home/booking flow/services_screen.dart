@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/helpers/miscellaneous.dart';
 import 'package:omeeowash/pages/home/booking%20flow/common_widgets.dart';
+import 'package:omeeowash/pages/home/booking%20flow/select_vehicle_size_screen.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
@@ -262,7 +263,14 @@ class _WashOptionButtonsState extends State<WashOptionButtons> {
                 textSize: 16,
                 textWeight: FontWeight.bold,
               ),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                        const SelectVehicleSizeScreen(),
+                  ),
+                );
+              },
             ),
           ),
         ),
