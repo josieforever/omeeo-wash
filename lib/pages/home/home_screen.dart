@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:omeeowash/pages/home/booking%20flow/services_screen.dart';
+import 'package:omeeowash/pages/profile/profile_screen.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
@@ -100,7 +102,14 @@ class HomeScreenTopBar extends StatelessWidget {
                     textSize: TextSizes.subtitle2,
                     textWeight: FontWeight.bold,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const ServicesScreen(),
+                      ),
+                    );
+                  },
                   borderRadius: 7,
                 ),
               ),
@@ -161,7 +170,14 @@ class HomeScreenMiddleSection extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             scale: 1.2,
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const ServicesScreen(serviceType: "basic"),
+                ),
+              );
+            },
             price: '20',
           ),
 
@@ -175,7 +191,14 @@ class HomeScreenMiddleSection extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             ),
             scale: 1.2,
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const ServicesScreen(serviceType: "express"),
+                ),
+              );
+            },
             price: '30',
           ),
           const SizedBox(height: 10),
@@ -195,7 +218,14 @@ class HomeScreenMiddleSection extends StatelessWidget {
               ),
             ),
             scale: 1.5,
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const ServicesScreen(serviceType: "premium"),
+                ),
+              );
+            },
             price: '150',
           ),
           Column(

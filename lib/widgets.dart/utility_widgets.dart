@@ -172,95 +172,100 @@ class ServiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        color: Theme.of(context).textTheme.headlineLarge?.color,
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromARGB(26, 12, 0, 235),
-            blurRadius: 12,
-            spreadRadius: 2,
-            offset: const Offset(0, 6), // x, y
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(10),
-      child: Row(
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Color.fromARGB(32, 137, 43, 226),
-                  borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          color: Theme.of(context).textTheme.headlineLarge?.color,
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromARGB(26, 12, 0, 235),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 6), // x, y
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(10),
+        child: Row(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(32, 137, 43, 226),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Center(child: icon ?? svg),
+                  ),
                 ),
-                child: Transform.scale(
-                  scale: scale,
-                  child: Center(child: icon ?? svg),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CustomText(
+                  text: textWidget1,
+                  textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CustomText(
-                text: textWidget1,
-                textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                textSize: TextSizes.bodyText1,
-                textWeight: FontWeight.bold,
-              ),
-              textWidget2 == null
-                  ? SizedBox()
-                  : CustomText(
-                      text: textWidget2!,
-                      textColor: Theme.of(context).textTheme.bodyMedium?.color,
-                      textSize: TextSizes.bodyText1,
-                    ),
-              CustomText(
-                text: textWidget3,
-                textColor: Theme.of(context).textTheme.bodyMedium?.color,
-                textSize: TextSizes.bodyText1,
-              ),
-            ],
-          ),
-          Expanded(child: SizedBox()),
-          price == null
-              ? Row(
-                  children: [
-                    Icon(
-                      FontAwesomeIcons.solidStar,
-                      size: IconSizes.midSmall,
-                      color: Colors.amber,
-                    ),
-                    const SizedBox(width: 5),
-                    CustomText(
-                      text: stars!,
-                      textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                      textSize: TextSizes.subtitle1,
-                      textWeight: FontWeight.bold,
-                    ),
-                  ],
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomText(
-                      text: '₵$price',
-                      textColor: Theme.of(context).colorScheme.primary,
-                      textSize: TextSizes.subtitle1,
-                      textWeight: FontWeight.w800,
-                    ),
-                    const SizedBox(height: 30),
-                  ],
+                textWidget2 == null
+                    ? SizedBox()
+                    : CustomText(
+                        text: textWidget2!,
+                        textColor: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color,
+                        textSize: TextSizes.bodyText1,
+                      ),
+                CustomText(
+                  text: textWidget3,
+                  textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                  textSize: TextSizes.bodyText1,
                 ),
-        ],
+              ],
+            ),
+            Expanded(child: SizedBox()),
+            price == null
+                ? Row(
+                    children: [
+                      Icon(
+                        FontAwesomeIcons.solidStar,
+                        size: IconSizes.midSmall,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 5),
+                      CustomText(
+                        text: stars!,
+                        textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                        textSize: TextSizes.subtitle1,
+                        textWeight: FontWeight.bold,
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomText(
+                        text: '₵$price',
+                        textColor: Theme.of(context).colorScheme.primary,
+                        textSize: TextSizes.subtitle1,
+                        textWeight: FontWeight.w800,
+                      ),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+          ],
+        ),
       ),
     );
   }
@@ -1020,8 +1025,9 @@ class LoadingButton extends StatelessWidget {
 }
 
 class GoBack extends StatelessWidget {
+  final Color? bgColor;
   final VoidCallback onPressed;
-  const GoBack({super.key, required this.onPressed});
+  const GoBack({super.key, required this.onPressed, this.bgColor});
 
   @override
   Widget build(BuildContext context) {
@@ -1030,7 +1036,8 @@ class GoBack extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.all(10),
         child: CircleAvatar(
-          backgroundColor: const Color.fromARGB(78, 255, 255, 255),
+          backgroundColor: bgColor ?? const Color.fromARGB(78, 255, 255, 255),
+          // backgroundColor: Colors.red,
           child: Center(
             child: Transform.scale(
               scale: 1.2,
