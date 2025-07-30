@@ -137,7 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const HomeScreenWithNav(),
+                                    builder: (_) =>
+                                        const HomeScreenWithNav(view: 'home'),
                                   ),
                                 );
                               } else {
@@ -478,7 +479,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                             context,
                                             MaterialPageRoute(
                                               builder: (_) =>
-                                                  const HomeScreenWithNav(),
+                                                  const HomeScreenWithNav(
+                                                    view: 'home',
+                                                  ),
                                             ),
                                           );
                                         }
@@ -748,8 +751,6 @@ class FirebaseService {
           uid: user.uid,
           name: user.displayName ?? user.email!.split('@')[0],
           email: user.email!,
-          /* firstName: '',
-          lastName: '', */
           emailAddress: user.email!,
           phoneNumber: user.phoneNumber ?? '',
           address: '',
@@ -761,6 +762,19 @@ class FirebaseService {
           loyaltyPoints: 0,
           photoUrl: '',
           locations: [],
+          notificationSettings: {
+            "push": true,
+            "email": true,
+            "bookingConfirmed": true,
+            "washStarted": true,
+            "washCompleted": true,
+            "appUpdates": true,
+          },
+          settings: {
+            "autoLock": false,
+            "biometricAuth": false,
+            "darkMode": false,
+          },
         );
 
         await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -772,6 +786,10 @@ class FirebaseService {
         final existingUser = UserModel.fromMap(userDoc.data()!);
         await context.read<UserProvider>().setUser(existingUser);
       }
+
+      // ✅ Save login status
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
 
       return userCredential;
     } catch (e) {
@@ -819,6 +837,10 @@ class FirebaseService {
       await firestore.collection('users').doc(user.uid).update({
         'lastLogin': FieldValue.serverTimestamp(),
       });
+
+      // ✅ Save login status
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
     } on FirebaseAuthException catch (e) {
       // Rethrow specific Firebase auth exceptions
       throw e;

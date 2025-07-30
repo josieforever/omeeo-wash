@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/pages/home/booking%20flow/services_screen.dart';
-import 'package:omeeowash/pages/profile/profile_screen.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
@@ -164,7 +163,7 @@ class HomeScreenMiddleSection extends StatelessWidget {
           ServiceButton(
             textWidget1: 'Basic Wash',
             textWidget2: 'Exterior wash & dry',
-            textWidget3: '⌚30 min',
+            textWidget3: '⌚10 min',
             icon: Icon(
               FontAwesomeIcons.shower,
               color: Theme.of(context).colorScheme.primary,
@@ -178,14 +177,14 @@ class HomeScreenMiddleSection extends StatelessWidget {
                 ),
               );
             },
-            price: '20',
+            price: '10',
           ),
 
           const SizedBox(height: 10),
           ServiceButton(
-            textWidget1: 'Express Clean',
-            textWidget2: 'Quick wash & vacuum',
-            textWidget3: '⌚45 min',
+            textWidget1: 'Express Premium Wash',
+            textWidget2: 'Quick wash, interior clean & vacuum',
+            textWidget3: '⌚25 min',
             icon: Icon(
               Icons.alarm,
               color: Theme.of(context).colorScheme.primary,
@@ -204,7 +203,7 @@ class HomeScreenMiddleSection extends StatelessWidget {
           const SizedBox(height: 10),
           ServiceButton(
             textWidget1: 'Premium Detail',
-            textWidget2: 'Full interior & exterior',
+            textWidget2: 'Full interior & exterior detail',
             textWidget3: '⌚90 min',
             svg: SvgPicture.asset(
               'assets/icons/cleaning.svg',
@@ -226,7 +225,7 @@ class HomeScreenMiddleSection extends StatelessWidget {
                 ),
               );
             },
-            price: '150',
+            price: '200',
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
