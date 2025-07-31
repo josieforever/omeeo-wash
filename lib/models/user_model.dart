@@ -12,7 +12,12 @@ class UserModel {
   final double rating;
   final int loyaltyPoints;
   final String photoUrl;
-  final List<Map<String, dynamic>> locations; // New field
+  final List<Map<String, dynamic>> locations;
+
+  final Map<String, bool> notificationSettings;
+
+  // ✅ NEW: App settings for Firestore syncing
+  final Map<String, bool> settings;
 
   UserModel({
     required this.uid,
@@ -28,8 +33,22 @@ class UserModel {
     required this.rating,
     required this.loyaltyPoints,
     required this.photoUrl,
-    required this.locations, // Required in constructor
-  });
+    required this.locations,
+    Map<String, bool>? notificationSettings,
+    Map<String, bool>? settings,
+  }) : notificationSettings =
+           notificationSettings ??
+           {
+             "push": true,
+             "email": true,
+             "bookingConfirmed": true,
+             "washStarted": true,
+             "washCompleted": true,
+             "appUpdates": true,
+           },
+       settings =
+           settings ??
+           {"autoLock": false, "biometricAuth": false, "darkMode": false};
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
@@ -48,6 +67,21 @@ class UserModel {
       photoUrl: map['photoUrl'] ?? '',
       locations: List<Map<String, dynamic>>.from(
         (map['locations'] ?? []).map((item) => Map<String, dynamic>.from(item)),
+      ),
+      notificationSettings: Map<String, bool>.from(
+        map['notificationSettings'] ??
+            {
+              "push": true,
+              "email": true,
+              "bookingConfirmed": true,
+              "washStarted": true,
+              "washCompleted": true,
+              "appUpdates": true,
+            },
+      ),
+      settings: Map<String, bool>.from(
+        map['settings'] ??
+            {"autoLock": false, "biometricAuth": false, "darkMode": false},
       ),
     );
   }
@@ -68,6 +102,8 @@ class UserModel {
       'loyaltyPoints': loyaltyPoints,
       'photoUrl': photoUrl,
       'locations': locations,
+      'notificationSettings': notificationSettings,
+      'settings': settings,
     };
   }
 
@@ -86,6 +122,8 @@ class UserModel {
     int? loyaltyPoints,
     String? photoUrl,
     List<Map<String, dynamic>>? locations,
+    Map<String, bool>? notificationSettings,
+    Map<String, bool>? settings,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -102,6 +140,8 @@ class UserModel {
       loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
       photoUrl: photoUrl ?? this.photoUrl,
       locations: locations ?? this.locations,
+      notificationSettings: notificationSettings ?? this.notificationSettings,
+      settings: settings ?? this.settings,
     );
   }
 }

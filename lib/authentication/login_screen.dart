@@ -137,7 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const HomeScreenWithNav(),
+                                    builder: (_) =>
+                                        const HomeScreenWithNav(view: 'home'),
                                   ),
                                 );
                               } else {
@@ -429,9 +430,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                           .trim();
                                       final password = _passwordController.text
                                           .trim();
+
                                       setState(() {
                                         _isLoading = true;
                                       });
+
                                       try {
                                         await FirebaseService()
                                             .signInWithEmailAndPassword(
@@ -440,34 +443,128 @@ class _LoginScreenState extends State<LoginScreen> {
                                               context: context,
                                             );
 
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const HomeScreenWithNav(),
-                                          ),
+                                        // Fetch and set user data from Firestore into Provider
+                                        final userDoc = await FirebaseFirestore
+                                            .instance
+                                            .collection('users')
+                                            .doc(
+                                              FirebaseAuth
+                                                  .instance
+                                                  .currentUser!
+                                                  .uid,
+                                            )
+                                            .get();
+
+                                        final userModel = UserModel.fromMap(
+                                          userDoc.data()!,
                                         );
-                                      } catch (e) {
-                                        setState(() {
-                                          _isLoading = false;
-                                        });
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Center(
-                                              child: CustomText(
-                                                text:
-                                                    'Login failed: ${e.toString()}',
-                                                textColor: AppColors.white,
+                                        await context
+                                            .read<UserProvider>()
+                                            .setUser(userModel);
+
+                                        // Show success feedback
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Login successful! 🎉",
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const HomeScreenWithNav(
+                                                    view: 'home',
+                                                  ),
+                                            ),
+                                          );
+                                        }
+                                      } on FirebaseAuthException catch (e) {
+                                        String displayMessage;
+
+                                        switch (e.code) {
+                                          case 'user-data-not-found':
+                                            displayMessage =
+                                                'Account not found. Please register or check your credentials.';
+                                            break;
+                                          case 'user-not-found':
+                                            displayMessage =
+                                                'invalid email or password.';
+                                            break;
+                                          case 'wrong-password':
+                                            displayMessage =
+                                                'invalid email or password.';
+                                            break;
+                                          case 'invalid-credential':
+                                            displayMessage =
+                                                'invalid email or password.';
+                                            break;
+                                          case 'user-disabled':
+                                            displayMessage =
+                                                'This user account has been disabled.';
+                                            break;
+                                          case 'too-many-requests':
+                                            displayMessage =
+                                                'Too many failed login attempts. Please try again later.';
+                                            break;
+                                          default:
+                                            displayMessage =
+                                                'Login failed: ${e.message ?? 'An unknown error occurred.'}';
+                                        }
+
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Center(
+                                                child: Text(
+                                                  displayMessage,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              duration: const Duration(
+                                                seconds: 4,
                                               ),
                                             ),
-                                            backgroundColor: Colors.red,
-                                            duration: const Duration(
-                                              seconds: 3,
+                                          );
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Center(
+                                                child: Text(
+                                                  'An unexpected error occurred: ${e.toString()}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              backgroundColor: Colors.red,
+                                              duration: const Duration(
+                                                seconds: 4,
+                                              ),
                                             ),
-                                          ),
-                                        );
+                                          );
+                                        }
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+                                        }
                                       }
                                     }
                                   },
@@ -603,6 +700,9 @@ class _LoginScreenState extends State<LoginScreen> {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class FirebaseService {
+  final FirebaseAuth auth = FirebaseAuth.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
   String _monthName(int month) {
     const months = [
       'Jan',
@@ -622,9 +722,6 @@ class FirebaseService {
   }
 
   Future<UserCredential?> signInWithGoogle(BuildContext context) async {
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -654,8 +751,6 @@ class FirebaseService {
           uid: user.uid,
           name: user.displayName ?? user.email!.split('@')[0],
           email: user.email!,
-          /* firstName: '',
-          lastName: '', */
           emailAddress: user.email!,
           phoneNumber: user.phoneNumber ?? '',
           address: '',
@@ -667,6 +762,19 @@ class FirebaseService {
           loyaltyPoints: 0,
           photoUrl: '',
           locations: [],
+          notificationSettings: {
+            "push": true,
+            "email": true,
+            "bookingConfirmed": true,
+            "washStarted": true,
+            "washCompleted": true,
+            "appUpdates": true,
+          },
+          settings: {
+            "autoLock": false,
+            "biometricAuth": false,
+            "darkMode": false,
+          },
         );
 
         await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -679,6 +787,10 @@ class FirebaseService {
         await context.read<UserProvider>().setUser(existingUser);
       }
 
+      // ✅ Save login status
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+
       return userCredential;
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
@@ -686,96 +798,99 @@ class FirebaseService {
     }
   }
 
+  /// Handles user sign-in with email and password.
+  /// It verifies the user's existence in Firebase Auth and then in Firestore.
+  /// If the user's Firestore document does not exist, it prevents login.
   Future<void> signInWithEmailAndPassword({
-    required BuildContext context,
     required String email,
     required String password,
+    required BuildContext context,
   }) async {
     try {
-      final auth = FirebaseAuth.instance;
-      final firestore = FirebaseFirestore.instance;
-
-      // Sign in the user
+      // Authenticate user
       final userCredential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       final user = userCredential.user!;
-      final userRef = firestore.collection('users').doc(user.uid);
-      final docSnapshot = await userRef.get();
+      final docSnapshot = await firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
+      // If Firestore user profile is missing, treat as failed login
       if (!docSnapshot.exists) {
-        final placeholderName = email.split('@').first;
-        final now = DateTime.now();
-        final memberSince = DateFormat('MMM yyyy').format(now);
-
-        final userModel = UserModel(
-          uid: user.uid,
-          name: placeholderName,
-          email: email,
-          emailAddress: email,
-          phoneNumber: user.phoneNumber ?? '',
-          address: '',
-          dateOfBirth: '',
-          memberSince: memberSince,
-          totalWashes: 0,
-          washesThisMonth: 0,
-          rating: 5.0,
-          loyaltyPoints: 0,
-          photoUrl: '',
-          locations: [],
+        await auth.signOut(); // Sign out for safety
+        throw FirebaseAuthException(
+          code: 'user-data-not-found',
+          message: 'User profile not found. Please register before logging in.',
         );
-
-        await userRef.set(userModel.toMap());
-        await context.read<UserProvider>().setUser(userModel);
-      } else {
-        final userModel = UserModel.fromMap(docSnapshot.data()!);
-        await context.read<UserProvider>().setUser(userModel);
-
-        // Optionally update last login
-        await userRef.update({'lastLogin': FieldValue.serverTimestamp()});
       }
 
-      debugPrint('Login successful');
+      // Parse and store user data using your UserProvider
+      final userModel = UserModel.fromMap(docSnapshot.data()!);
+      // Optionally: leave this part to the caller
+      // await userProvider.setUser(userModel);
+
+      // Update last login timestamp
+      await firestore.collection('users').doc(user.uid).update({
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
+
+      // ✅ Save login status
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        debugPrint('No user found for that email.');
-      } else if (e.code == 'wrong-password') {
-        debugPrint('Wrong password provided.');
-      } else {
-        debugPrint('FirebaseAuth error: ${e.message}');
-      }
+      // Rethrow specific Firebase auth exceptions
+      throw e;
     } catch (e) {
-      debugPrint('General sign-in error: $e');
+      // Rethrow any other general errors
+      throw Exception('Unexpected error: $e');
     }
   }
 
+  //----------------------------------------------------------------------------
+  /// Handles user sign-out from Firebase, Google (if applicable),
+  /// clears user data from the provider and cache, and navigates to the login screen.
   Future<void> signOut(BuildContext context) async {
     try {
       final auth = FirebaseAuth.instance;
       final googleSignIn = GoogleSignIn();
 
-      // Sign out from Firebase Auth and Google
+      // Sign out from Firebase Authentication.
       await auth.signOut();
-      await googleSignIn.signOut();
 
-      // Clear user provider and cache
-      await context.read<UserProvider>().clearCache();
+      // Sign out from Google only if the user was signed in with Google.
+      // This prevents errors if GoogleSignIn isn't initialized or used.
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+      }
 
-      // Clear login state flag
+      // Clear user data from the UserProvider and SharedPreferences cache.
+      // The 'context.mounted' check is vital here to prevent errors
+      // if the widget tree is unmounted before this async operation completes.
+      if (context.mounted) {
+        await context.read<UserProvider>().clearCache();
+      }
+
+      // Clear any persistent login state flag from SharedPreferences.
+      // This is often used to determine auto-login on app launch.
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_logged_in');
 
-      // Navigate to login screen
+      // Navigate to the LoginScreen and clear all previous routes
+      // so the user cannot go back to authenticated screens.
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
+          (route) => false, // Remove all previous routes from the stack
         );
       }
     } catch (e) {
+      debugPrint('Error signing out: $e'); // Log the error for debugging.
+      // Provide user feedback about the sign-out error.
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -5,6 +5,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/pages/profile/app_settings.dart';
+import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
@@ -46,9 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   ProfileScreenTopBar(user: user),
-                  ProfileScreenMiddleSection(
-                    loyaltyPoints: user.loyaltyPoints!,
-                  ),
+                  ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
                 ],
               ),
             ),
@@ -355,7 +355,12 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primary,
               ),
               scale: 1.2,
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AppSettings()),
+                );
+              },
             ),
             ProfileButton(
               textWidget1: 'Help & Support',
@@ -365,8 +370,12 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primary,
               ),
               scale: 1.2,
-
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => HelpAndSupport()),
+                );
+              },
             ),
             LoyaltyPointsBar(
               padding: const EdgeInsets.all(10),
