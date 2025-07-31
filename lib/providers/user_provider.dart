@@ -31,7 +31,6 @@ class UserProvider with ChangeNotifier {
 
     if (doc.exists) {
       _user = UserModel.fromMap(doc.data()!);
-      // Cache updated user
       await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
       notifyListeners();
     }
@@ -51,5 +50,55 @@ class UserProvider with ChangeNotifier {
     await prefs.remove(cacheKey);
     _user = null;
     notifyListeners();
+  }
+
+  /// 🔔 Get notification toggle value
+  bool getNotificationValue(String key) {
+    return _user?.notificationSettings[key] ?? true;
+  }
+
+  /// 🔔 Update a notification setting in memory, Firestore & cache
+  Future<void> updateNotificationSetting(String key, bool value) async {
+    if (_user == null) return;
+
+    final updatedSettings = Map<String, bool>.from(_user!.notificationSettings);
+    updatedSettings[key] = value;
+
+    final updatedUser = _user!.copyWith(notificationSettings: updatedSettings);
+    _user = updatedUser;
+    notifyListeners();
+
+    // Update Firestore
+    await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update(
+      {'notificationSettings': updatedSettings},
+    );
+
+    // Update SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
+  }
+
+  /// ⚙️ Get app setting toggle value
+  bool getSettingValue(String key) {
+    return _user?.settings[key] ?? false;
+  }
+
+  /// ⚙️ Update an app setting in memory, Firestore & cache
+  Future<void> updateSetting(String key, bool value) async {
+    if (_user == null) return;
+
+    final updatedSettings = Map<String, bool>.from(_user!.settings);
+    updatedSettings[key] = value;
+
+    final updatedUser = _user!.copyWith(settings: updatedSettings);
+    _user = updatedUser;
+    notifyListeners();
+
+    await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update(
+      {'settings': updatedSettings},
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
   }
 }

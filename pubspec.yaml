@@ -44,9 +44,11 @@ dependencies:
   shared_preferences: ^2.2.2
   permission_handler: ^11.3.1
   flutter_svg: ^2.0.7
-  intl: ^0.18.1
+  intl: 0.20.2
   image_picker: ^1.0.4
   cupertino_icons: ^1.0.8
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +57,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
+  generate: true
   uses-material-design: true
 
   assets:
@@ -86,4 +89,11 @@ flutter_native_splash:
     color: "#FFFFFF"
     image: assets/images/omeeo_wash_black_stripes.png
     icon_background_color: "#FFFFFF"
-# flutter pub run flutter_native_splash:create
+  # flutter pub run flutter_native_splash:create
+
+  generate: true
+  # Add this block
+  l10n:
+    arb-dir: lib/l10n
+    template-arb-file: app_en.arb
+    output-localization-file: app_localizations.dart

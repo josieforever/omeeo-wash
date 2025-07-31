@@ -11,6 +11,7 @@ import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -143,7 +144,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const HomeScreenWithNav(),
+                                    builder: (_) =>
+                                        const HomeScreenWithNav(view: 'home'),
                                   ),
                                 );
                               } else {
@@ -540,7 +542,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const HomeScreenWithNav(),
+                                                const HomeScreenWithNav(
+                                                  view: 'home',
+                                                ),
                                           ),
                                         );
                                       } catch (e) {
@@ -767,8 +771,6 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
         uid: user.uid,
         name: user.displayName ?? user.email!.split('@')[0],
         email: user.email!,
-        /*  firstName: '',
-        lastName: '', */
         emailAddress: user.email!,
         phoneNumber: user.phoneNumber ?? '',
         address: '',
@@ -780,6 +782,19 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
         loyaltyPoints: 0,
         photoUrl: '',
         locations: [],
+        notificationSettings: {
+          "push": true,
+          "email": true,
+          "bookingConfirmed": true,
+          "washStarted": true,
+          "washCompleted": true,
+          "appUpdates": true,
+        },
+        settings: {
+          "autoLock": false,
+          "biometricAuth": false,
+          "darkMode": false,
+        },
       );
 
       await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -791,6 +806,9 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
       final existingUser = UserModel.fromMap(userDoc.data()!);
       await context.read<UserProvider>().setUser(existingUser);
     }
+    // ✅ Save login status
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
 
     return userCredential;
   } catch (e) {
@@ -829,10 +847,9 @@ Future<void> signUpWithEmail({
 
     final newUser = UserModel(
       uid: user.uid,
-      name: placeholderName,
-      email: email,
-
-      emailAddress: email,
+      name: user.displayName ?? user.email!.split('@')[0],
+      email: user.email!,
+      emailAddress: user.email!,
       phoneNumber: user.phoneNumber ?? '',
       address: '',
       dateOfBirth: '',
@@ -843,12 +860,24 @@ Future<void> signUpWithEmail({
       loyaltyPoints: 0,
       photoUrl: '',
       locations: [],
+      notificationSettings: {
+        "push": true,
+        "email": true,
+        "bookingConfirmed": true,
+        "washStarted": true,
+        "washCompleted": true,
+        "appUpdates": true,
+      },
+      settings: {"autoLock": false, "biometricAuth": false, "darkMode": false},
     );
 
     await userRef.set(newUser.toMap());
 
     // Save to Provider
     await context.read<UserProvider>().setUser(newUser);
+    // ✅ Save login status
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
   } else {
     final existingUser = UserModel.fromMap((await userRef.get()).data()!);
     await context.read<UserProvider>().setUser(existingUser);
