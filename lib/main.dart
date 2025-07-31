@@ -153,3 +153,4 @@ class SplashScreenState extends State<SplashScreen> {
 }
 //adb connect 172.20.10.3:5555
 //adb tcpip 5555
+//adb connect 192.168.42.129 --for asare

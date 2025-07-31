@@ -89,7 +89,7 @@ class _SelectVehicleSizeScreenState extends State<SelectVehicleSizeScreen> {
                   LnProgressIndicator(value: progressIndicatorValues[1]),
                   const SizedBox(height: 20),
                   Text(
-                    "What service do you need?",
+                    "What is the size of your vehicle?",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -117,6 +117,8 @@ class _SelectVehicleSizeScreenState extends State<SelectVehicleSizeScreen> {
                         )
                         .toList(),
                   ),
+                  SizedBox(height: 30),
+                  ContinueButton(),
                 ],
               ),
             ),
