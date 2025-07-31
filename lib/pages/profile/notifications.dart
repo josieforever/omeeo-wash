@@ -1,9 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
+import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
+import 'package:provider/provider.dart';
 
 class Notifications extends StatefulWidget {
   const Notifications({super.key});
@@ -46,10 +51,13 @@ class _NotificationsState extends State<Notifications> {
               color: const Color.fromARGB(100, 255, 255, 255),
             ),
           ),
-
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [NotificationsTopBar(), NotificationSettingsPage()],
+          SingleChildScrollView(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [NotificationsTopBar(), NotificationSettingsPage()],
+              ),
+            ),
           ),
         ],
       ),
@@ -66,45 +74,66 @@ class NotificationSettingsPage extends StatefulWidget {
 }
 
 class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
-  // Notification Methods
-  bool pushNotification = true;
-  bool emailNotification = true;
+  late UserProvider userProvider;
+  late UserModel user;
 
-  // Booking Updates
-  bool bookingConfirmed = true;
-  bool washStarted = true;
-  bool washCompleted = true;
+  @override
+  void initState() {
+    super.initState();
+    userProvider = Provider.of<UserProvider>(context, listen: false);
+    user = userProvider.user!;
+  }
 
-  // Payment Notifications
-  bool paymentConfirmation = true;
-  bool paymentIssues = true;
+  Future<void> _updateNotificationSetting(String key, bool value) async {
+    final updatedUser = user.copyWith(
+      notificationSettings: {...user.notificationSettings, key: value},
+    );
 
-  // Promotions and Rewards
-  bool promotionsAndOffers = true;
-  bool loyaltyPoints = true;
+    await userProvider.setUser(updatedUser);
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(updatedUser.uid)
+        .update({'notificationSettings': updatedUser.notificationSettings});
 
-  // App and System
-  bool appUpdates = true;
+    setState(() => user = updatedUser);
+  }
 
   Widget _buildSwitchTile({
     required IconData icon,
     required String title,
     required String subtitle,
-    required bool value,
-    required Function(bool) onChanged,
+    required String keyName,
     Color iconColor = AppColors.secondary,
   }) {
+    final value = user.notificationSettings[keyName] ?? true;
+
     return ListTile(
       leading: Icon(icon, color: iconColor),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(subtitle),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppColors.white,
-        activeTrackColor: AppColors.black,
-        // trackColor: AppColors.white,
-        // trackColor: Colors.red,
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: TextSizes.bodyText2,
+          color: Theme.of(context).textTheme.bodyLarge?.color,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: TextSizes.bodyText2,
+          color: Theme.of(context).textTheme.bodyMedium?.color,
+        ),
+      ),
+      trailing: Transform.scale(
+        scale: 0.75,
+        child: Switch(
+          value: value,
+          onChanged: (val) => _updateNotificationSetting(keyName, val),
+          activeColor: CupertinoColors.white,
+          activeTrackColor: CupertinoColors.systemGreen,
+          inactiveTrackColor: const Color.fromARGB(255, 78, 78, 81),
+          inactiveThumbColor: CupertinoColors.white,
+        ),
       ),
     );
   }
@@ -120,19 +149,15 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.black,
+                style: TextStyle(
+                  fontSize: TextSizes.subtitle2,
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-              child: Text(subtitle, style: const TextStyle(color: Colors.grey)),
             ),
             const SizedBox(height: 8),
             ...children,
@@ -144,76 +169,68 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.82,
-      child: ListView(
-        children: [
-          _buildCard("Notification Methods", "", [
-            _buildSwitchTile(
-              icon: Icons.phone_android,
-              title: "Push Notifications",
-              subtitle: "Instant alerts on your device",
-              value: pushNotification,
-              onChanged: (val) => setState(() => pushNotification = val),
-            ),
-            _buildSwitchTile(
-              icon: Icons.email_outlined,
-              title: "Email",
-              subtitle: "Updates sent to your inbox",
-              value: emailNotification,
-              onChanged: (val) => setState(() => emailNotification = val),
-            ),
-          ]),
-          _buildCard(
-            "Booking Updates",
-            "Stay informed about your wash appointments",
-            [
-              _buildSwitchTile(
-                icon: Icons.calendar_today,
-                title: "Booking Confirmations",
-                subtitle: "Get notified when your wash is confirmed",
-                value: bookingConfirmed,
-                onChanged: (val) => setState(() => bookingConfirmed = val),
-              ),
-              _buildSwitchTile(
-                icon: Icons.local_car_wash,
-                title: "Wash Started",
-                subtitle: "Know when your car wash begins",
-                value: washStarted,
-                onChanged: (val) => setState(() => washStarted = val),
-              ),
-              _buildSwitchTile(
-                icon: Icons.check_circle_outline,
-                title: "Wash Completed",
-                subtitle: "Get notified when your wash is done",
-                value: washCompleted,
-                onChanged: (val) => setState(() => washCompleted = val),
-              ),
-            ],
+    return Column(
+      children: [
+        _buildCard("Notification Methods", "", [
+          _buildSwitchTile(
+            icon: Icons.phone_android,
+            title: "Push Notifications",
+            subtitle: "Instant alerts on your device",
+            keyName: 'pushNotification',
           ),
-
-          _buildCard("App & System", "Technical updates and announcements", [
+          _buildSwitchTile(
+            icon: Icons.email_outlined,
+            title: "Email",
+            subtitle: "Updates sent to your inbox",
+            keyName: 'emailNotification',
+          ),
+        ]),
+        _buildCard(
+          "Booking Updates",
+          "Stay informed about your wash appointments",
+          [
             _buildSwitchTile(
-              icon: FontAwesomeIcons.phone,
-              title: "App Updates",
-              subtitle: "New features and improvements",
-              value: appUpdates,
-              onChanged: (val) => setState(() => appUpdates = val),
+              icon: Icons.calendar_today,
+              title: "Booking Confirmations",
+              subtitle: "Get notified when your wash is confirmed",
+              keyName: 'bookingConfirmed',
             ),
-          ]),
-        ],
-      ),
+            _buildSwitchTile(
+              icon: Icons.local_car_wash,
+              title: "Wash Started",
+              subtitle: "Know when your car wash begins",
+              keyName: 'washStarted',
+            ),
+            _buildSwitchTile(
+              icon: Icons.check_circle_outline,
+              title: "Wash Completed",
+              subtitle: "Get notified when your wash is done",
+              keyName: 'washCompleted',
+            ),
+          ],
+        ),
+        _buildCard("App & System", "Technical updates and announcements", [
+          _buildSwitchTile(
+            icon: FontAwesomeIcons.phone,
+            title: "App Updates",
+            subtitle: "New features and improvements",
+            keyName: 'appUpdates',
+          ),
+        ]),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }
 
 class NotificationsTopBar extends StatelessWidget {
   const NotificationsTopBar({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerRight,
@@ -242,8 +259,6 @@ class NotificationsTopBar extends StatelessWidget {
                         textSize: TextSizes.heading2,
                         textWeight: FontWeight.w900,
                       ),
-                      SizedBox(width: MediaQuery.of(context).size.width * 0.1),
-                      Icon(FontAwesomeIcons.bell, color: Colors.white),
                     ],
                   ),
                   CustomText(
@@ -251,7 +266,7 @@ class NotificationsTopBar extends StatelessWidget {
                     textColor: Theme.of(
                       context,
                     ).textTheme.headlineMedium?.color,
-                    textSize: TextSizes.subtitle2,
+                    textSize: TextSizes.bodyText1,
                   ),
                 ],
               ),
@@ -262,7 +277,6 @@ class NotificationsTopBar extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 10),
         ],
       ),

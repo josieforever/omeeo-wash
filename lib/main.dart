@@ -1,10 +1,14 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
+import 'package:omeeowash/l10n/app_localizations.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
+import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
@@ -21,6 +25,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => TopNavProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: const MyApp(),
     ),
@@ -33,13 +38,24 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final localeProvider = Provider.of<LocaleProvider>(context);
 
     return MaterialApp(
       title: 'Omeeo Wash',
+      locale: localeProvider.locale, // from Provider or state
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('fr'), // French (example)
+      ],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       debugShowCheckedModeBanner: false,
       themeMode: themeProvider.themeMode,
       theme: themeProvider.lightTheme,
-
       darkTheme: themeProvider.darkTheme,
       home: const SplashScreen(),
     );
@@ -119,14 +135,13 @@ class SplashScreenState extends State<SplashScreen> {
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
     final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-
     Widget nextScreen;
     if (!hasSeenOnboarding) {
       nextScreen = const OnboardingScreen();
     } else if (!isLoggedIn) {
       nextScreen = const LoginScreen();
     } else {
-      nextScreen = const /* HomeScreen() */ LoginScreen();
+      nextScreen = const HomeScreenWithNav(view: 'home'); // ✅ Now goes to home
     }
 
     if (mounted) {
@@ -152,5 +167,6 @@ class SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+
 //adb connect 172.20.10.3:5555
-//adb tcpip 5555
+//adb tcpip 55551

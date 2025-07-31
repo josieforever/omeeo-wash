@@ -20,6 +20,7 @@ class TextSizes {
   static const double subtitle2 = 16.0;
 
   static const double bodyText1 = 14.0;
+  static const double bodyText3 = 13.0;
   static const double bodyText2 = 12.0;
 
   static const double caption = 11.0;

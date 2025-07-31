@@ -6,7 +6,9 @@ import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
 
 class HomeScreenWithNav extends StatefulWidget {
-  const HomeScreenWithNav({super.key});
+  final String view;
+
+  const HomeScreenWithNav({super.key, required this.view});
 
   @override
   State<HomeScreenWithNav> createState() => _HomeScreenWithNavState();
@@ -16,10 +18,27 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    HomeScreen(), // Your Home screen widget
-    BookingScreen(), // Your Bookings screen widget
-    ProfileScreen(), // Your Profile screen widget
+    HomeScreen(), // Index 0
+    BookingScreen(), // Index 1
+    ProfileScreen(), // Index 2
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Set the initial tab based on the `view` argument
+    switch (widget.view.toLowerCase()) {
+      case 'booking':
+        _selectedIndex = 1;
+        break;
+      case 'profile':
+        _selectedIndex = 2;
+        break;
+      case 'home':
+      default:
+        _selectedIndex = 0;
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
