@@ -92,88 +92,66 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    decoration: serviceType == "basic"
-                        ? BoxDecoration(
-                            border: Border.all(width: 3, color: AppColors.pink),
-                            borderRadius: BorderRadius.circular(2),
-                          )
-                        : null,
-                    child: ServiceButton(
-                      textWidget1: 'Basic Wash',
-                      textWidget2: 'Exterior wash & dry',
-                      textWidget3: '⌚30 min',
-
-                      icon: Icon(
-                        FontAwesomeIcons.shower,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      scale: 1.2,
-                      onPressed: () {
-                        setState(() {
-                          serviceType = "basic";
-                        });
-                      },
-                      price: '20',
+                  ServiceButton(
+                    textWidget1: 'Basic Wash',
+                    textWidget2: 'Exterior wash & dry',
+                    textWidget3: '⌚30 min',
+                    isSelected: serviceType == "basic",
+                    icon: Icon(
+                      FontAwesomeIcons.shower,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    scale: 1.2,
+                    onPressed: () {
+                      setState(() {
+                        serviceType = "basic";
+                      });
+                    },
+                    price: '20',
                   ),
 
                   const SizedBox(height: 10),
-                  Container(
-                    decoration: serviceType == "express"
-                        ? BoxDecoration(
-                            border: Border.all(width: 3, color: AppColors.pink),
-                            borderRadius: BorderRadius.circular(2),
-                          )
-                        : null,
-                    child: ServiceButton(
-                      textWidget1: 'Express Clean',
-                      textWidget2: 'Quick wash & vacuum',
-                      textWidget3: '⌚45 min',
-                      icon: Icon(
-                        Icons.alarm,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      scale: 1.2,
-                      onPressed: () {
-                        setState(() {
-                          serviceType = "express";
-                        });
-                      },
-                      price: '30',
+                  ServiceButton(
+                    textWidget1: 'Express Clean',
+                    textWidget2: 'Quick wash & vacuum',
+                    textWidget3: '⌚45 min',
+                    isSelected: serviceType == "express",
+                    icon: Icon(
+                      Icons.alarm,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
+                    scale: 1.2,
+                    onPressed: () {
+                      setState(() {
+                        serviceType = "express";
+                      });
+                    },
+                    price: '30',
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    decoration: serviceType == "premium"
-                        ? BoxDecoration(
-                            border: Border.all(width: 3, color: AppColors.pink),
-                            borderRadius: BorderRadius.circular(2),
-                          )
-                        : null,
-                    child: ServiceButton(
-                      textWidget1: 'Premium Detail',
-                      textWidget2: 'Full interior & exterior',
-                      textWidget3: '⌚90 min',
-                      svg: SvgPicture.asset(
-                        'assets/icons/cleaning.svg',
-                        height: 24,
-                        width: 24,
-                        colorFilter: ColorFilter.mode(
-                          Theme.of(context)
-                              .colorScheme
-                              .primary, // 🎨 Replace with your desired color
-                          BlendMode.srcIn,
-                        ),
+                  ServiceButton(
+                    textWidget1: 'Premium Detail',
+                    textWidget2: 'Full interior & exterior',
+                    textWidget3: '⌚90 min',
+                    isSelected: serviceType == "premium",
+                    svg: SvgPicture.asset(
+                      'assets/icons/cleaning.svg',
+                      height: 24,
+                      width: 24,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context)
+                            .colorScheme
+                            .primary, // 🎨 Replace with your desired color
+                        BlendMode.srcIn,
                       ),
-                      scale: 1.5,
-                      onPressed: () {
-                        setState(() {
-                          serviceType = "premium";
-                        });
-                      },
-                      price: '150',
                     ),
+                    scale: 1.5,
+                    onPressed: () {
+                      setState(() {
+                        serviceType = "premium";
+                      });
+                    },
+                    price: '150',
                   ),
                   SizedBox(height: 50),
 
@@ -285,25 +263,33 @@ class _WashOptionButtonsState extends State<WashOptionButtons> {
     required BuildContext context,
     required bool isSelected,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        border: isSelected ? Border.all(width: 3, color: AppColors.pink) : null,
-      ),
+    return SizedBox(
       height: MediaQuery.of(context).size.height * 0.1,
       width: double.infinity,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.white,
+          backgroundColor: isSelected ? AppColors.pink : AppColors.white,
           foregroundColor: AppColors.black,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
           elevation: 2,
         ),
         onPressed: onPressed,
-        icon: Icon(icon, size: 24, color: AppColors.pink),
+        icon: Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Icon(
+            icon,
+            size: 24,
+            color: isSelected ? AppColors.white : AppColors.pink,
+          ),
+        ),
         label: Text(
           title,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? AppColors.white : AppColors.black,
+          ),
         ),
       ),
     );
