@@ -3,6 +3,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
+import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:provider/provider.dart';
 
@@ -154,6 +155,7 @@ class ServiceButton extends StatelessWidget {
   final SvgPicture? svg;
   final double? scale;
   final VoidCallback onPressed;
+  final bool isSelected;
   const ServiceButton({
     super.key,
     required this.textWidget1,
@@ -166,6 +168,7 @@ class ServiceButton extends StatelessWidget {
     this.animation,
     this.scale,
     this.svg,
+    this.isSelected = false,
   });
 
   @override
@@ -175,7 +178,9 @@ class ServiceButton extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(7),
-          color: Theme.of(context).textTheme.headlineLarge?.color,
+          color: isSelected
+              ? AppColors.pink
+              : Theme.of(context).textTheme.headlineLarge?.color,
           boxShadow: [
             BoxShadow(
               color: Color.fromARGB(26, 12, 0, 235),
@@ -194,7 +199,9 @@ class ServiceButton extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(32, 137, 43, 226),
+                    color: isSelected
+                        ? AppColors.periwinklePurple
+                        : Color.fromARGB(32, 137, 43, 226),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Transform.scale(
@@ -211,7 +218,9 @@ class ServiceButton extends StatelessWidget {
               children: [
                 CustomText(
                   text: textWidget1,
-                  textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                  textColor: isSelected
+                      ? AppColors.white
+                      : Theme.of(context).textTheme.bodyLarge?.color,
                   textSize: TextSizes.bodyText1,
                   textWeight: FontWeight.bold,
                 ),
@@ -219,14 +228,16 @@ class ServiceButton extends StatelessWidget {
                     ? SizedBox()
                     : CustomText(
                         text: textWidget2!,
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color,
+                        textColor: isSelected
+                            ? AppColors.white
+                            : Theme.of(context).textTheme.bodyMedium?.color,
                         textSize: TextSizes.bodyText1,
                       ),
                 CustomText(
                   text: textWidget3,
-                  textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                  textColor: isSelected
+                      ? AppColors.white
+                      : Theme.of(context).textTheme.bodyMedium?.color,
                   textSize: TextSizes.bodyText1,
                 ),
               ],
@@ -255,11 +266,24 @@ class ServiceButton extends StatelessWidget {
                     children: [
                       CustomText(
                         text: '₵$price',
-                        textColor: Theme.of(context).colorScheme.primary,
+                        textColor: isSelected
+                            ? AppColors.white
+                            : Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.subtitle1,
                         textWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: isSelected ? 10 : 30),
+                      if (isSelected)
+                        Transform.scale(
+                          scale: 1.3,
+                          child: Checkbox(
+                            value: true,
+                            onChanged: (_) {},
+                            checkColor: Colors.white,
+                            // activeColor: Colors.white,
+                            side: BorderSide(color: Colors.white),
+                          ),
+                        ),
                     ],
                   ),
           ],
