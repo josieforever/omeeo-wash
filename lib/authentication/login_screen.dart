@@ -858,39 +858,32 @@ class FirebaseService {
       final auth = FirebaseAuth.instance;
       final googleSignIn = GoogleSignIn();
 
-      // Sign out from Firebase Authentication.
+      // Sign out from Firebase Authentication
       await auth.signOut();
 
-      // Sign out from Google only if the user was signed in with Google.
-      // This prevents errors if GoogleSignIn isn't initialized or used.
+      // Sign out from Google if the user was signed in with Google
       if (await googleSignIn.isSignedIn()) {
         await googleSignIn.signOut();
       }
 
-      // Clear user data from the UserProvider and SharedPreferences cache.
-      // The 'context.mounted' check is vital here to prevent errors
-      // if the widget tree is unmounted before this async operation completes.
+      // Clear user data from the UserProvider
       if (context.mounted) {
         await context.read<UserProvider>().clearCache();
       }
 
-      // Clear any persistent login state flag from SharedPreferences.
-      // This is often used to determine auto-login on app launch.
+      // Remove login flag from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_logged_in');
 
-      // Navigate to the LoginScreen and clear all previous routes
-      // so the user cannot go back to authenticated screens.
+      // Navigate to LoginScreen and remove all previous routes
       if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false, // Remove all previous routes from the stack
+          (route) => false,
         );
       }
     } catch (e) {
-      debugPrint('Error signing out: $e'); // Log the error for debugging.
-      // Provide user feedback about the sign-out error.
+      debugPrint('Error signing out: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
