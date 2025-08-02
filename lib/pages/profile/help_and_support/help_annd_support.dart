@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/pages/profile/help_and_support/booking_and_scheduling.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat.dart';
 import 'package:omeeowash/pages/profile/help_and_support/services_and_pricing.dart';
 import 'package:omeeowash/pages/profile/help_and_support/troubleshooting.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -138,15 +139,18 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
               borderRadius: BorderRadius.circular(5),
               color: const Color.fromARGB(32, 137, 43, 226),
             ),
-            child: CustomText(
-              text: buttonText,
-              textColor: Theme.of(context).colorScheme.primary,
-              textSize: TextSizes.bodyText1,
-              textWeight: FontWeight.bold,
-              textAlign: TextAlign.center,
+            child: GestureDetector(
+              onTap: () => onPressed(),
+              child: CustomText(
+                text: buttonText,
+                textColor: Theme.of(context).colorScheme.primary,
+                textSize: TextSizes.bodyText1,
+                textWeight: FontWeight.bold,
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
-          SizedBox(height: 5),
+          SizedBox(height: 2),
           CustomText(
             text: infomation,
             textColor: Theme.of(context).textTheme.bodyMedium?.color,
@@ -265,7 +269,14 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
             title: "Live Chat",
             subtitle: "Chat with our support team",
             buttonText: 'Start Chat',
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (BuildContext context) => const LiveChat(),
+                ),
+              );
+              print("Working....");
+            },
             infomation: '24 Hours',
           ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),

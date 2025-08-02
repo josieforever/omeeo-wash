@@ -11,7 +11,7 @@ class AppColors {
   static const Color textSecondary = Color.fromARGB(255, 102, 102, 102);
   static const Color textTetiary = Color.fromARGB(255, 218, 218, 218);
   static const Color error = Color.fromARGB(255, 255, 0, 0);
-  static const Color success = Color(0xFF81C784);
+  static const Color success = Color.fromARGB(255, 2, 249, 14);
   static const Color warning = Color(0xFFFFB74D);
   static const Color white = Colors.white;
   static const Color black = Colors.black;
