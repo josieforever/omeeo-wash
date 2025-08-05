@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -80,9 +81,22 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
   late UserProvider userProvider;
   late UserModel user;
 
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
+  final firestore = FirebaseFirestore.instance;
+
+  bool isAdmin = false;
+  void getUserInfo() async {
+    final userSnapshot = await firestore.collection("users").doc(userId).get();
+    final userData = userSnapshot.data();
+    setState(() {
+      isAdmin = userData?["isAdmin"] ?? false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    getUserInfo();
     userProvider = Provider.of<UserProvider>(context, listen: false);
     user = userProvider.user!;
   }
@@ -268,14 +282,13 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
             icon: Icons.chat,
             title: "Live Chat",
             subtitle: "Chat with our support team",
-            buttonText: 'Start Chat',
+            buttonText: isAdmin ? "Support Chats" : 'Start Chat',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (BuildContext context) => const LiveChat(),
+                  builder: (BuildContext context) => LiveChat(isAdmin: isAdmin),
                 ),
               );
-              print("Working....");
             },
             infomation: '24 Hours',
           ),

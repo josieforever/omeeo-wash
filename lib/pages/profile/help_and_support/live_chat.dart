@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bubble/bubble.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,16 +8,201 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:uuid/uuid.dart';
 
 class LiveChat extends StatefulWidget {
-  const LiveChat({super.key});
+  final bool isAdmin;
+  const LiveChat({super.key, required this.isAdmin});
 
   @override
   State<LiveChat> createState() => _LiveChatState();
 }
 
 class _LiveChatState extends State<LiveChat> {
+  final String clientId = FirebaseAuth.instance.currentUser!.uid;
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.isAdmin ? Clients() : Chat(clientId: clientId);
+  }
+}
+
+class Clients extends StatelessWidget {
+  const Clients({super.key});
+
+  Future<List<Map<String, dynamic>>> fetchClients() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('admin')
+        .doc('idforadminv1')
+        .collection('help_chats')
+        .get();
+
+    // Extract fields from documents
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'userId': data['userId'],
+        'username': data['username'],
+        'photoUrl': data['photoUrl'],
+      };
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.9,
+              color: const Color.fromARGB(213, 255, 255, 255),
+            ),
+          ),
+          Positioned.fill(
+            child: Lottie.asset(
+              'assets/animations/background_animation_light.json',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.9,
+              color: const Color.fromARGB(100, 255, 255, 255),
+            ),
+          ),
+          SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: MediaQuery.of(context).size.width,
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.centerRight,
+                      end: Alignment.centerLeft,
+                      colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              CustomText(
+                                text: 'Clients',
+                                textColor: Theme.of(
+                                  context,
+                                ).textTheme.headlineLarge?.color,
+                                textSize: TextSizes.heading2,
+                                textWeight: FontWeight.w900,
+                              ),
+                            ],
+                          ),
+                          GoBack(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: fetchClients(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    final clients = snapshot.data ?? [];
+
+                    if (clients.isEmpty) {
+                      return const Center(child: Text('No clients found.'));
+                    }
+
+                    return SizedBox(
+                      height: 500,
+                      child: ListView.builder(
+                        itemCount: clients.length,
+                        itemBuilder: (context, index) {
+                          final client = clients[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      Chat(clientId: client['userId']),
+                                ),
+                              );
+                            },
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: CircleAvatar(
+                                    radius: 25,
+
+                                    // backgroundImage: client['photoUrl'] != null
+                                    //     ? NetworkImage(client['photoUrl'])
+                                    //     : null,
+                                    child: const Icon(Icons.person),
+                                    // child: client['photoUrl'] == null
+                                    //     ? const Icon(Icons.person)
+                                    //     : null,
+                                  ),
+                                  title: Text(client['username'] ?? 'No Name'),
+                                  trailing: Icon(Icons.more_vert),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class Chat extends StatefulWidget {
+  final String clientId;
+  const Chat({super.key, required this.clientId});
+
+  @override
+  State<Chat> createState() => _ChatState();
+}
+
+class _ChatState extends State<Chat> {
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController messageController = TextEditingController();
   final firestore = FirebaseFirestore.instance;
   final String userId = FirebaseAuth.instance.currentUser!.uid;
@@ -42,7 +229,7 @@ class _LiveChatState extends State<LiveChat> {
 
     final userChatRef = firestore
         .collection('users')
-        .doc('XPV2pjk6QDTFs0OdQIsdU4l1RJo2')
+        .doc(widget.clientId)
         .collection('help_messages')
         .doc(messageId);
 
@@ -55,7 +242,11 @@ class _LiveChatState extends State<LiveChat> {
     final batch = firestore.batch();
     batch.set(userChatRef, messageData);
     if (!isAdmin) {
-      batch.set(adminChatRef, {"userId": userId, "username": username});
+      batch.set(adminChatRef, {
+        "userId": widget.clientId,
+        "username": username,
+        "photoUrl": "",
+      });
     }
     messageController.clear();
 
@@ -67,10 +258,21 @@ class _LiveChatState extends State<LiveChat> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    getUserInfo();
+  bool isCurrentlyTyping = false;
+  Timer? _typingTimer;
+
+  void onTyping(String text) {
+    if (!isCurrentlyTyping) {
+      isCurrentlyTyping = true;
+      firestore.collection('users').doc(userId).update({'isTyping': true});
+    }
+
+    // Debounce typing (wait before setting to false)
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      firestore.collection('users').doc(userId).update({'isTyping': false});
+      isCurrentlyTyping = false;
+    });
   }
 
   void getUserInfo() async {
@@ -83,8 +285,22 @@ class _LiveChatState extends State<LiveChat> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    getUserInfo();
+  }
+
+  @override
+  void dispose() {
+    _typingTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: Container(
@@ -179,7 +395,7 @@ class _LiveChatState extends State<LiveChat> {
                 child: StreamBuilder<QuerySnapshot>(
                   stream: firestore
                       .collection('users')
-                      .doc('XPV2pjk6QDTFs0OdQIsdU4l1RJo2')
+                      .doc(widget.clientId)
                       .collection('help_messages')
                       .orderBy('timestamp')
                       .snapshots(),
@@ -194,7 +410,19 @@ class _LiveChatState extends State<LiveChat> {
 
                     final messages = snapshot.data!.docs;
 
+                    // Schedule scroll to bottom after build
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: const Duration(milliseconds: 100),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    });
+
                     return ListView.builder(
+                      controller: _scrollController,
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
                         final data =
@@ -222,27 +450,33 @@ class _LiveChatState extends State<LiveChat> {
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  children: [
-                    const CircleAvatar(radius: 5, backgroundColor: Colors.grey),
-                    const SizedBox(width: 4),
-                    const CircleAvatar(radius: 5, backgroundColor: Colors.grey),
-                    const SizedBox(width: 4),
-                    const CircleAvatar(radius: 5, backgroundColor: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Emma is typing...',
-                      style: TextStyle(
-                        color: black,
-                        fontSize: TextSizes.bodyText1,
-                      ),
-                    ),
-                  ],
-                ),
+              StreamBuilder<DocumentSnapshot>(
+                stream: firestore
+                    .collection('users')
+                    .doc(widget.clientId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  final isTyping = data['isTyping'] ?? false;
+
+                  return isTyping
+                      ? Container(
+                          padding: const EdgeInsets.only(left: 20),
+                          alignment: Alignment.bottomLeft,
+                          child: Text(
+                            'typing...',
+                            style: TextStyle(
+                              color: black,
+                              fontSize: TextSizes.bodyText1,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink();
+                },
               ),
-              const SizedBox(height: 8),
+
+              const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16.0,
@@ -255,11 +489,14 @@ class _LiveChatState extends State<LiveChat> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: messageController,
-                        decoration: const InputDecoration(
-                          hintText: 'Type your message...',
-                          border: InputBorder.none,
+                      child: SafeArea(
+                        child: TextField(
+                          onChanged: onTyping,
+                          controller: messageController,
+                          decoration: const InputDecoration(
+                            hintText: 'Type your message...',
+                            border: InputBorder.none,
+                          ),
                         ),
                       ),
                     ),
@@ -296,7 +533,8 @@ class _LiveChatState extends State<LiveChat> {
 
   String formatTimestamp(Timestamp timestamp) {
     final dt = timestamp.toDate();
-    return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
+    return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
+    // return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
   }
 }
 
@@ -329,9 +567,9 @@ class MessageBubble extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.only(
-        right: isMe && isFirstSequence ? 0 : 8,
-        left: !isMe && isFirstSequence ? 0 : 8,
-        top: isPreviouseMessageMine ? 0 : 10,
+        right: isMe && isFirstSequence ? 8 : 16,
+        left: !isMe && isFirstSequence ? 8 : 16,
+        top: isFirstSequence ? 10 : 3,
       ),
 
       //   margin: EdgeInsets.only(
@@ -349,7 +587,7 @@ class MessageBubble extends StatelessWidget {
           ),
           child: Bubble(
             padding: BubbleEdges.only(bottom: 3),
-            margin: const BubbleEdges.symmetric(horizontal: 16, vertical: 4),
+            // margin: const BubbleEdges.symmetric(horizontal: 16, vertical: 4),
             nip: nip,
             color: isMe ? const Color(0xFF6D66F6) : AppColors.periwinklePurple,
             child: Column(
@@ -364,7 +602,6 @@ class MessageBubble extends StatelessWidget {
                     color: isMe ? Colors.white : Colors.black,
                   ),
                 ),
-                const SizedBox(height: 5),
                 Text(
                   timestamp,
                   style: TextStyle(
