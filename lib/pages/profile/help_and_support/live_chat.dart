@@ -45,6 +45,7 @@ class Clients extends StatelessWidget {
         'userId': data['userId'],
         'username': data['username'],
         'photoUrl': data['photoUrl'],
+        'last_message': data['last_message'],
       };
     }).toList();
   }
@@ -82,110 +83,113 @@ class Clients extends StatelessWidget {
               color: const Color.fromARGB(100, 255, 255, 255),
             ),
           ),
-          SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: MediaQuery.of(context).size.width,
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-                    ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: MediaQuery.of(context).size.width,
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
                   ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.max,
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.max,
+                          children: [
+                            CustomText(
+                              text: 'Clients',
+                              textColor: Theme.of(
+                                context,
+                              ).textTheme.headlineLarge?.color,
+                              textSize: TextSizes.heading2,
+                              textWeight: FontWeight.w900,
+                            ),
+                          ],
+                        ),
+                        GoBack(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: fetchClients(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+
+                  final clients = snapshot.data ?? [];
+
+                  if (clients.isEmpty) {
+                    return const Center(child: Text('No clients found.'));
+                  }
+
+                  return Expanded(
+                    child: ListView.builder(
+                      itemCount: clients.length,
+                      itemBuilder: (context, index) {
+                        final client = clients[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (BuildContext context) =>
+                                    Chat(clientId: client['userId']),
+                              ),
+                            );
+                          },
+                          child: Column(
                             children: [
-                              CustomText(
-                                text: 'Clients',
-                                textColor: Theme.of(
-                                  context,
-                                ).textTheme.headlineLarge?.color,
-                                textSize: TextSizes.heading2,
-                                textWeight: FontWeight.w900,
+                              ListTile(
+                                leading: CircleAvatar(
+                                  radius: 25,
+
+                                  // backgroundImage: client['photoUrl'] != null
+                                  //     ? NetworkImage(client['photoUrl'])
+                                  //     : null,
+                                  child: const Icon(Icons.person),
+                                  // child: client['photoUrl'] == null
+                                  //     ? const Icon(Icons.person)
+                                  //     : null,
+                                ),
+                                title: Text(
+                                  client['username'] ?? 'No Name',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  client['last_message'] ?? "none",
+                                ),
+                                trailing: Icon(Icons.more_vert),
                               ),
                             ],
                           ),
-                          GoBack(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: fetchClients(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    final clients = snapshot.data ?? [];
-
-                    if (clients.isEmpty) {
-                      return const Center(child: Text('No clients found.'));
-                    }
-
-                    return SizedBox(
-                      height: 500,
-                      child: ListView.builder(
-                        itemCount: clients.length,
-                        itemBuilder: (context, index) {
-                          final client = clients[index];
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (BuildContext context) =>
-                                      Chat(clientId: client['userId']),
-                                ),
-                              );
-                            },
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  leading: CircleAvatar(
-                                    radius: 25,
-
-                                    // backgroundImage: client['photoUrl'] != null
-                                    //     ? NetworkImage(client['photoUrl'])
-                                    //     : null,
-                                    child: const Icon(Icons.person),
-                                    // child: client['photoUrl'] == null
-                                    //     ? const Icon(Icons.person)
-                                    //     : null,
-                                  ),
-                                  title: Text(client['username'] ?? 'No Name'),
-                                  trailing: Icon(Icons.more_vert),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -241,11 +245,15 @@ class _ChatState extends State<Chat> {
 
     final batch = firestore.batch();
     batch.set(userChatRef, messageData);
+    if (isAdmin) {
+      batch.update(adminChatRef, {"last_message": message});
+    }
     if (!isAdmin) {
       batch.set(adminChatRef, {
         "userId": widget.clientId,
         "username": username,
         "photoUrl": "",
+        "last_message": message,
       });
     }
     messageController.clear();

@@ -278,20 +278,38 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
     return Column(
       children: [
         _buildCard("Contact Support", "", [
-          _buildActionTab(
-            icon: Icons.chat,
-            title: "Live Chat",
-            subtitle: "Chat with our support team",
-            buttonText: isAdmin ? "Support Chats" : 'Start Chat',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (BuildContext context) => LiveChat(isAdmin: isAdmin),
-                ),
-              );
-            },
-            infomation: '24 Hours',
-          ),
+          if (!isAdmin)
+            _buildActionTab(
+              icon: Icons.chat,
+              title: "Live Chat",
+              subtitle: "Chat with our support team",
+              buttonText: 'Start Chat',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        LiveChat(isAdmin: isAdmin),
+                  ),
+                );
+              },
+              infomation: '24 Hours',
+            ),
+          if (isAdmin)
+            _buildActionTab(
+              icon: Icons.chat,
+              title: "Live Chat",
+              subtitle: "Messages from clients",
+              buttonText: "Support Chats",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        LiveChat(isAdmin: isAdmin),
+                  ),
+                );
+              },
+              infomation: '24 Hours',
+            ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
           _buildActionTab(
             icon: Icons.phone_in_talk_outlined,
