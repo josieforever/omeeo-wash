@@ -6,7 +6,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/pages/profile/help_and_support/booking_and_scheduling.dart';
-import 'package:omeeowash/pages/profile/help_and_support/live_chat.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/app_config.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/live_chat.dart';
 import 'package:omeeowash/pages/profile/help_and_support/services_and_pricing.dart';
 import 'package:omeeowash/pages/profile/help_and_support/troubleshooting.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -84,19 +85,12 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   final firestore = FirebaseFirestore.instance;
 
-  bool isAdmin = false;
-  void getUserInfo() async {
-    final userSnapshot = await firestore.collection("users").doc(userId).get();
-    final userData = userSnapshot.data();
-    setState(() {
-      isAdmin = userData?["isAdmin"] ?? false;
-    });
-  }
+  bool isAdmin = AppConfig().isAdmin;
 
   @override
   void initState() {
     super.initState();
-    getUserInfo();
+
     userProvider = Provider.of<UserProvider>(context, listen: false);
     user = userProvider.user!;
   }

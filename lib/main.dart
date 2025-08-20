@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +10,7 @@ import 'package:omeeowash/l10n/app_localizations.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/app_config.dart';
 import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -19,6 +22,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  Future<void> checkUserRole(String uid) async {
+    final userSnapshot = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(uid)
+        .get();
+
+    bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
+
+    AppConfig().setAdmin(isAdmin);
+  }
+
+  FirebaseAuth.instance.authStateChanges().listen((user) async {
+    if (user != null) {
+      // When user logs in, check role
+      await checkUserRole(user.uid);
+    } else {
+      AppConfig().setAdmin(false);
+    }
+  });
   runApp(
     MultiProvider(
       providers: [
@@ -167,4 +190,3 @@ class SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
