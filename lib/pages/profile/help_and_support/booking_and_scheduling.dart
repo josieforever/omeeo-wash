@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/bookings_screen.dart';
-import 'package:omeeowash/pages/home/booking%20flow/services_screen.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/services_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
@@ -391,7 +390,7 @@ class BookingAndSchedulingTopBar extends StatelessWidget {
                     ],
                   ),
                   CustomText(
-                    text: 'Learn how to book and manage appointments',
+                    text: 'How to book and manage appointments',
                     textColor: Theme.of(
                       context,
                     ).textTheme.headlineMedium?.color,

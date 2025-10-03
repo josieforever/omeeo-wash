@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
@@ -163,7 +162,6 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
     required String subtitle,
     required String buttonText,
     required VoidCallback onPressed,
-    Color iconColor = AppColors.secondary,
   }) {
     return ListTile(
       leading: Icon(icon, color: Theme.of(context).colorScheme.error),

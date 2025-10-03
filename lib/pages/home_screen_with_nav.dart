@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lottie/lottie.dart';
-import 'package:omeeowash/pages/bookings_screen.dart';
+import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
 
@@ -48,39 +47,7 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: Stack(
-        children: [
-          // Gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          _pages[_selectedIndex],
-        ],
-      ),
+      body: _pages[_selectedIndex],
       bottomNavigationBar: Stack(
         children: [
           // Gradient background behind BottomNavigationBar
@@ -99,12 +66,12 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
           ),
           // Actual BottomNavigationBar (with transparent background)
           BottomNavigationBar(
-            backgroundColor: Colors.transparent,
+            backgroundColor: Theme.of(context).colorScheme.surface,
             elevation: 0,
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: Colors.white70,
+            selectedItemColor: Theme.of(context).colorScheme.inversePrimary,
+            unselectedItemColor: Theme.of(context).colorScheme.tertiary,
             showUnselectedLabels: true,
             items: const [
               BottomNavigationBarItem(

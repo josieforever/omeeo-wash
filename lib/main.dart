@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
 import 'package:omeeowash/l10n/app_localizations.dart';
@@ -11,7 +10,6 @@ import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +17,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // 🔑 Decide the start screen before runApp
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
+  final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+
+  Widget startScreen;
+  if (!hasSeenOnboarding) {
+    startScreen = const OnboardingScreen();
+  } else if (!isLoggedIn) {
+    startScreen = const LoginScreen();
+  } else {
+    startScreen = const HomeScreenWithNav(view: 'home');
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -27,13 +40,14 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: const MyApp(),
+      child: MyApp(startScreen: startScreen),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Widget startScreen;
+  const MyApp({super.key, required this.startScreen});
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +71,7 @@ class MyApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
-      home: const SplashScreen(),
+      home: startScreen, // ✅ Boots directly into correct screen
     );
   }
 }
@@ -115,7 +129,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class SplashScreen extends StatefulWidget {
+/* class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
@@ -166,5 +180,4 @@ class SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
-}
-
+} */

@@ -841,9 +841,9 @@ class FirebaseService {
       // ✅ Save login status
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException {
       // Rethrow specific Firebase auth exceptions
-      throw e;
+      rethrow;
     } catch (e) {
       // Rethrow any other general errors
       throw Exception('Unexpected error: $e');
