@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -6,6 +7,163 @@ import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:provider/provider.dart';
+
+class ServiceButton extends StatelessWidget {
+  final String textWidget1;
+  final String? animation;
+  final String? textWidget2;
+  final String textWidget3;
+  final String? price;
+  final String? stars;
+  final Icon? icon;
+  final SvgPicture? svg;
+  final double? scale;
+  final VoidCallback onPressed;
+  final VoidCallback modalSheet;
+  final bool isSelected;
+  final List<String>? serviceItems;
+  const ServiceButton({
+    super.key,
+    required this.textWidget1,
+    this.textWidget2,
+    required this.textWidget3,
+    this.price,
+    this.icon,
+    required this.onPressed,
+    this.stars,
+    this.animation,
+    this.scale,
+    this.svg,
+    this.isSelected = false,
+    this.serviceItems,
+    required this.modalSheet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(25),
+          color: isSelected
+              ? AppColors.pink
+              : Theme.of(context).colorScheme.inversePrimary,
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromARGB(60, 0, 0, 0),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 6), // x, y
+            ),
+          ],
+        ),
+        padding: EdgeInsets.all(10),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color.fromARGB(196, 235, 204, 255)
+                            : Theme.of(context).colorScheme.secondary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Center(child: icon ?? svg),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: textWidget1,
+                      textColor: isSelected
+                          ? AppColors.white
+                          : Theme.of(context).textTheme.bodyLarge?.color,
+                      textSize: TextSizes.bodyText1,
+                      textWeight: FontWeight.bold,
+                    ),
+                    textWidget2 == null
+                        ? SizedBox()
+                        : CustomText(
+                            text: textWidget2!,
+                            textColor: isSelected
+                                ? AppColors.white
+                                : Theme.of(context).textTheme.bodyMedium?.color,
+                            textSize: TextSizes.bodyText1,
+                          ),
+                    CustomText(
+                      text: textWidget3,
+                      textColor: isSelected
+                          ? AppColors.white
+                          : Theme.of(context).textTheme.bodyMedium?.color,
+                      textSize: TextSizes.bodyText1,
+                    ),
+                  ],
+                ),
+                Expanded(child: SizedBox()),
+
+                GestureDetector(
+                  onTap: modalSheet,
+                  child: CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    radius: 15,
+                    child: Icon(
+                      FontAwesomeIcons.question,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+              ],
+            ),
+            /* Column(
+              children: [
+                Row(
+                  children: [
+                    CustomText(
+                      text: "Includes :",
+                      textSize: TextSizes.bodyText1,
+                      textWeight: FontWeight.bold,
+                      textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ],
+                ),
+
+                for (var service in serviceItems!)
+                  Row(
+                    children: [
+                      Icon(Icons.do_not_disturb_on_sharp, size: 8),
+                      const SizedBox(width: 5),
+                      CustomText(
+                        text: service,
+                        textColor: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color,
+                        textSize: TextSizes.bodyText3,
+                      ),
+                    ],
+                  ),
+              ],
+            ), */
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class CustomText extends StatelessWidget {
   final String text;
@@ -53,6 +211,7 @@ class RegularButton extends StatefulWidget {
   final Gradient? gradient;
   final BoxBorder? border;
   final double borderRadius;
+  final double? height;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
 
@@ -66,6 +225,7 @@ class RegularButton extends StatefulWidget {
     this.border,
     required this.borderRadius,
     this.gradient,
+    this.height,
   });
 
   @override
@@ -78,6 +238,7 @@ class _RegularButtonState extends State<RegularButton> {
     return GestureDetector(
       onTap: widget.onPressed,
       child: Container(
+        height: widget.height,
         decoration: BoxDecoration(
           color: widget.backgroundColor,
           borderRadius: BorderRadius.circular(widget.borderRadius),
@@ -98,7 +259,7 @@ class IconStackTextButton extends StatelessWidget {
   final Widget? numberWidget;
   final Icon icon;
   final VoidCallback onPressed;
-  final Color? backgroundColor;
+  final String? lottieAsset; // 👈 background animation file
   final BoxBorder? border;
   final double borderRadius;
   final EdgeInsetsGeometry? padding;
@@ -110,7 +271,7 @@ class IconStackTextButton extends StatelessWidget {
     required this.textWidget,
     this.numberWidget,
     required this.onPressed,
-    this.backgroundColor,
+    this.lottieAsset,
     this.border,
     required this.borderRadius,
     this.padding,
@@ -122,29 +283,73 @@ class IconStackTextButton extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        padding: padding,
         margin: margin,
         decoration: BoxDecoration(
-          color: const Color.fromARGB(47, 255, 255, 255),
           border: border,
           borderRadius: BorderRadius.circular(borderRadius),
+          color: const Color.fromARGB(80, 0, 0, 0),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            icon,
-            numberWidget == null ? const SizedBox() : const SizedBox(height: 8),
-            numberWidget == null ? const SizedBox() : numberWidget!,
-            const SizedBox(height: 5),
-            textWidget,
-          ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 🔥 Background Lottie (fills button perfectly)
+              if (lottieAsset != null)
+                Positioned.fill(
+                  child: Transform.rotate(
+                    angle: 90,
+                    child: Transform.scale(
+                      scale: 0.4,
+                      child: Lottie.asset(
+                        lottieAsset!,
+                        fit: BoxFit.cover, // 👈 fills perfectly inside button
+                        repeat: true,
+                      ),
+                    ),
+                  ),
+                ),
+              if (lottieAsset != null)
+                Positioned.fill(
+                  left: 100,
+                  child: Transform.rotate(
+                    angle: 270,
+                    child: Transform.scale(
+                      scale: 0.4,
+                      child: Lottie.asset(
+                        lottieAsset!,
+                        fit: BoxFit.cover, // 👈 fills perfectly inside button
+                        repeat: true,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // 🔥 Foreground content
+              Padding(
+                padding: padding ?? const EdgeInsets.all(12.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    icon,
+                    if (numberWidget != null) ...[
+                      const SizedBox(height: 8),
+                      numberWidget!,
+                    ],
+                    const SizedBox(height: 5),
+                    textWidget,
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class ServiceButton extends StatelessWidget {
+class ServiceButtonExpanded extends StatelessWidget {
   final String textWidget1;
   final String? animation;
   final String? textWidget2;
@@ -156,7 +361,8 @@ class ServiceButton extends StatelessWidget {
   final double? scale;
   final VoidCallback onPressed;
   final bool isSelected;
-  const ServiceButton({
+  final List<String>? serviceItems;
+  const ServiceButtonExpanded({
     super.key,
     required this.textWidget1,
     this.textWidget2,
@@ -169,6 +375,7 @@ class ServiceButton extends StatelessWidget {
     this.scale,
     this.svg,
     this.isSelected = false,
+    this.serviceItems,
   });
 
   @override
@@ -177,115 +384,122 @@ class ServiceButton extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            width: 2.5,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.inversePrimary,
+          ),
           color: isSelected
-              ? AppColors.pink
-              : Theme.of(context).textTheme.headlineLarge?.color,
+              ? Theme.of(context).colorScheme.secondary
+              : Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(26, 12, 0, 235),
+              color: Color.fromARGB(26, 0, 0, 0),
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 6), // x, y
             ),
           ],
         ),
-        padding: EdgeInsets.all(10),
-        child: Row(
+        padding: EdgeInsets.all(15),
+        child: Column(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
               children: [
-                Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.periwinklePurple
-                        : Color.fromARGB(32, 137, 43, 226),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Transform.scale(
-                    scale: scale,
-                    child: Center(child: icon ?? svg),
-                  ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.inversePrimary
+                            : Theme.of(context).colorScheme.secondary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Center(child: icon ?? svg),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(width: 10),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: textWidget1,
+                      textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                      textSize: TextSizes.bodyText1,
+                      textWeight: FontWeight.bold,
+                    ),
+                    textWidget2 == null
+                        ? SizedBox()
+                        : CustomText(
+                            text: textWidget2!,
+                            textColor: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color,
+                            textSize: TextSizes.bodyText1,
+                          ),
+                    CustomText(
+                      text: textWidget3,
+                      textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                      textSize: TextSizes.bodyText1,
+                    ),
+                  ],
+                ),
+                Expanded(child: SizedBox()),
+                price == null
+                    ? Row(
+                        children: [
+                          Icon(
+                            FontAwesomeIcons.solidStar,
+                            size: IconSizes.midSmall,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 5),
+                          CustomText(
+                            text: stars!,
+                            textColor: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.color,
+                            textSize: TextSizes.subtitle1,
+                            textWeight: FontWeight.bold,
+                          ),
+                        ],
+                      )
+                    : SizedBox(),
               ],
             ),
-            const SizedBox(width: 10),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+
+            Row(
               children: [
                 CustomText(
-                  text: textWidget1,
-                  textColor: isSelected
-                      ? AppColors.white
-                      : Theme.of(context).textTheme.bodyLarge?.color,
+                  text: "Includes :",
                   textSize: TextSizes.bodyText1,
                   textWeight: FontWeight.bold,
-                ),
-                textWidget2 == null
-                    ? SizedBox()
-                    : CustomText(
-                        text: textWidget2!,
-                        textColor: isSelected
-                            ? AppColors.white
-                            : Theme.of(context).textTheme.bodyMedium?.color,
-                        textSize: TextSizes.bodyText1,
-                      ),
-                CustomText(
-                  text: textWidget3,
-                  textColor: isSelected
-                      ? AppColors.white
-                      : Theme.of(context).textTheme.bodyMedium?.color,
-                  textSize: TextSizes.bodyText1,
+                  textColor: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ],
             ),
-            Expanded(child: SizedBox()),
-            price == null
-                ? Row(
-                    children: [
-                      Icon(
-                        FontAwesomeIcons.solidStar,
-                        size: IconSizes.midSmall,
-                        color: Colors.amber,
-                      ),
-                      const SizedBox(width: 5),
-                      CustomText(
-                        text: stars!,
-                        textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                        textSize: TextSizes.subtitle1,
-                        textWeight: FontWeight.bold,
-                      ),
-                    ],
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        text: '₵$price',
-                        textColor: isSelected
-                            ? AppColors.white
-                            : Theme.of(context).colorScheme.primary,
-                        textSize: TextSizes.subtitle1,
-                        textWeight: FontWeight.w800,
-                      ),
-                      SizedBox(height: isSelected ? 10 : 30),
-                      if (isSelected)
-                        Transform.scale(
-                          scale: 1.3,
-                          child: Checkbox(
-                            value: true,
-                            onChanged: (_) {},
-                            checkColor: Colors.white,
-                            // activeColor: Colors.white,
-                            side: BorderSide(color: Colors.white),
-                          ),
-                        ),
-                    ],
+
+            for (var service in serviceItems!)
+              Row(
+                children: [
+                  Icon(Icons.do_not_disturb_on_sharp, size: 8),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: service,
+                    textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                    textSize: TextSizes.bodyText3,
                   ),
+                ],
+              ),
           ],
         ),
       ),
@@ -330,8 +544,15 @@ class _PromoButtomState extends State<PromoButtom> {
             begin: Alignment.centerRight,
             end: Alignment.centerLeft,
             colors: const [
-              Color(0xFF6D66F6), // Right (periwinkle blue-purple)
-              Color(0xFFA558F2),
+              /* Color.fromARGB(
+                255,
+                245,
+                245,
+                245,
+              ),  */
+              // Right (periwinkle blue-purple)
+              Color.fromARGB(255, 193, 193, 193),
+              Color.fromARGB(255, 52, 52, 52),
             ], // Left (light pink-purple)
           ),
           borderRadius: BorderRadius.circular(widget.borderRadius),
@@ -354,16 +575,15 @@ class _PromoButtomState extends State<PromoButtom> {
                 ),
                 RegularButton(
                   onPressed: () {},
-                  borderRadius: 7,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).textTheme.headlineLarge?.color,
+
+                  borderRadius: 15,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
                   textWidget: CustomText(
                     text: 'Claim Now',
-                    textColor: Theme.of(context).colorScheme.primary,
+                    textColor: Theme.of(context).colorScheme.inversePrimary,
                     textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.normal,
+                    textWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -422,12 +642,11 @@ class _TopNavBarTabState extends State<TopNavBarTab> {
           border: widget.border,
         ),
         // fixed height
-        padding: widget.textWidget == 'Pending'
-            ? EdgeInsets.symmetric(vertical: 5, horizontal: 10)
-            : EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+        padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
         margin: widget.margin,
         child: Center(
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CustomText(
                 text: widget.textWidget,
@@ -491,160 +710,180 @@ class BookingsServiceButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        color: Theme.of(context).textTheme.headlineLarge?.color,
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromARGB(26, 12, 0, 235),
-            blurRadius: 12,
-            spreadRadius: 2,
-            offset: const Offset(0, 6), // x, y
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
           ),
-        ],
-      ),
-      padding: EdgeInsets.all(10),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.only(
-                      top: 20,
-                      bottom: 20,
-                      left: 20,
-                      right: 25,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(7),
-                      gradient: LinearGradient(
-                        begin: Alignment.centerRight,
-                        end: Alignment.centerLeft,
-                        colors: const [
-                          Color(0xFF6D66F6), // Right (periwinkle blue-purple)
-                          Color(0xFFA558F2), // Left (light pink-purple)
+          backgroundColor: Colors.white,
+          isScrollControlled: true, // Makes it full height if needed
+          builder: (context) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
+                  margin: const EdgeInsets.all(15),
+                  width:
+                      constraints.maxWidth * 0.89, // take all available width
+                  height: 680,
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min, // Wrap content
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Booking Details",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text("Service: Express Clean"),
+                      const Text("Date: Monday, 26th Aug"),
+                      const Text("Time: 10:30 AM"),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Close"),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Container(
+            width: constraints.maxWidth, // make it responsive
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(7),
+              color: Theme.of(context).textTheme.headlineLarge?.color,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color.fromARGB(26, 12, 0, 235),
+                  blurRadius: 12,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 6), // x, y
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.only(
+                              top: 20,
+                              bottom: 20,
+                              left: 20,
+                              right: 25,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(7),
+                              gradient: const LinearGradient(
+                                begin: Alignment.centerRight,
+                                end: Alignment.centerLeft,
+                                colors: [
+                                  Color(0xFF6D66F6), // Right
+                                  Color(0xFFA558F2), // Left
+                                ],
+                              ),
+                            ),
+                            child: Transform.scale(
+                              scale: scale,
+                              child: Icon(
+                                textWidget1 == 'Express Clean'
+                                    ? Icons.local_car_wash_outlined
+                                    : textWidget1 == 'Premium Detail'
+                                    ? FontAwesomeIcons.sprayCan
+                                    : FontAwesomeIcons.shower,
+                                size: TextSizes.bodyText1,
+                                color: const Color.fromARGB(255, 226, 226, 226),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
+                          // Expanded ensures the right column flexes to fill space
                         ],
                       ),
                     ),
-
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Icon(
-                        textWidget1 == 'Express Clean'
-                            ? Icons.local_car_wash_outlined
-                            : textWidget1 == 'Premium Detail'
-                            ? FontAwesomeIcons.sprayCan
-                            : FontAwesomeIcons.shower,
-                        size: TextSizes.bodyText1,
-                        color: const Color.fromARGB(255, 226, 226, 226),
+                    Expanded(
+                      flex: 13,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              CustomText(
+                                text: textWidget1,
+                                textColor: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
+                                textSize: TextSizes.bodyText1,
+                                textWeight: FontWeight.bold,
+                              ),
+                              CustomText(
+                                text: day!,
+                                textSize: TextSizes.bodyText1,
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              CustomText(
+                                text: textWidget2!,
+                                textColor: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.color,
+                                textSize: TextSizes.bodyText1,
+                              ),
+                              CustomText(
+                                text: time!,
+                                textSize: TextSizes.bodyText1,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              StatusBar(status: 'Pending'),
+                              CustomText(
+                                text: duration!,
+                                textSize: TextSizes.bodyText1,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 10),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: textWidget1,
-                    textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                  ),
-                  textWidget2 == null
-                      ? SizedBox()
-                      : CustomText(
-                          text: textWidget2!,
-                          textColor: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.color,
-                          textSize: TextSizes.bodyText1,
-                        ),
-                ],
-              ),
-              Expanded(child: SizedBox()),
-              price == null
-                  ? Row(
-                      children: [
-                        Icon(
-                          FontAwesomeIcons.solidStar,
-                          size: IconSizes.midSmall,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 5),
-                        CustomText(
-                          text: stars!,
-                          textColor: Theme.of(
-                            context,
-                          ).textTheme.bodyLarge?.color,
-                          textSize: TextSizes.subtitle1,
-                          textWeight: FontWeight.bold,
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        CustomText(
-                          text: '₵$price',
-                          textColor: Theme.of(context).colorScheme.primary,
-                          textSize: TextSizes.subtitle1,
-                          textWeight: FontWeight.bold,
-                        ),
-                        const SizedBox(height: 5),
-                        Icon(
-                          FontAwesomeIcons.chevronRight,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: TextSizes.caption,
-                        ),
-                      ],
-                    ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomText(text: day!, textSize: TextSizes.bodyText1),
-                  const SizedBox(width: 10),
-                  CustomText(text: time!, textSize: TextSizes.bodyText1),
-                  const SizedBox(width: 10),
-                  CustomText(text: duration!, textSize: TextSizes.bodyText1),
-                ],
-              ),
-
-              RegularButton(
-                onPressed: () {},
-                borderRadius: 15,
-                backgroundColor: status! == 'Confirmed'
-                    ? const Color.fromARGB(76, 129, 199, 132)
-                    : status! == 'Completed'
-                    ? const Color.fromARGB(87, 0, 89, 255)
-                    : const Color.fromARGB(73, 212, 197, 33),
-                padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                textWidget: CustomText(
-                  text: status!,
-                  textColor: status! == 'Confirmed'
-                      ? const Color.fromARGB(255, 0, 119, 6)
-                      : status! == 'Completed'
-                      ? const Color.fromARGB(255, 0, 10, 146)
-                      : const Color.fromARGB(255, 119, 81, 0),
-                  textSize: TextSizes.bodyText2,
-                  textWeight: FontWeight.bold,
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ],
+
+                const SizedBox(height: 10),
+                PendingPanel(),
+                const SizedBox(height: 10),
+                ConfirmedPanel(),
+                const SizedBox(height: 10),
+                CurrentlyWashingPanel(),
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1065,7 +1304,7 @@ class GoBack extends StatelessWidget {
               scale: 1.2,
               child: Icon(
                 Icons.arrow_back_rounded,
-                color: Theme.of(context).textTheme.bodyLarge?.color,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -1243,6 +1482,646 @@ class _RegularIconButtonState extends State<RegularIconButton> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class PendingPanel extends StatelessWidget {
+  const PendingPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color(0xFFFBF8E8),
+        border: Border.all(color: Color(0xFFE9C56A)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 195, 152, 59),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Awaiting Confirmation',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 187, 129, 4),
+                  ),
+                ],
+              ),
+              CustomText(
+                text: 'Pending approval',
+                textSize: TextSizes.bodyText3,
+                textColor: Color.fromARGB(255, 192, 143, 36),
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          CustomText(
+            text:
+                'Your booking request is being reviewed and will be confirmed shortly.',
+            textSize: TextSizes.bodyText2,
+            textColor: Color.fromARGB(255, 192, 143, 36),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ConfirmedPanel extends StatelessWidget {
+  const ConfirmedPanel({super.key});
+
+  String getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    } else if (parts.isNotEmpty) {
+      return parts[0][0].toUpperCase();
+    } else {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = getInitials("John Doe");
+
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(19, 0, 158, 16),
+        border: Border.all(color: Color.fromARGB(88, 0, 158, 16)),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color(0xFF2ECC71),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Booking Confirmed',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.normal,
+                    textColor: Color.fromARGB(255, 0, 102, 10),
+                  ),
+                ],
+              ),
+              /* CustomText(
+                text: 'Ready to start',
+                textSize: TextSizes.bodyText2,
+                textColor: Color.fromARGB(255, 0, 158, 16),
+              ), */
+              CustomText(
+                text: '5 min away',
+                textSize: TextSizes.bodyText3,
+                textColor: Color.fromARGB(255, 0, 158, 16),
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+
+          /* CustomText(
+            text:
+                'Your car wash is confirmed and will begin shortly at the schedules time.',
+            textSize: TextSizes.bodyText2,
+            textColor: Color.fromARGB(255, 0, 158, 16),
+          ),
+          Divider(color: Color.fromARGB(159, 51, 181, 64)), */
+          const SizedBox(height: 10),
+          /* Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 236, 236, 236),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CustomText(
+                  text: 'Google Maps Integration',
+                  textSize: TextSizes.bodyText2,
+                ),
+                const SizedBox(height: 10),
+                CustomText(
+                  text: 'Add your Google Maps API key to enable live ',
+                  textSize: TextSizes.bodyText2,
+                ),
+                const SizedBox(height: 10),
+                CustomText(text: 'tracking', textSize: TextSizes.bodyText2),
+              ],
+            ),
+          ), */
+          LiveLocationProgressBar(),
+          const SizedBox(height: 10),
+          /* Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Theme.of(context).textTheme.headlineLarge?.color,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: const Color(0xFFDFF6E3),
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: TextSizes.subtitle2,
+                      color: Color.fromARGB(255, 0, 102, 10),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: 'John Doe',
+                      textSize: TextSizes.bodyText2,
+                      textWeight: FontWeight.bold,
+                    ),
+                    CustomText(
+                      text: 'Professional Washer',
+                      textSize: TextSizes.caption,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CustomText(text: '4.9', textSize: TextSizes.caption),
+                        const SizedBox(width: 5),
+                        Icon(
+                          FontAwesomeIcons.solidStar,
+                          size: 10,
+                          color: Colors.amber,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                RegularIconButton(
+                  onPressed: () {},
+                  border: Border.all(color: Color(0xFF2ECC71)),
+                  icon: Icon(
+                    Icons.phone,
+                    color: Color(0xFF2ECC71),
+                    size: IconSizes.small,
+                  ),
+                  borderRadius: 5,
+                  textWidget: CustomText(
+                    text: 'Chat',
+                    textColor: Color.fromARGB(255, 0, 102, 10),
+                    textSize: TextSizes.bodyText1,
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                ),
+                RegularIconButton(
+                  onPressed: () {},
+                  border: Border.all(color: Color(0xFF2ECC71)),
+                  icon: Icon(
+                    Icons.chat,
+                    size: IconSizes.small,
+                    color: Color(0xFF2ECC71),
+                  ),
+                  borderRadius: 5,
+                  textWidget: CustomText(
+                    text: 'Chat',
+                    textColor: Color.fromARGB(255, 0, 102, 10),
+                    textSize: TextSizes.bodyText1,
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                ),
+              ],
+            ),
+          ), */
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Theme.of(context).textTheme.headlineLarge?.color,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const SizedBox(width: 5),
+                CircleAvatar(
+                  radius: 15,
+                  backgroundColor: const Color(0xFFDFF6E3),
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: TextSizes.bodyText1,
+                      color: Color.fromARGB(255, 0, 102, 10),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                CustomText(
+                  text: 'John Doe',
+                  textSize: TextSizes.bodyText2,
+                  textWeight: FontWeight.bold,
+                ),
+                const SizedBox(width: 10),
+                CustomText(
+                  text: 'Professional Washer',
+                  textSize: TextSizes.caption,
+                ),
+                const SizedBox(width: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CustomText(text: '4.9', textSize: TextSizes.caption),
+                    const SizedBox(width: 5),
+                    Icon(
+                      FontAwesomeIcons.solidStar,
+                      size: 10,
+                      color: Colors.amber,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LiveLocationProgressBar extends StatefulWidget {
+  const LiveLocationProgressBar({super.key});
+
+  @override
+  State<LiveLocationProgressBar> createState() =>
+      _LiveLocationProgressBarState();
+}
+
+class _LiveLocationProgressBarState extends State<LiveLocationProgressBar> {
+  // Initial progress value. This will increase over time.
+  double _progressValue = 0.0;
+  // A timer to simulate the driver's progress.
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start a timer to update the progress bar every second.
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        // Increase the progress value by 0.1 each second.
+        _progressValue += 0.1;
+        // Stop the timer when the progress reaches 1.0 (100%).
+        if (_progressValue >= 1.0) {
+          _progressValue = 1.0;
+          _timer.cancel();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancel the timer to avoid memory leaks.
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.circle,
+                size: 8,
+                color: const Color.fromARGB(255, 0, 116, 0),
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: _progressValue,
+                    backgroundColor: const Color(0xFFE5F1E5),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2ECC71),
+                    ),
+                    minHeight: 3,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.circle,
+                size: 8,
+                color: const Color.fromARGB(255, 0, 116, 0),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+}
+
+class CurrentlyWashingPanel extends StatefulWidget {
+  const CurrentlyWashingPanel({super.key});
+
+  @override
+  State<CurrentlyWashingPanel> createState() => _CurrentlyWashingPanelState();
+}
+
+class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Color.fromARGB(112, 211, 88, 0)),
+        borderRadius: BorderRadius.circular(10),
+        color: Color.fromARGB(153, 229, 231, 235),
+      ),
+      padding: EdgeInsets.all(10),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              CustomText(
+                text: 'Wash Progress',
+                textSize: TextSizes.bodyText1,
+                textWeight: FontWeight.bold,
+                textColor: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+              CustomText(
+                text: '25 min left',
+                textSize: TextSizes.bodyText3,
+                textWeight: FontWeight.w500,
+                textColor: Color.fromARGB(255, 211, 88, 0),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      height: 4,
+                      margin: EdgeInsets.only(left: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF97316),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          topLeft: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(
+                      Icons.check_circle,
+                      size: 24,
+                      color: const Color(0xFFF97316),
+                    ),
+                    const SizedBox(height: 5),
+                    CustomText(
+                      text: 'Pre-rinse',
+                      textColor: const Color(0xFFF97316),
+                      textSize: TextSizes.bodyText2,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      height: 4,
+                      decoration: BoxDecoration(color: const Color(0xFFF97316)),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(
+                      Icons.check_circle,
+                      size: 24,
+                      color: const Color(0xFFF97316),
+                    ),
+                    const SizedBox(height: 5),
+                    CustomText(
+                      text: 'Washing',
+                      textColor: const Color(0xFFF97316),
+                      textSize: TextSizes.bodyText2,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(153, 179, 179, 181),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    FadingCircle(number: 3),
+                    const SizedBox(height: 5),
+                    CustomText(
+                      text: 'Rinsing',
+                      textColor: Color(0xFF6B7280),
+                      textSize: TextSizes.bodyText2,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      height: 4,
+                      margin: EdgeInsets.only(right: 5),
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(153, 179, 179, 181),
+                        borderRadius: BorderRadius.only(
+                          bottomRight: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    CircleAvatar(
+                      backgroundColor: Color.fromARGB(153, 179, 179, 181),
+                      radius: 12,
+                      child: CustomText(
+                        text: '4',
+                        textColor: Color(0xFF6B7280),
+                        textWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+                    CustomText(
+                      text: 'Cleaning',
+                      textColor: Color(0xFF6B7280),
+                      textSize: TextSizes.bodyText2,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/* 
+
+// Main Orange (progress bar, active step, "25 min left" text)
+const Color kOrange = Color(0xFFF97316);
+
+// Light Gray (progress bar background, step 4 background)
+const Color kLightGray = Color(0xFFE5E7EB);
+
+// Dark Gray (step 4 text)
+const Color kDarkGray = Color(0xFF6B7280);
+
+// Light Orange (step 3 background)
+const Color kLightOrange = Color(0xFFFCD9B6);
+
+// White (card background, checkmark inside circles)
+const Color kWhite = Color(0xFFFFFFFF);
+
+// Almost Black (section title "Wash Progress")
+const Color kAlmostBlack = Color(0xFF111827); 
+
+*/
+
+class FadingCircle extends StatefulWidget {
+  final int number;
+  final double size;
+
+  const FadingCircle({super.key, required this.number, this.size = 24});
+
+  @override
+  _FadingCircleState createState() => _FadingCircleState();
+}
+
+class _FadingCircleState extends State<FadingCircle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _opacityAnimation = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacityAnimation,
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color.fromARGB(255, 247, 163, 104), // Orange color
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          widget.number.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StatusBar extends StatelessWidget {
+  final String status;
+  const StatusBar({super.key, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
+      decoration: BoxDecoration(
+        color: status == 'Pending'
+            ? const Color.fromARGB(121, 255, 234, 113)
+            : status == 'Currently Washing'
+            ? Color.fromARGB(121, 255, 200, 120)
+            : Color.fromARGB(121, 180, 255, 180),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: CustomText(
+        text: status == 'Pending'
+            ? 'Pending'
+            : status == 'Currently Washing'
+            ? 'Currently Washing'
+            : 'Waiting to Start',
+        textSize: TextSizes.bodyText1,
+        textWeight: FontWeight.bold,
+        textColor: status == 'Pending'
+            ? Color.fromARGB(255, 187, 129, 4)
+            : status == 'Currently Washing'
+            ? Color.fromARGB(255, 187, 80, 4)
+            : Color.fromARGB(255, 4, 129, 4),
       ),
     );
   }

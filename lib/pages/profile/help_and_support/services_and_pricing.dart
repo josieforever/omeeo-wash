@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/home/booking%20flow/services_screen.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -255,7 +253,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               CustomText(
                 text: title,
                 textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                textSize: TextSizes.bodyText3,
+                textSize: TextSizes.caption,
                 textWeight: FontWeight.bold,
                 textAlign: TextAlign.center,
               ),
@@ -296,7 +294,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
           color: Theme.of(context).textTheme.bodyMedium?.color,
         ),
       ),
-      trailing: Icon(FontAwesomeIcons.chevronRight, size: IconSizes.small),
+      trailing: Icon(FontAwesomeIcons.chevronRight, size: IconSizes.tiny),
     );
   }
 
@@ -394,7 +392,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                   Color(
                     0xFFA558F2,
                   ),
-                  margin: EdgeInsets.only(left: 10, right: 5, bottom: 10),
+                  margin: EdgeInsets.only(left: 5, right: 2, bottom: 10),
                   icon: Icons.add,
                   title: "Air Freshner",
                   subtitle: "15",
@@ -404,7 +402,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               Expanded(
                 child: BookNow(
                   backgroundColor: Color(0xFF6D66F6),
-                  margin: EdgeInsets.only(left: 5, right: 10, bottom: 10),
+                  margin: EdgeInsets.only(left: 2, right: 5, bottom: 10),
                   icon: Icons.add,
                   title: "Undercarriage Wash",
                   subtitle: "5",
@@ -421,7 +419,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                   Color(
                     0xFFA558F2,
                   ),
-                  margin: EdgeInsets.only(left: 10, right: 5, bottom: 10),
+                  margin: EdgeInsets.only(left: 5, right: 2, bottom: 10),
                   icon: Icons.add,
                   title: "Engine Bay Cleaning",
                   subtitle: "10",
@@ -431,7 +429,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               Expanded(
                 child: BookNow(
                   backgroundColor: Color(0xFF6D66F6),
-                  margin: EdgeInsets.only(left: 5, right: 10, bottom: 10),
+                  margin: EdgeInsets.only(left: 2, right: 5, bottom: 10),
                   icon: Icons.add,
                   title: "Pet hair Removal",
                   subtitle: "15",

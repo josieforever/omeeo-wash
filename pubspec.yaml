@@ -37,7 +37,10 @@ dependencies:
   firebase_storage: ^12.4.7
   firebase_database: ^11.3.7
   google_sign_in: ^6.2.1
-  google_maps_flutter: ^2.5.0
+  google_maps_flutter: ^2.13.1
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  google_places_flutter: ^2.0.7
   push: ^3.3.3
   lottie: ^3.3.1
   flutter_native_splash: ^2.3.5
@@ -75,20 +78,20 @@ flutter:
           weight: 700
 
 flutter_launcher_icons:
-  android: true
-  ios: true
+  android: false
+  ios: false
   image_path: "assets/logo.png" # fallback for older Android & iOS
   adaptive_icon_foreground: "assets/logo.png" # your logo with transparent background
   adaptive_icon_background: "#FFFFFF"
-# flutter pub run flutter_launcher_icons:main
+  # flutter pub run flutter_launcher_icons:main
 
-flutter_native_splash:
-  color: "#000000"
-  image: assets/images/omeeo_wash_black_stripes.png
-  android_12:
-    color: "#FFFFFF"
+  flutter_native_splash:
+    color: "#000000"
     image: assets/images/omeeo_wash_black_stripes.png
-    icon_background_color: "#FFFFFF"
+    android_12:
+      color: "#FFFFFF"
+      image: assets/images/omeeo_wash_black_stripes.png
+      icon_background_color: "#FFFFFF"
   # flutter pub run flutter_native_splash:create
 
   generate: true
@@ -97,3 +100,4 @@ flutter_native_splash:
     arb-dir: lib/l10n
     template-arb-file: app_en.arb
     output-localization-file: app_localizations.dart
+#flutter clean

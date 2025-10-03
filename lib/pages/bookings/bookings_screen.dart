@@ -110,29 +110,25 @@ class _CustomTopNavState extends State<CustomTopNav> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          TopNavBarTab(
-            onPressed: () {
-              topNavProvider.selectTab('New');
-            },
-            textWidget: 'New',
-            numberWidget: '2',
-            borderRadius: 10,
+          Expanded(
+            child: TopNavBarTab(
+              onPressed: () {
+                topNavProvider.selectTab('Booking Status');
+              },
+              textWidget: 'Booking Status',
+              numberWidget: '2',
+              borderRadius: 10,
+            ),
           ),
-          TopNavBarTab(
-            onPressed: () {
-              topNavProvider.selectTab('Past');
-            },
-            textWidget: 'Past',
-            numberWidget: '2',
-            borderRadius: 10,
-          ),
-          TopNavBarTab(
-            onPressed: () {
-              topNavProvider.selectTab('Pending');
-            },
-            textWidget: 'Pending',
-            numberWidget: '1',
-            borderRadius: 10,
+          Expanded(
+            child: TopNavBarTab(
+              onPressed: () {
+                topNavProvider.selectTab('History');
+              },
+              textWidget: 'History',
+              numberWidget: '2',
+              borderRadius: 10,
+            ),
           ),
         ],
       ),
@@ -148,20 +144,18 @@ class TopNavTabSwitcher extends StatelessWidget {
     final selectedTab = context.watch<TopNavProvider>().tabName;
 
     switch (selectedTab) {
-      case 'New':
-        return const NewTabScreen();
-      case 'Past':
-        return const PastTabScreen();
-      case 'Pending':
-        return const PendingTabScreen();
+      case 'Booking Status':
+        return const StatusTabScreen();
+      case 'History':
+        return const HistoryTabScreen();
       default:
-        return const NewTabScreen(); // default fallback
+        return const StatusTabScreen(); // default fallback
     }
   }
 }
 
-class NewTabScreen extends StatelessWidget {
-  const NewTabScreen({super.key});
+class StatusTabScreen extends StatelessWidget {
+  const StatusTabScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -179,9 +173,9 @@ class NewTabScreen extends StatelessWidget {
                 textWidget1: 'Premium Detail',
                 textWidget2: '📍Omeeo Car wash',
                 status: 'Confirmed',
-                day: '🗓️Today',
-                time: '⌚2:30 PM',
-                duration: '⌚90 min',
+                day: 'Today',
+                time: '2:30 PM',
+                duration: '⏱️ 90 min',
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,
@@ -198,9 +192,9 @@ class NewTabScreen extends StatelessWidget {
                 textWidget1: 'Premium Detail',
                 textWidget2: '📍Omeeo Car wash',
                 status: 'Confirmed',
-                day: '🗓️Today',
-                time: '⌚2:30 PM',
-                duration: '⌚90 min',
+                day: 'Today',
+                time: '2:30 PM',
+                duration: '⏱️ 90 min',
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,
@@ -222,8 +216,8 @@ class NewTabScreen extends StatelessWidget {
   }
 }
 
-class PastTabScreen extends StatelessWidget {
-  const PastTabScreen({super.key});
+class HistoryTabScreen extends StatelessWidget {
+  const HistoryTabScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -309,67 +303,6 @@ class PastTabScreen extends StatelessWidget {
               scale: 1.7,
               onPressed: () {},
               price: '45',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
-
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class PendingTabScreen extends StatelessWidget {
-  const PendingTabScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      color: const Color.fromARGB(55, 255, 255, 255),
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Basic Wash',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Pending',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '30',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Basic Wash',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Pending',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '30',
               iconColor: Theme.of(context).colorScheme.primary,
               iconSize: IconSizes.medium,
             ),

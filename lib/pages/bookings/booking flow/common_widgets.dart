@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omeeowash/pages/home/booking%20flow/select_date_screen.dart';
-import 'package:omeeowash/pages/home/booking%20flow/select_vehicle_size_screen.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 

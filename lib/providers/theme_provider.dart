@@ -17,18 +17,21 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get lightTheme => ThemeData(
     fontFamily: 'Poppins',
     brightness: Brightness.light,
-    scaffoldBackgroundColor: Colors.transparent,
+    scaffoldBackgroundColor: Color.fromARGB(255, 233, 233, 233),
     colorScheme: ColorScheme.light(
-      primary: Color.fromARGB(255, 144, 56, 211),
-      secondary: AppColors.secondary,
-      error: AppColors.error,
-      tertiary: AppColors.accent,
+      primary: Colors.black,
+      inversePrimary: Colors.white,
+      secondary: Color.fromARGB(255, 214, 214, 214),
+      tertiary: Color.fromARGB(255, 150, 150, 150),
+      surface: Color.fromARGB(255, 85, 85, 85),
+      scrim: Color.fromARGB(175, 203, 199, 205),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(color: AppColors.white),
       headlineMedium: TextStyle(color: AppColors.textTetiary),
       bodyLarge: TextStyle(color: AppColors.textPrimary),
       bodyMedium: TextStyle(color: AppColors.textSecondary),
+      bodySmall: TextStyle(color: Color.fromARGB(255, 192, 192, 192)),
     ),
     useMaterial3: true,
   );
@@ -36,17 +39,18 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get darkTheme => ThemeData(
     fontFamily: 'Poppins',
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: Colors.transparent,
+    scaffoldBackgroundColor: Color.fromARGB(255, 75, 75, 75),
     colorScheme: ColorScheme.dark(
-      primary: AppColors.primaryPurple,
-      secondary: AppColors.accentPurple,
-      error: AppColors.error,
+      primary: Colors.white,
+      inversePrimary: Colors.black,
+      secondary: Color.fromARGB(255, 75, 75, 75),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(color: AppColors.textPrimary),
       headlineMedium: TextStyle(color: AppColors.textSecondary),
       bodyLarge: TextStyle(color: AppColors.white),
       bodyMedium: TextStyle(color: AppColors.textTetiary),
+      bodySmall: TextStyle(color: Color.fromARGB(255, 173, 173, 173)),
     ),
     useMaterial3: true,
   );
