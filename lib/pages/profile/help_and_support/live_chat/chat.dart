@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
@@ -31,9 +34,12 @@ class _ChatState extends State<Chat> {
   final String userId = FirebaseAuth.instance.currentUser!.uid;
   String username = "";
   bool isAdmin = false;
-
   final white = AppColors.white;
   final black = AppColors.black;
+  List<DocumentSnapshot> _messages = [];
+  DocumentSnapshot? _lastDoc;
+  bool _isLoadingMore = false;
+  static const int pageSize = 20;
 
   Future<void> sendHelpMessage() async {
     final messageId = const Uuid().v4();
@@ -111,10 +117,68 @@ class _ChatState extends State<Chat> {
     });
   }
 
+  Future<void> sendMessage({
+    required String text,
+    String? fileUrl,
+    String? fileType,
+  }) async {
+    final message = {
+      "text": text,
+      // "senderId": user.uid,
+      "clientId": widget.clientId,
+      "isAdmin": isAdmin,
+      "timestamp": FieldValue.serverTimestamp(),
+      "fileUrl": fileUrl,
+      "fileType": fileType, // "image", "pdf" or null
+    };
+
+    // await FirebaseFirestore.instance
+    //     .collection("users")
+    //     .doc(widget.clientId)
+    //     .collection("chat")
+    //     .add(message);
+  }
+
+  Future<void> pickFileAndSend() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'png', 'pdf'],
+    );
+
+    if (result != null) {
+      final file = File(result.files.single.path!);
+      final fileName = result.files.single.name;
+      final ext = fileName.split('.').last.toLowerCase();
+
+      // final ref = FirebaseStorage.instance.ref().child(
+      //   "chat_files/${user.uid}/${DateTime.now().millisecondsSinceEpoch}.$ext",
+      // );
+
+      // await ref.putFile(file);
+      // final downloadUrl = await ref.getDownloadURL();
+
+      // await sendMessage(
+      //   text: "",
+      //   fileUrl: downloadUrl,
+      //   fileType: ext == "pdf" ? "pdf" : "image",
+      // );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     getUserInfo();
+    _loadInitialMessages();
+
+    // Auto-load more when user scrolls near top
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+              _scrollController.position.minScrollExtent &&
+          !_isLoadingMore) {
+        _loadMoreMessages();
+      }
+    });
   }
 
   @override
@@ -122,6 +186,45 @@ class _ChatState extends State<Chat> {
     _typingTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadInitialMessages() async {
+    final snapshot = await firestore
+        .collection('users')
+        .doc(widget.clientId)
+        .collection('help_messages')
+        .orderBy('timestamp', descending: true)
+        .limit(pageSize)
+        .get();
+
+    setState(() {
+      _messages = snapshot.docs;
+      if (_messages.isNotEmpty) _lastDoc = _messages.last;
+    });
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_lastDoc == null) return;
+
+    setState(() => _isLoadingMore = true);
+
+    final snapshot = await firestore
+        .collection('users')
+        .doc(widget.clientId)
+        .collection('help_messages')
+        .orderBy('timestamp', descending: true)
+        .startAfterDocument(_lastDoc!)
+        .limit(pageSize)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      setState(() {
+        _messages.addAll(snapshot.docs);
+        _lastDoc = snapshot.docs.last;
+      });
+    }
+
+    setState(() => _isLoadingMore = false);
   }
 
   @override
@@ -224,7 +327,8 @@ class _ChatState extends State<Chat> {
                       .collection('users')
                       .doc(widget.clientId)
                       .collection('help_messages')
-                      .orderBy('timestamp')
+                      .orderBy('timestamp', descending: true)
+                      .limit(pageSize)
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -235,22 +339,29 @@ class _ChatState extends State<Chat> {
                       return const Center(child: Text('No messages yet.'));
                     }
 
-                    final messages = snapshot.data!.docs;
+                    final liveMessages = snapshot.data?.docs ?? [];
+                    final allMessages = [
+                      ...liveMessages,
+                      ..._messages.skip(liveMessages.length),
+                    ];
 
-                    // Schedule scroll to bottom after build
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (_scrollController.hasClients) {
-                        _scrollController.animateTo(
-                          _scrollController.position.maxScrollExtent,
-                          duration: const Duration(milliseconds: 100),
-                          curve: Curves.easeOut,
-                        );
-                      }
-                    });
+                    // final messages = snapshot.data!.docs;
+                    final messages = allMessages;
+
+                    // // Schedule scroll to bottom after build
+                    // WidgetsBinding.instance.addPostFrameCallback((_) {
+                    //   if (_scrollController.hasClients) {
+                    //     _scrollController.animateTo(
+                    //       _scrollController.position.maxScrollExtent,
+                    //       duration: const Duration(milliseconds: 100),
+                    //       curve: Curves.easeOut,
+                    //     );
+                    //   }
+                    // });
 
                     return ListView.builder(
                       controller: _scrollController,
-                      itemCount: messages.length,
+                      itemCount: allMessages.length + (_isLoadingMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         final data =
                             messages[index].data() as Map<String, dynamic>;
@@ -262,6 +373,15 @@ class _ChatState extends State<Chat> {
                         if (index > 0) {
                           final prevSender = messages[index - 1]['id'];
                           isSameSenderAsPrevious = prevSender == msgSenderId;
+                        }
+
+                        if (_isLoadingMore && index == allMessages.length) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
                         }
 
                         return MessageBubble(
@@ -345,14 +465,25 @@ class _ChatState extends State<Chat> {
                         ),
                       ),
                     ),
-
+                    SizedBox(width: 8),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.attach_file,
-                          color: AppColors.deeperPeriwinkle,
+                        GestureDetector(
+                          onTap: pickFileAndSend,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.deeperPeriwinkle,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.attach_file,
+                              color: AppColors.white,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 5),
                         GestureDetector(
                           onTap: () {
                             if (messageController.text.isNotEmpty) {
@@ -390,3 +521,208 @@ class _ChatState extends State<Chat> {
     // return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}";
   }
 }
+
+// import 'dart:io';
+
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:file_picker/file_picker.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_storage/firebase_storage.dart';
+// import 'package:flutter/material.dart';
+// import 'package:omeeowash/widgets.dart/colors.dart';
+// import 'live_chat.dart';
+
+// class Chat extends StatefulWidget {
+//   final String clientId;
+//   final String? clientName;
+//   final bool isAdmin;
+
+//   const Chat({
+//     super.key,
+//     required this.clientId,
+//     this.isAdmin = false,
+//     this.clientName,
+//   });
+//   const Chat.admin({
+//     super.key,
+//     required this.clientId,
+//     this.isAdmin = false,
+//     this.clientName,
+//   });
+
+//   @override
+//   State<Chat> createState() => _ChatState();
+// }
+
+// class _ChatState extends State<Chat> {
+//   final TextEditingController messageController = TextEditingController();
+//   final user = FirebaseAuth.instance.currentUser!;
+
+//   Future<void> sendMessage({
+//     required String text,
+//     String? fileUrl,
+//     String? fileType,
+//   }) async {
+//     final message = {
+//       "text": text,
+//       "senderId": user.uid,
+//       "clientId": widget.clientId,
+//       "isAdmin": widget.isAdmin,
+//       "timestamp": FieldValue.serverTimestamp(),
+//       "fileUrl": fileUrl,
+//       "fileType": fileType, // "image", "pdf" or null
+//     };
+
+//     await FirebaseFirestore.instance
+//         .collection("users")
+//         .doc(widget.clientId)
+//         .collection("chat")
+//         .add(message);
+//   }
+
+//   Future<void> pickFileAndSend() async {
+//     final result = await FilePicker.platform.pickFiles(
+//       type: FileType.custom,
+//       allowedExtensions: ['jpg', 'png', 'pdf'],
+//     );
+
+//     if (result != null) {
+//       final file = File(result.files.single.path!);
+//       final fileName = result.files.single.name;
+//       final ext = fileName.split('.').last.toLowerCase();
+
+//       final ref = FirebaseStorage.instance.ref().child(
+//         "chat_files/${user.uid}/${DateTime.now().millisecondsSinceEpoch}.$ext",
+//       );
+
+//       await ref.putFile(file);
+//       final downloadUrl = await ref.getDownloadURL();
+
+//       await sendMessage(
+//         text: "",
+//         fileUrl: downloadUrl,
+//         fileType: ext == "pdf" ? "pdf" : "image",
+//       );
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text(widget.isAdmin ? "Client Chat" : "Help Chat"),
+//         flexibleSpace: Container(
+//           decoration: const BoxDecoration(
+//             gradient: LinearGradient(
+//               colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+//               begin: Alignment.centerRight,
+//               end: Alignment.centerLeft,
+//             ),
+//           ),
+//         ),
+//       ),
+//       body: Column(
+//         children: [
+//           Expanded(
+//             child: StreamBuilder<QuerySnapshot>(
+//               stream: FirebaseFirestore.instance
+//                   .collection("users")
+//                   .doc(widget.clientId)
+//                   .collection("chat")
+//                   .orderBy("timestamp", descending: true)
+//                   .snapshots(),
+//               builder: (ctx, snapshot) {
+//                 if (!snapshot.hasData) {
+//                   return const Center(child: CircularProgressIndicator());
+//                 }
+//                 final messages = snapshot.data!.docs;
+
+//                 return ListView.builder(
+//                   reverse: true,
+//                   itemCount: messages.length,
+//                   itemBuilder: (ctx, i) {
+//                     final msg = messages[i].data() as Map<String, dynamic>;
+
+//                     final text = msg["text"] ?? "";
+//                     final fileUrl = msg["fileUrl"];
+//                     final fileType = msg["fileType"];
+//                     final senderId = msg["senderId"];
+//                     final isMe = senderId == user.uid;
+
+//                     String time = "";
+//                     if (msg["timestamp"] != null) {
+//                       final ts = msg["timestamp"] as Timestamp;
+//                       final date = ts.toDate();
+//                       time =
+//                           "${date.hour.toString().padLeft(2, "0")}:${date.minute.toString().padLeft(2, "0")}";
+//                     }
+
+//                     return MessageBubble(
+//                       message: fileType == "image"
+//                           ? "[Image Attached]"
+//                           : fileType == "pdf"
+//                           ? "[PDF Attached]"
+//                           : text,
+//                       isPreviouseMessageMine: isMe,
+//                       isFirstSequence: true,
+//                       timestamp: time,
+//                       fileUrl: fileUrl, // extend MessageBubble to preview
+//                       fileType: fileType,
+//                     );
+//                   },
+//                 );
+//               },
+//             ),
+//           ),
+//           Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+//             child: Row(
+//               children: [
+//                 Expanded(
+//                   child: ConstrainedBox(
+//                     constraints: const BoxConstraints(maxHeight: 120),
+//                     child: TextField(
+//                       controller: messageController,
+//                       maxLines: null,
+//                       decoration: const InputDecoration(
+//                         hintText: "Message",
+//                         border: OutlineInputBorder(),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//                 IconButton(
+//                   icon: const Icon(
+//                     Icons.attach_file,
+//                     color: AppColors.deeperPeriwinkle,
+//                   ),
+//                   onPressed: pickFileAndSend,
+//                 ),
+//                 GestureDetector(
+//                   onTap: () {
+//                     if (messageController.text.isNotEmpty) {
+//                       sendMessage(text: messageController.text);
+//                       messageController.clear();
+//                     }
+//                   },
+//                   child: Container(
+//                     padding: const EdgeInsets.all(8),
+//                     decoration: const BoxDecoration(
+//                       color: AppColors.deeperPeriwinkle,
+//                       shape: BoxShape.circle,
+//                     ),
+//                     child: const Icon(
+//                       Icons.send,
+//                       color: Colors.white,
+//                       size: 20,
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

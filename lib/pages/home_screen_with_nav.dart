@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/pages/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
+import 'package:omeeowash/widgets.dart/colors.dart';
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class HomeScreenWithNav extends StatefulWidget {
   final String view;
@@ -44,84 +47,150 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
     setState(() => _selectedIndex = index);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          // Gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+  bool _shouldExit = false;
+
+  Future<void> _showExitDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        //title: const Text("Exit App?"),
+        content: IntrinsicHeight(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomText(
+                text: 'Exit App',
+                textColor: AppColors.black,
+                textWeight: FontWeight.bold,
               ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          _pages[_selectedIndex],
-        ],
-      ),
-      bottomNavigationBar: Stack(
-        children: [
-          // Gradient background behind BottomNavigationBar
-          Container(
-            height: 60,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 122, 51, 194),
-                  Color.fromARGB(255, 72, 66, 196),
-                ],
-              ),
-            ),
-          ),
-          // Actual BottomNavigationBar (with transparent background)
-          BottomNavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: Colors.white70,
-            showUnselectedLabels: true,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.house),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidCalendar),
-                label: 'Bookings',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidUser),
-                label: 'Profile',
+              SizedBox(height: 10),
+              const Text(
+                "Are you sure you want to close the app?",
+                style: TextStyle(fontSize: 15),
               ),
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: CustomText(
+              text: "No",
+              textColor: AppColors.pink,
+              textWeight: FontWeight.bold,
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const CustomText(
+              text: "Yes",
+              textWeight: FontWeight.bold,
+              textColor: AppColors.pink,
+              // fontSize: FontSizes.ml,
+              // color: lightPurple,
+            ),
+          ),
         ],
+      ),
+    );
+
+    setState(() {
+      _shouldExit = result ?? false;
+    });
+
+    if (_shouldExit) {
+      SystemNavigator.pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, result) {
+        if (!didPop) {
+          _showExitDialog();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: Stack(
+          children: [
+            // Gradient background
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                  colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.9,
+                color: const Color.fromARGB(213, 255, 255, 255),
+              ),
+            ),
+            Positioned.fill(
+              child: Lottie.asset(
+                'assets/animations/background_animation_light.json',
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.9,
+                color: const Color.fromARGB(100, 255, 255, 255),
+              ),
+            ),
+            _pages[_selectedIndex],
+          ],
+        ),
+        bottomNavigationBar: Stack(
+          children: [
+            // Gradient background behind BottomNavigationBar
+            Container(
+              height: 60,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color.fromARGB(255, 122, 51, 194),
+                    Color.fromARGB(255, 72, 66, 196),
+                  ],
+                ),
+              ),
+            ),
+            // Actual BottomNavigationBar (with transparent background)
+            BottomNavigationBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              selectedItemColor: Colors.white,
+              unselectedItemColor: Colors.white70,
+              showUnselectedLabels: true,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.house),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.solidCalendar),
+                  label: 'Bookings',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.solidUser),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
