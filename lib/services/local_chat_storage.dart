@@ -6,14 +6,29 @@ class LocalChatStore {
   LocalChatStore(this.isar);
 
   // Stream messages for UI (latest first)
+  // Stream<List<Message>> watchLatest(String chatId, {int limit = 50}) {
+  //   return isar.messages
+  //       .filter()
+  //       .chatIdEqualTo(chatId)
+  //       .and()
+  //       .deletedEqualTo(false)
+  //       .limit(limit)
+  //       .watch(fireImmediately: true);
+  // }
   Stream<List<Message>> watchLatest(String chatId, {int limit = 50}) {
     return isar.messages
         .filter()
         .chatIdEqualTo(chatId)
-        .and()
         .deletedEqualTo(false)
-        .limit(limit)
-        .watch(fireImmediately: true);
+        .watch(fireImmediately: true)
+        .map((msgs) {
+          // copy + sort ascending (oldest -> newest)
+          final sorted = List<Message>.from(msgs)
+            ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          // take the newest `limit` messages (still ascending)
+          if (sorted.length <= limit) return sorted;
+          return sorted.sublist(sorted.length - limit);
+        });
   }
 
   // Upsert many (transactional)
