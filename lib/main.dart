@@ -1,16 +1,24 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:isar/isar.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
 import 'package:omeeowash/l10n/app_localizations.dart';
+import 'package:omeeowash/models/message.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/app.config.dart';
 import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/providers/theme_provider.dart';
+import 'package:omeeowash/services/chat_sync_service.dart';
+import 'package:omeeowash/services/local_chat_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,6 +40,29 @@ Future<void> main() async {
     startScreen = const HomeScreenWithNav(view: 'home');
   }
 
+  Future<void> checkUserRole(String uid) async {
+    final userSnapshot = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(uid)
+        .get();
+
+    bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
+
+    AppConfig().setAdmin(isAdmin);
+  }
+
+  FirebaseAuth.instance.authStateChanges().listen((user) async {
+    if (user != null) {
+      // When user logs in, check role
+      await checkUserRole(user.uid);
+    } else {
+      AppConfig().setAdmin(false);
+    }
+  });
+
+  final dir = await getApplicationDocumentsDirectory();
+  final isar = await Isar.open([MessageSchema], directory: dir.path);
+
   runApp(
     MultiProvider(
       providers: [
@@ -39,6 +70,15 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => TopNavProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+
+        Provider<Isar>.value(value: isar),
+        Provider<LocalChatStore>(create: (ctx) => LocalChatStore(isar)),
+        Provider<ChatSyncService>(
+          create: (ctx) => ChatSyncService(
+            FirebaseFirestore.instance,
+            ctx.read<LocalChatStore>(),
+          ),
+        ),
       ],
       child: MyApp(startScreen: startScreen),
     ),
