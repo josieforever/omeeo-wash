@@ -70,56 +70,61 @@ class MessageBubble extends StatelessWidget {
 
     return Stack(
       children: [
-        Container(
-          // padding: EdgeInsets.only(left: 20, right: 20),
-          color: isSelected
-              ? const Color.from(
-                  alpha: 1,
-                  red: 0.855,
-                  green: 0.847,
-                  blue: 0.996,
-                )
-              : Colors.transparent,
-          child: Padding(
-            padding: outerPadding,
-            child: Align(
-              alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-              child: GestureDetector(
-                onLongPress: onLongPress,
-                onTap: onTap,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isFirstSequence
-                        ? MediaQuery.of(context).size.width * 0.85 + 15
-                        : MediaQuery.of(context).size.width * 0.85,
-                  ),
-                  child: Bubble(
-                    padding: const BubbleEdges.only(bottom: 3),
-                    nip: nip,
-                    color: isMe
-                        ? const Color(0xFF6D66F6)
-                        : AppColors.periwinklePurple,
-                    child: Column(
-                      crossAxisAlignment: isMe
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isMe ? Colors.white : Colors.black,
+        GestureDetector(
+          onLongPress: onLongPress,
+          onTap: onTap,
+          child: Container(
+            // padding: EdgeInsets.only(left: 20, right: 20),
+            color: isSelected
+                ? const Color.from(
+                    alpha: 1,
+                    red: 0.855,
+                    green: 0.847,
+                    blue: 0.996,
+                  )
+                : Colors.transparent,
+            child: Padding(
+              padding: outerPadding,
+              child: Align(
+                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                child: GestureDetector(
+                  // onLongPress: onLongPress,
+                  // onTap: onTap,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isFirstSequence
+                          ? MediaQuery.of(context).size.width * 0.85 + 15
+                          : MediaQuery.of(context).size.width * 0.85,
+                    ),
+                    child: Bubble(
+                      padding: const BubbleEdges.only(bottom: 3),
+                      nip: nip,
+                      color: isMe
+                          ? const Color(0xFF6D66F6)
+                          : AppColors.periwinklePurple,
+                      child: Column(
+                        crossAxisAlignment: isMe
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isMe ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        Text(
-                          timestamp,
-                          style: TextStyle(
-                            color: isMe ? Colors.white70 : Colors.grey[600],
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                          Text(
+                            timestamp,
+                            style: TextStyle(
+                              color: isMe ? Colors.white70 : Colors.grey[600],
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

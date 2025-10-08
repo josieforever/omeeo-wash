@@ -76,7 +76,11 @@ class Methods {
     );
   }
 
-  Future<void> showMediaPickerDialog(BuildContext context) async {
+  Future<void> showMediaPickerDialog(
+    BuildContext context,
+    VoidCallback pickImage,
+    VoidCallback pickVideo,
+  ) async {
     return showDialog(
       context: context,
       builder: (ctx) {
@@ -93,7 +97,8 @@ class Methods {
               // Picture Button
               InkWell(
                 onTap: () {
-                  Navigator.pop(ctx, "picture");
+                  pickImage();
+                  Navigator.of(context).pop();
                 },
                 borderRadius: BorderRadius.circular(50),
                 child: Column(
@@ -117,7 +122,8 @@ class Methods {
               // Video Button
               InkWell(
                 onTap: () {
-                  Navigator.pop(ctx, "video");
+                  pickVideo();
+                  Navigator.of(context).pop();
                 },
                 borderRadius: BorderRadius.circular(50),
                 child: Column(

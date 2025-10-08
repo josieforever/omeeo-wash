@@ -5,16 +5,6 @@ class LocalChatStore {
   final Isar isar;
   LocalChatStore(this.isar);
 
-  // Stream messages for UI (latest first)
-  // Stream<List<Message>> watchLatest(String chatId, {int limit = 50}) {
-  //   return isar.messages
-  //       .filter()
-  //       .chatIdEqualTo(chatId)
-  //       .and()
-  //       .deletedEqualTo(false)
-  //       .limit(limit)
-  //       .watch(fireImmediately: true);
-  // }
   Stream<List<Message>> watchLatest(String chatId, {int limit = 50}) {
     return isar.messages
         .filter()

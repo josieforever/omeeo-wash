@@ -17,9 +17,11 @@ import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 // ignore: depend_on_referenced_packages
 import 'package:uuid/uuid.dart';
+import 'package:video_player/video_player.dart';
 
 import 'live_chat.dart';
 import 'methods.dart';
@@ -61,6 +63,38 @@ class _ChatState extends State<Chat> {
 
   bool isCurrentlyTyping = false;
   Timer? _typingTimer;
+
+  String? pickedImageFile;
+  String? pickedVideoFile;
+
+  Future<void> pickImage() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+    );
+    setState(() {
+      pickedImageFile = result?.files.single.path;
+      pickedVideoFile = null;
+    });
+    if (result != null) {
+      print("Picked image: ${result.files.single.path}");
+    }
+  }
+
+  Future<void> pickVideo() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+    );
+
+    if (result != null && mounted) {
+      final filePath = result.files.single.path;
+      if (filePath == null) return;
+
+      setState(() {
+        pickedVideoFile = filePath;
+        pickedImageFile = null;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -156,19 +190,6 @@ class _ChatState extends State<Chat> {
       firestore.collection('users').doc(userId).update({'isTyping': false});
       isCurrentlyTyping = false;
     });
-  }
-
-  Future<void> pickFileAndSend() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'png', 'pdf'],
-    );
-    if (result != null) {
-      final file = File(result.files.single.path!);
-      final fileName = result.files.single.name;
-      final ext = fileName.split('.').last.toLowerCase();
-      // Upload logic here...
-    }
   }
 
   String formatTimestamp(DateTime dt) {
@@ -334,7 +355,8 @@ class _ChatState extends State<Chat> {
                       builder: (context, isSelected, _) {
                         return MessageBubble(
                           key: isNewest ? _newestKey : ValueKey(msgId),
-                          message: message.text,
+                          // message: message.text,
+                          message: "jhkj",
                           timestamp: formatTimestamp(ts),
                           isPreviouseMessageMine: isMine,
                           isFirstSequence: !isSameSenderAsPrevious,
@@ -392,26 +414,52 @@ class _ChatState extends State<Chat> {
                         ),
                         borderRadius: BorderRadius.circular(7),
                       ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 120),
-                        child: TextField(
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onChanged: onTyping,
-                          controller: messageController,
-                          maxLines: null,
-                          keyboardType: TextInputType.multiline,
-                          decoration: const InputDecoration(
-                            hintText: 'Message',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
+                      child: Column(
+                        children: [
+                          if (pickedImageFile != null)
+                            ImagePreview(
+                              filePath: pickedImageFile!,
+                              onRemove: () {
+                                setState(() {
+                                  pickedImageFile = null;
+                                });
+                              },
+                            ),
+                          if (pickedVideoFile != null)
+                            SizedBox(
+                              // height: 200,
+                              child: VideoPreview(
+                                filePath: pickedVideoFile!,
+                                onRemove: () {
+                                  setState(() {
+                                    pickedVideoFile = null;
+                                  });
+                                },
+                              ),
+                            ),
+
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 120),
+                            child: TextField(
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              onChanged: onTyping,
+                              controller: messageController,
+                              maxLines: null,
+                              keyboardType: TextInputType.multiline,
+                              decoration: const InputDecoration(
+                                hintText: 'Message',
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 5,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -422,7 +470,11 @@ class _ChatState extends State<Chat> {
                     GestureDetector(
                       // onTap: pickFileAndSend,
                       onTap: () {
-                        Methods().showMediaPickerDialog(context);
+                        Methods().showMediaPickerDialog(
+                          context,
+                          () => pickImage(),
+                          () => pickVideo(),
+                        );
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -495,6 +547,400 @@ class SelectionController {
 
   List<String> selectedIds() =>
       _byId.entries.where((e) => e.value.value).map((e) => e.key).toList();
+}
+
+class ImagePreview extends StatefulWidget {
+  final String filePath;
+  final VoidCallback onRemove;
+
+  const ImagePreview({
+    super.key,
+    required this.filePath,
+    required this.onRemove,
+  });
+
+  @override
+  State<ImagePreview> createState() => _ImagePreviewState();
+}
+
+class _ImagePreviewState extends State<ImagePreview> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => FullScreenImageViewer(imagePath: widget.filePath),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(widget.filePath),
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: widget.onRemove,
+                child: const CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.black54,
+                  child: Icon(Icons.close, color: Colors.white, size: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class VideoPreview extends StatefulWidget {
+  final String filePath;
+  final VoidCallback onRemove;
+
+  const VideoPreview({
+    super.key,
+    required this.filePath,
+    required this.onRemove,
+  });
+
+  @override
+  State<VideoPreview> createState() => _VideoPreviewState();
+}
+
+class _VideoPreviewState extends State<VideoPreview> {
+  late VideoPlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = VideoPlayerController.file(File(widget.filePath))
+      ..initialize().then((_) {
+        setState(() {}); // Refresh UI after initialization
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: _controller.value.isInitialized
+                ? AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: VideoPlayer(_controller),
+                  )
+                : const Center(child: CircularProgressIndicator()),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: widget.onRemove,
+              child: const CircleAvatar(
+                radius: 14,
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Center(
+              child: GestureDetector(
+                onTap: () {
+                  // Navigate to full-screen player
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          FullScreenVideoPlayer(filePath: widget.filePath),
+                    ),
+                  );
+                },
+                child: Icon(Icons.play_circle, color: Colors.white70, size: 50),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPlayer extends StatefulWidget {
+  final String filePath;
+
+  const FullScreenVideoPlayer({super.key, required this.filePath});
+
+  @override
+  _FullScreenVideoPlayerState createState() => _FullScreenVideoPlayerState();
+}
+
+class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+  late VideoPlayerController _controller;
+  bool _isDragging = false;
+  Duration _dragPosition = Duration.zero;
+
+  bool _showControls = true;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(File(widget.filePath))
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
+        _startHideTimer();
+      });
+
+    _controller.addListener(() {
+      if (!_isDragging && mounted) setState(() {}); // keep slider in sync
+    });
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) _startHideTimer();
+  }
+
+  void _forward() {
+    final newPos = _controller.value.position + const Duration(seconds: 10);
+    _controller.seekTo(
+      newPos < _controller.value.duration ? newPos : _controller.value.duration,
+    );
+    _startHideTimer();
+  }
+
+  void _backward() {
+    final newPos = _controller.value.position - const Duration(seconds: 10);
+    _controller.seekTo(newPos > Duration.zero ? newPos : Duration.zero);
+    _startHideTimer();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _controller.value.isInitialized
+          ? GestureDetector(
+              onTap: _toggleControls,
+              child: Stack(
+                children: [
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: _controller.value.aspectRatio,
+                      child: VideoPlayer(_controller),
+                    ),
+                  ),
+                  // Controls overlay
+                  if (_showControls)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black26,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            // Slider
+                            Row(
+                              children: [
+                                const SizedBox(width: 10),
+                                Text(
+                                  _formatDuration(
+                                    _isDragging
+                                        ? _dragPosition
+                                        : _controller.value.position,
+                                  ),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                Expanded(
+                                  child: Slider(
+                                    activeColor: Colors.red,
+                                    inactiveColor: Colors.white54,
+                                    min: 0,
+                                    max: _controller
+                                        .value
+                                        .duration
+                                        .inMilliseconds
+                                        .toDouble(),
+                                    value: _isDragging
+                                        ? _dragPosition.inMilliseconds
+                                              .toDouble()
+                                        : _controller
+                                              .value
+                                              .position
+                                              .inMilliseconds
+                                              .toDouble(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _isDragging = true;
+                                        _dragPosition = Duration(
+                                          milliseconds: value.toInt(),
+                                        );
+                                      });
+                                    },
+                                    onChangeEnd: (value) {
+                                      final newPos = Duration(
+                                        milliseconds: value.toInt(),
+                                      );
+                                      _controller.seekTo(newPos);
+                                      setState(() {
+                                        _isDragging = false;
+                                      });
+                                      _startHideTimer();
+                                    },
+                                  ),
+                                ),
+                                Text(
+                                  _formatDuration(_controller.value.duration),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                const SizedBox(width: 10),
+                              ],
+                            ),
+                            // Play/pause & skip buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.replay_10,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
+                                  onPressed: _backward,
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    _controller.value.isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _controller.value.isPlaying
+                                          ? _controller.pause()
+                                          : _controller.play();
+                                    });
+                                    _startHideTimer();
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.forward_10,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
+                                  onPressed: _forward,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Close button
+                  if (_showControls)
+                    Positioned(
+                      top: 40,
+                      left: 20,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class FullScreenImageViewer extends StatelessWidget {
+  final String imagePath;
+
+  const FullScreenImageViewer({super.key, required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PhotoView(
+            imageProvider: imagePath.startsWith('http')
+                ? NetworkImage(imagePath)
+                : FileImage(File(imagePath)) as ImageProvider,
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 3.0,
+          ),
+          Positioned(
+            top: 40,
+            left: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // // adb connect 192.168.43.1
