@@ -1,6 +1,7 @@
 import 'package:bubble/bubble.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:omeeowash/models/message.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 
 import 'chat.dart';
@@ -26,12 +27,10 @@ class _LiveChatState extends State<LiveChat> {
 }
 
 class MessageBubble extends StatelessWidget {
+  final Message message; // Updated to accept full Message object
   final bool isPreviouseMessageMine;
   final bool isFirstSequence;
-  final String message;
   final String timestamp;
-
-  // NEW:
   final bool isSelected;
   final VoidCallback? onLongPress;
   final VoidCallback? onTap;
@@ -60,13 +59,109 @@ class MessageBubble extends StatelessWidget {
       nip = BubbleNip.no;
     }
 
-    // Selection styling
-
     final outerPadding = EdgeInsets.only(
       right: isMe && isFirstSequence ? 8 : 16,
       left: !isMe && isFirstSequence ? 8 : 16,
       top: isFirstSequence ? 10 : 3,
     );
+
+    Widget buildContent() {
+      switch (message.type) {
+        case MessageType.text:
+          return Text(
+            message.text ?? '',
+            style: TextStyle(
+              fontSize: 16,
+              color: isMe ? Colors.white : Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+          );
+
+        case MessageType.image:
+          return GestureDetector(
+            onTap: () {
+              if (message.mediaUrl != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        FullScreenImageViewer(imagePath: message.mediaUrl!),
+                  ),
+                );
+              } else {
+                onTap!();
+              }
+            },
+            child: Column(
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: 300),
+                    child: Hero(
+                      tag: message.mediaUrl!,
+                      child: Image.network(message.mediaUrl!),
+                    ),
+                  ),
+                ),
+                if ((message.text ?? '').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      message.text!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isMe ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+
+        case MessageType.video:
+          return Column(
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (message.mediaUrl != null) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenVideoPlayer(
+                          filePath: message.mediaUrl!,
+                          isBubble: true,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: VideoPreview(
+                  isBubble: true,
+                  filePath: message.mediaUrl!,
+                  onRemove: () {},
+                ),
+              ),
+              if ((message.text ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Text(
+                    message.text!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isMe ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+            ],
+          );
+      }
+    }
 
     return Stack(
       children: [
@@ -74,57 +169,41 @@ class MessageBubble extends StatelessWidget {
           onLongPress: onLongPress,
           onTap: onTap,
           child: Container(
-            // padding: EdgeInsets.only(left: 20, right: 20),
             color: isSelected
-                ? const Color.from(
-                    alpha: 1,
-                    red: 0.855,
-                    green: 0.847,
-                    blue: 0.996,
-                  )
+                ? const Color.fromARGB(255, 218, 215, 255)
                 : Colors.transparent,
             child: Padding(
               padding: outerPadding,
               child: Align(
                 alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                child: GestureDetector(
-                  // onLongPress: onLongPress,
-                  // onTap: onTap,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: isFirstSequence
-                          ? MediaQuery.of(context).size.width * 0.85 + 15
-                          : MediaQuery.of(context).size.width * 0.85,
-                    ),
-                    child: Bubble(
-                      padding: const BubbleEdges.only(bottom: 3),
-                      nip: nip,
-                      color: isMe
-                          ? const Color(0xFF6D66F6)
-                          : AppColors.periwinklePurple,
-                      child: Column(
-                        crossAxisAlignment: isMe
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isMe ? Colors.white : Colors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isFirstSequence
+                        ? MediaQuery.of(context).size.width * 0.85 + 15
+                        : MediaQuery.of(context).size.width * 0.85,
+                  ),
+                  child: Bubble(
+                    padding: const BubbleEdges.only(bottom: 3),
+                    nip: nip,
+                    color: isMe
+                        ? const Color(0xFF6D66F6)
+                        : AppColors.periwinklePurple,
+                    child: Column(
+                      crossAxisAlignment: isMe
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        buildContent(),
+                        const SizedBox(height: 3),
+                        Text(
+                          timestamp,
+                          style: TextStyle(
+                            color: isMe ? Colors.white70 : Colors.grey[600],
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            timestamp,
-                            style: TextStyle(
-                              color: isMe ? Colors.white70 : Colors.grey[600],
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -136,96 +215,3 @@ class MessageBubble extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-// class MessageBubble extends StatelessWidget {
-//   final bool isPreviouseMessageMine;
-//   final bool isFirstSequence;
-//   final String message;
-//   final String timestamp;
-
-//   const MessageBubble({
-//     super.key,
-//     required this.message,
-//     required this.isPreviouseMessageMine,
-//     required this.isFirstSequence,
-//     required this.timestamp,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final isMe = isPreviouseMessageMine;
-
-//     BubbleNip nip;
-//     if (isFirstSequence && isMe) {
-//       nip = BubbleNip.rightTop;
-//     } else if (isFirstSequence && !isMe) {
-//       nip = BubbleNip.leftTop;
-//     } else {
-//       nip = BubbleNip.no;
-//     }
-
-//     return Container(
-//       margin: EdgeInsets.only(
-//         right: isMe && isFirstSequence ? 8 : 16,
-//         left: !isMe && isFirstSequence ? 8 : 16,
-//         top: isFirstSequence ? 10 : 3,
-//       ),
-
-//       //   margin: EdgeInsets.only(
-//       //     top: isFirstSequence ? 10 : 4,
-//       //     right: isMe ? 8 : 40,
-//       //     left: isMe ? 40 : 8,
-//       //   ),
-//       child: Align(
-//         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-//         child: ConstrainedBox(
-//           constraints: BoxConstraints(
-//             maxWidth: isFirstSequence
-//                 ? MediaQuery.of(context).size.width * 0.85 + 15
-//                 : MediaQuery.of(context).size.width * 0.85, // Max 75% width
-//           ),
-//           child: Bubble(
-//             padding: BubbleEdges.only(bottom: 3),
-//             // margin: const BubbleEdges.symmetric(horizontal: 16, vertical: 4),
-//             nip: nip,
-//             color: isMe ? const Color(0xFF6D66F6) : AppColors.periwinklePurple,
-//             child: Column(
-//               crossAxisAlignment: isMe
-//                   ? CrossAxisAlignment.end
-//                   : CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   message,
-//                   style: TextStyle(
-//                     fontSize: 15,
-//                     color: isMe ? Colors.white : Colors.black,
-//                   ),
-//                 ),
-//                 Text(
-//                   timestamp,
-//                   style: TextStyle(
-//                     color: isMe ? Colors.white70 : Colors.grey[600],
-//                     fontSize: 11,
-//                     fontWeight: FontWeight.bold,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-

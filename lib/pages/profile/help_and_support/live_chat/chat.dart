@@ -8,19 +8,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:isar/isar.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/message.dart';
 import 'package:omeeowash/services/chat_sync_service.dart';
 import 'package:omeeowash/services/local_chat_storage.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
-import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
-// ignore: depend_on_referenced_packages
-import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 
 import 'live_chat.dart';
@@ -43,6 +37,7 @@ class Chat extends StatefulWidget {
 class _ChatState extends State<Chat> {
   final ScrollController _scrollController = ScrollController();
   final _newestKey = GlobalKey();
+
   final TextEditingController messageController = TextEditingController();
   final firestore = FirebaseFirestore.instance;
   bool isAdmin = false;
@@ -67,6 +62,8 @@ class _ChatState extends State<Chat> {
   String? pickedImageFile;
   String? pickedVideoFile;
 
+  bool isSending = false;
+
   Future<void> pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -75,12 +72,11 @@ class _ChatState extends State<Chat> {
       pickedImageFile = result?.files.single.path;
       pickedVideoFile = null;
     });
-    if (result != null) {
-      print("Picked image: ${result.files.single.path}");
-    }
+    if (result != null) {}
   }
 
   Future<void> pickVideo() async {
+    pickedVideoFile = null;
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.video,
     );
@@ -96,6 +92,18 @@ class _ChatState extends State<Chat> {
     }
   }
 
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,6 +112,9 @@ class _ChatState extends State<Chat> {
     store = context.read<LocalChatStore>();
     sync = context.read<ChatSyncService>();
     sync.start(chatId, userId);
+
+    // Scroll to bottom on open
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
   @override
@@ -112,27 +123,6 @@ class _ChatState extends State<Chat> {
     _scrollController.dispose();
     sync.stop();
     super.dispose();
-  }
-
-  void _ensureNewestVisible() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _newestKey.currentContext;
-      if (ctx != null && _isNearBottom()) {
-        Scrollable.ensureVisible(
-          ctx,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          alignment: 0.0,
-        );
-      }
-    });
-  }
-
-  bool _isNearBottom() {
-    if (!_scrollController.hasClients) return true;
-    final pos = _scrollController.position;
-    const pad = 200.0;
-    return (pos.pixels - pos.minScrollExtent).abs() <= pad;
   }
 
   void getUserInfo() async {
@@ -146,34 +136,86 @@ class _ChatState extends State<Chat> {
 
   Future<void> sendHelpMessage() async {
     final String message = messageController.text.trim();
-    if (message.isEmpty) return;
 
-    sync.sendMessage(
-      chatId: chatId,
-      senderId: userId,
-      text: message,
-      sender: sender,
-    );
-
-    final adminChatRef = firestore
-        .collection('admin')
-        .doc("idforadminv1")
-        .collection('help_chats')
-        .doc(userId);
-
-    final batch = firestore.batch();
-    if (isAdmin) {
-      batch.update(adminChatRef, {"last_message": message});
-    } else {
-      batch.set(adminChatRef, {
-        "userId": widget.clientId,
-        "username": username,
-        "last_message": message,
-      });
+    if (message.isEmpty && pickedImageFile == null && pickedVideoFile == null) {
+      return;
     }
 
-    messageController.clear();
+    setState(() {
+      isSending = true;
+    });
+    _scrollToBottom();
+
+    String? mediaUrl;
+    MessageType type = MessageType.text;
+
     try {
+      if (pickedImageFile != null) {
+        type = MessageType.image;
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('chat_media')
+            .child(
+              '$userId/${DateTime.now().millisecondsSinceEpoch}_${pickedImageFile!.split('/').last}',
+            );
+        await ref.putFile(File(pickedImageFile!));
+        mediaUrl = await ref.getDownloadURL();
+        setState(() {
+          pickedImageFile = null;
+        });
+      }
+
+      if (pickedVideoFile != null) {
+        type = MessageType.video;
+        final ref = FirebaseStorage.instance
+            .ref()
+            .child('chat_media')
+            .child(
+              '$userId/${DateTime.now().millisecondsSinceEpoch}_${pickedVideoFile!.split('/').last}',
+            );
+        await ref.putFile(File(pickedVideoFile!));
+        mediaUrl = await ref.getDownloadURL();
+        setState(() {
+          pickedVideoFile = null;
+        });
+      }
+
+      await sync.sendMessage(
+        chatId: chatId,
+        senderId: userId,
+        sender: sender,
+        text: message.isNotEmpty ? message : null,
+        mediaUrl: mediaUrl,
+        type: type,
+      );
+
+      setState(() {
+        isSending = false;
+      });
+
+      // scroll after sending
+      // _scrollToBottom();
+
+      final adminChatRef = firestore
+          .collection('admin')
+          .doc("idforadminv1")
+          .collection('help_chats')
+          .doc(userId);
+
+      final batch = firestore.batch();
+      final lastMessage = message.isEmpty ? type.name : message;
+
+      if (isAdmin) {
+        batch.update(adminChatRef, {"last_message": lastMessage});
+      } else {
+        batch.set(adminChatRef, {
+          "userId": widget.clientId,
+          "username": username,
+          "last_message": lastMessage,
+        });
+      }
+
+      messageController.clear();
       await batch.commit();
     } catch (e) {
       debugPrint('❌ Failed to send help message: $e');
@@ -327,7 +369,11 @@ class _ChatState extends State<Chat> {
                 if (msgs.isEmpty) {
                   return const Center(child: Text('No messages yet.'));
                 }
-                _ensureNewestVisible();
+
+                // scroll when new data comes
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _scrollToBottom();
+                });
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -348,25 +394,62 @@ class _ChatState extends State<Chat> {
                       isSameSenderAsPrevious =
                           prevSender.sender == message.sender;
                     }
-                    final isNewest = index == 0;
+
+                    final isLast = index == msgs.length - 1;
 
                     return ValueListenableBuilder<bool>(
                       valueListenable: selection.listen(msgId),
                       builder: (context, isSelected, _) {
-                        return MessageBubble(
-                          key: isNewest ? _newestKey : ValueKey(msgId),
-                          // message: message.text,
-                          message: "jhkj",
-                          timestamp: formatTimestamp(ts),
-                          isPreviouseMessageMine: isMine,
-                          isFirstSequence: !isSameSenderAsPrevious,
-                          isSelected: isSelected,
-                          onLongPress: () => selection.toggle(msgId),
-                          onTap: () {
-                            if (selection.count.value > 0) {
-                              selection.toggle(msgId);
-                            }
-                          },
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            MessageBubble(
+                              key: isLast ? _newestKey : ValueKey(msgId),
+                              message: message,
+                              timestamp: formatTimestamp(ts),
+                              isPreviouseMessageMine: isMine,
+                              isFirstSequence: !isSameSenderAsPrevious,
+                              isSelected: isSelected,
+                              onLongPress: () => selection.toggle(msgId),
+                              onTap: () {
+                                if (selection.count.value > 0) {
+                                  selection.toggle(msgId);
+                                }
+                              },
+                            ),
+                            if (isLast &&
+                                isSending &&
+                                (pickedImageFile != null ||
+                                    pickedVideoFile != null))
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Container(
+                                  margin: EdgeInsets.only(right: 18, top: 5),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(5),
+                                    color: Colors.black,
+                                  ),
+                                  height: 100,
+                                  width: 100,
+                                  child: Stack(
+                                    children: [
+                                      Center(
+                                        child: Icon(
+                                          Icons.file_copy_sharp,
+                                          color: Colors.grey,
+                                          size: 60,
+                                        ),
+                                      ),
+                                      Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     );
@@ -416,7 +499,7 @@ class _ChatState extends State<Chat> {
                       ),
                       child: Column(
                         children: [
-                          if (pickedImageFile != null)
+                          if (pickedImageFile != null && !isSending)
                             ImagePreview(
                               filePath: pickedImageFile!,
                               onRemove: () {
@@ -425,9 +508,8 @@ class _ChatState extends State<Chat> {
                                 });
                               },
                             ),
-                          if (pickedVideoFile != null)
+                          if (pickedVideoFile != null && !isSending)
                             SizedBox(
-                              // height: 200,
                               child: VideoPreview(
                                 filePath: pickedVideoFile!,
                                 onRemove: () {
@@ -435,9 +517,9 @@ class _ChatState extends State<Chat> {
                                     pickedVideoFile = null;
                                   });
                                 },
+                                isBubble: false,
                               ),
                             ),
-
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxHeight: 120),
                             child: TextField(
@@ -468,7 +550,6 @@ class _ChatState extends State<Chat> {
                 Row(
                   children: [
                     GestureDetector(
-                      // onTap: pickFileAndSend,
                       onTap: () {
                         Methods().showMediaPickerDialog(
                           context,
@@ -492,9 +573,7 @@ class _ChatState extends State<Chat> {
                     const SizedBox(width: 5),
                     GestureDetector(
                       onTap: () {
-                        if (messageController.text.isNotEmpty) {
-                          sendHelpMessage();
-                        }
+                        sendHelpMessage();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -567,22 +646,27 @@ class _ImagePreviewState extends State<ImagePreview> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => FullScreenImageViewer(imagePath: widget.filePath),
-        ),
-      ),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => FullScreenImageViewer(imagePath: widget.filePath),
+          ),
+        );
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Stack(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                File(widget.filePath),
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
+            Hero(
+              tag: widget.filePath,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  File(widget.filePath),
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             Positioned(
@@ -607,11 +691,15 @@ class _ImagePreviewState extends State<ImagePreview> {
 class VideoPreview extends StatefulWidget {
   final String filePath;
   final VoidCallback onRemove;
+  final bool isBubble;
+  final bool isSending;
 
   const VideoPreview({
     super.key,
     required this.filePath,
     required this.onRemove,
+    required this.isBubble,
+    this.isSending = false,
   });
 
   @override
@@ -625,10 +713,17 @@ class _VideoPreviewState extends State<VideoPreview> {
   void initState() {
     super.initState();
 
-    _controller = VideoPlayerController.file(File(widget.filePath))
-      ..initialize().then((_) {
-        setState(() {}); // Refresh UI after initialization
-      });
+    if (widget.isBubble) {
+      _controller = VideoPlayerController.networkUrl(widget.filePath as Uri)
+        ..initialize().then((_) {
+          setState(() {});
+        });
+    } else {
+      _controller = VideoPlayerController.file(File(widget.filePath))
+        ..initialize().then((_) {
+          setState(() {});
+        });
+    }
   }
 
   @override
@@ -669,16 +764,21 @@ class _VideoPreviewState extends State<VideoPreview> {
               child: GestureDetector(
                 onTap: () {
                   // Navigate to full-screen player
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          FullScreenVideoPlayer(filePath: widget.filePath),
-                    ),
-                  );
+                  if (!widget.isSending) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenVideoPlayer(
+                          filePath: widget.filePath,
+                          isBubble: false,
+                        ),
+                      ),
+                    );
+                  }
                 },
-                child: Icon(Icons.play_circle, color: Colors.white70, size: 50),
+                child: widget.isSending
+                    ? CircularProgressIndicator()
+                    : Icon(Icons.play_circle, color: Colors.white70, size: 50),
               ),
             ),
           ),
@@ -690,14 +790,19 @@ class _VideoPreviewState extends State<VideoPreview> {
 
 class FullScreenVideoPlayer extends StatefulWidget {
   final String filePath;
+  final bool isBubble;
 
-  const FullScreenVideoPlayer({super.key, required this.filePath});
+  const FullScreenVideoPlayer({
+    super.key,
+    required this.filePath,
+    required this.isBubble,
+  });
 
   @override
-  _FullScreenVideoPlayerState createState() => _FullScreenVideoPlayerState();
+  FullScreenVideoPlayerState createState() => FullScreenVideoPlayerState();
 }
 
-class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
+class FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   late VideoPlayerController _controller;
   bool _isDragging = false;
   Duration _dragPosition = Duration.zero;
@@ -708,12 +813,22 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.filePath))
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.play();
-        _startHideTimer();
-      });
+
+    if (widget.isBubble) {
+      _controller = VideoPlayerController.networkUrl(widget.filePath as Uri)
+        ..initialize().then((_) {
+          setState(() {});
+          _controller.play();
+          _startHideTimer();
+        });
+    } else {
+      _controller = VideoPlayerController.file(File(widget.filePath))
+        ..initialize().then((_) {
+          setState(() {});
+          _controller.play();
+          _startHideTimer();
+        });
+    }
 
     _controller.addListener(() {
       if (!_isDragging && mounted) setState(() {}); // keep slider in sync
@@ -911,36 +1026,87 @@ class _FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   }
 }
 
-class FullScreenImageViewer extends StatelessWidget {
+class FullScreenImageViewer extends StatefulWidget {
   final String imagePath;
 
   const FullScreenImageViewer({super.key, required this.imagePath});
 
   @override
+  State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
+  double _dragOffset = 0.0;
+  static const double _closeThreshold = 50.0;
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          PhotoView(
-            imageProvider: imagePath.startsWith('http')
-                ? NetworkImage(imagePath)
-                : FileImage(File(imagePath)) as ImageProvider,
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.covered * 3.0,
-          ),
-          Positioned(
-            top: 40,
-            left: 20,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.of(context).pop(),
+      body: GestureDetector(
+        onVerticalDragUpdate: (details) {
+          setState(() {
+            _dragOffset += details.delta.dy;
+          });
+        },
+        onVerticalDragEnd: (details) {
+          //  If dragged down beyond threshold, close the viewer
+          if (_dragOffset > _closeThreshold) {
+            Navigator.pop(context);
+          } else {
+            // Reset position if not dragged enough
+            setState(() => _dragOffset = 0.0);
+          }
+        },
+        child: Stack(
+          children: [
+            Hero(
+              tag: widget.imagePath,
+              child: PhotoView(
+                imageProvider: widget.imagePath.startsWith('http')
+                    ? NetworkImage(widget.imagePath)
+                    : FileImage(File(widget.imagePath)) as ImageProvider,
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 3.0,
+              ),
             ),
-          ),
-        ],
+            Positioned(
+              top: 40,
+              left: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+
+/* rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // This rule matches any file directly within the 'user_profile_photos' directory.
+    // The {fileId} wildcard captures the entire filename (e.g., "someUserUID.jpg").
+    match /user_profile_photos/{fileId} {
+      // Allow read and write access to the file only if:
+      // 1. The user making the request is authenticated (request.auth is not null).
+      // 2. The full filename (fileId) exactly matches the authenticated user's UID
+      //    concatenated with the '.jpg' extension.
+      //    This ensures that users can only read and write their own profile image,
+      //    provided it's named according to their UID and is a JPG file.
+      allow read, write: if request.auth != null && fileId == request.auth.uid + '.jpg';
+    }
+  }
+} */
+
 // // adb connect 192.168.43.1
+
+
+
+
+
+
+
