@@ -157,6 +157,7 @@ class MessageBubble extends StatelessWidget {
                 child: VideoPreview(
                   filePath: message.mediaUrl!,
                   onRemove: () {},
+                  forBubble: true,
                 ),
               ),
               if ((message.text ?? '').isNotEmpty)

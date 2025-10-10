@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart'
-    show CachedNetworkImage, CachedNetworkImageProvider;
+    show CachedNetworkImageProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -47,11 +47,13 @@ class _ChatState extends State<Chat> {
   String get userId =>
       isAdmin ? widget.clientId! : FirebaseAuth.instance.currentUser!.uid;
 
+  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+  // keep your original chatId logic (watch out for substring assumptions)
   String get chatId => '${userId.substring(2, 14)}cc-4372-a';
   String get sender => isAdmin ? "ommeo" : 'user';
 
   String username = "";
-  final bool _isLoadingMore = false; // remove final if needed
   late final ChatSyncService sync;
   late final LocalChatStore store;
 
@@ -61,6 +63,7 @@ class _ChatState extends State<Chat> {
   bool isCurrentlyTyping = false;
   Timer? _typingTimer;
 
+  // store file paths as in your original code
   String? pickedImageFile;
   String? pickedVideoFile;
 
@@ -74,7 +77,6 @@ class _ChatState extends State<Chat> {
       pickedImageFile = result?.files.single.path;
       pickedVideoFile = null;
     });
-    if (result != null) {}
   }
 
   Future<void> pickVideo() async {
@@ -98,7 +100,7 @@ class _ChatState extends State<Chat> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          _scrollController.position.minScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -159,7 +161,7 @@ class _ChatState extends State<Chat> {
             .ref()
             .child('chat_media')
             .child(
-              '$userId/${DateTime.now().millisecondsSinceEpoch}_${pickedImageFile!.split('/').last}',
+              '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedImageFile!.split('/').last}',
             );
         await ref.putFile(File(pickedImageFile!));
         mediaUrl = await ref.getDownloadURL();
@@ -174,7 +176,7 @@ class _ChatState extends State<Chat> {
             .ref()
             .child('chat_media')
             .child(
-              '$userId/${DateTime.now().millisecondsSinceEpoch}_${pickedVideoFile!.split('/').last}',
+              '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedVideoFile!.split('/').last}',
             );
         await ref.putFile(File(pickedVideoFile!));
         mediaUrl = await ref.getDownloadURL();
@@ -192,7 +194,6 @@ class _ChatState extends State<Chat> {
         type: type,
         rawMediaUrl: rawMediaUrl,
       );
-
       messageController.clear();
       setState(() {
         isSending = false;
@@ -246,6 +247,7 @@ class _ChatState extends State<Chat> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: Container(
@@ -256,6 +258,7 @@ class _ChatState extends State<Chat> {
               colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
             ),
           ),
+
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 1,
@@ -366,107 +369,21 @@ class _ChatState extends State<Chat> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<Message>>(
-              stream: store.watchLatest(chatId, limit: 50),
-              builder: (context, snapshot) {
-                final msgs = snapshot.data ?? const <Message>[];
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (msgs.isEmpty) {
-                  return const Center(child: Text('No messages yet.'));
-                }
-
-                // scroll when new data comes
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _scrollToBottom();
-                });
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  itemCount: msgs.length + (_isLoadingMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (_isLoadingMore && index == msgs.length) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final message = msgs[index];
-                    final msgId = message.docId;
-                    final isMine = message.sender == sender;
-                    final ts = message.createdAt;
-
-                    bool isSameSenderAsPrevious = false;
-                    if (index > 0) {
-                      final prevSender = msgs[index - 1];
-                      isSameSenderAsPrevious =
-                          prevSender.sender == message.sender;
-                    }
-
-                    final isLast = index == msgs.length - 1;
-
-                    return ValueListenableBuilder<bool>(
-                      valueListenable: selection.listen(msgId),
-                      builder: (context, isSelected, _) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            MessageBubble(
-                              key: isLast ? _newestKey : ValueKey(msgId),
-                              message: message,
-                              timestamp: formatTimestamp(ts),
-                              isPreviouseMessageMine: isMine,
-                              isFirstSequence: !isSameSenderAsPrevious,
-                              isSelected: isSelected,
-                              onLongPress: () => selection.toggle(msgId),
-                              onTap: () {
-                                if (selection.count.value > 0) {
-                                  selection.toggle(msgId);
-                                }
-                              },
-                            ),
-
-                            if (isLast &&
-                                isSending &&
-                                (pickedImageFile != null ||
-                                    pickedVideoFile != null))
-                              Align(
-                                alignment: Alignment.bottomRight,
-                                child: Container(
-                                  margin: EdgeInsets.only(right: 18, top: 5),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    color: Colors.white,
-                                  ),
-                                  height: 100,
-                                  width: 100,
-                                  child: Stack(
-                                    children: [
-                                      Center(
-                                        child: Icon(
-                                          Icons.file_copy_sharp,
-                                          color: Colors.grey,
-                                          size: 70,
-                                        ),
-                                      ),
-                                      Center(
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+            child: MessageListView(
+              chatId: chatId,
+              scrollController: _scrollController,
+              newestKey: _newestKey,
+              sender: sender,
+              selection: selection,
+              formatTimestamp: formatTimestamp,
+              isSending: isSending,
+              pickedImageFile: pickedImageFile,
+              pickedVideoFile: pickedVideoFile,
+              store: store,
+              onScrolledToBottom: _scrollToBottom,
             ),
           ),
-          // typing indicator
+          // typing indicator (unchanged)
           StreamBuilder<DocumentSnapshot>(
             stream: firestore
                 .collection('users')
@@ -489,98 +406,294 @@ class _ChatState extends State<Chat> {
             },
           ),
           // input
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: SafeArea(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                          width: 2,
-                          color: AppColors.deeperPeriwinkle,
-                        ),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Column(
-                        children: [
-                          if (pickedImageFile != null && !isSending)
-                            ImagePreview(
-                              filePath: pickedImageFile!,
-                              onRemove: () {
-                                setState(() {
-                                  pickedImageFile = null;
-                                });
-                              },
-                            ),
-                          if (pickedVideoFile != null && !isSending)
-                            SizedBox(
-                              child: VideoPreview(
-                                filePath: pickedVideoFile!,
-                                onRemove: () {
-                                  setState(() {
-                                    pickedVideoFile = null;
-                                  });
-                                },
-                              ),
-                            ),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 120),
-                            child: TextField(
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              onChanged: onTyping,
-                              controller: messageController,
-                              maxLines: null,
-                              keyboardType: TextInputType.multiline,
-                              decoration: const InputDecoration(
-                                hintText: 'Message',
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 5,
+          MessageInput(
+            controller: messageController,
+            onPickImage: pickImage,
+            onPickVideo: pickVideo,
+            onRemoveImage: () {
+              setState(() {
+                pickedImageFile = null;
+              });
+            },
+            onRemoveVideo: () {
+              setState(() {
+                pickedVideoFile = null;
+              });
+            },
+            onSend: sendHelpMessage,
+            onTyping: onTyping,
+            pickedImageFile: pickedImageFile,
+            pickedVideoFile: pickedVideoFile,
+            isSending: isSending,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class MessageListView extends StatefulWidget {
+  final String chatId;
+  final ScrollController scrollController;
+  final GlobalKey newestKey;
+  final String sender;
+  final SelectionController selection;
+  final String Function(DateTime) formatTimestamp;
+  final bool isSending;
+  final String? pickedImageFile; // file path (String) like your original
+  final String? pickedVideoFile; // file path (String)
+  final LocalChatStore store;
+  final VoidCallback onScrolledToBottom;
+
+  const MessageListView({
+    super.key,
+    required this.chatId,
+    required this.scrollController,
+    required this.newestKey,
+    required this.sender,
+    required this.selection,
+    required this.formatTimestamp,
+    required this.isSending,
+    required this.pickedImageFile,
+    required this.pickedVideoFile,
+    required this.store,
+    required this.onScrolledToBottom,
+  });
+
+  @override
+  State<MessageListView> createState() => _MessageListViewState();
+}
+
+class _MessageListViewState extends State<MessageListView> {
+  int prevCount = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Message>>(
+      stream: widget.store.watchLatest(widget.chatId, limit: 50),
+      builder: (context, snapshot) {
+        final msgs = snapshot.data ?? const <Message>[];
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (msgs.isEmpty) {
+          return const Center(child: Text('No messages yet.'));
+        }
+
+        // only scroll when count changes
+        if (msgs.length != prevCount) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => widget.onScrolledToBottom(),
+          );
+          prevCount = msgs.length;
+        }
+
+        return ListView.builder(
+          controller: widget.scrollController,
+          itemCount: msgs.length,
+          itemBuilder: (context, index) {
+            final message = msgs[index];
+            final msgId = message.docId;
+            final isMine = message.sender == widget.sender;
+            final ts = message.createdAt;
+
+            bool isSameSenderAsPrevious = false;
+            if (index > 0) {
+              final prevSender = msgs[index - 1];
+              isSameSenderAsPrevious = prevSender.sender == message.sender;
+            }
+
+            final isLast = index == msgs.length - 1;
+
+            return ValueListenableBuilder<bool>(
+              valueListenable: widget.selection.listen(msgId),
+              builder: (context, isSelected, _) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MessageBubble(
+                      key: isLast ? widget.newestKey : ValueKey(msgId),
+                      message: message,
+                      timestamp: widget.formatTimestamp(ts),
+                      isPreviouseMessageMine: isMine,
+                      isFirstSequence: !isSameSenderAsPrevious,
+                      isSelected: isSelected,
+                      onLongPress: () => widget.selection.toggle(msgId),
+                      onTap: () {
+                        if (widget.selection.count.value > 0) {
+                          widget.selection.toggle(msgId);
+                        }
+                      },
+                    ),
+                    if (isLast &&
+                        widget.isSending &&
+                        (widget.pickedImageFile != null ||
+                            widget.pickedVideoFile != null))
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 18, top: 5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(5),
+                            color: Colors.white,
+                          ),
+                          height: 100,
+                          width: 100,
+                          child: Stack(
+                            children: const [
+                              Center(
+                                child: Icon(
+                                  Icons.file_copy_sharp,
+                                  color: Colors.grey,
+                                  size: 70,
                                 ),
                               ),
-                            ),
+                              Center(child: CircularProgressIndicator()),
+                            ],
                           ),
-                        ],
+                        ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+typedef SendCallback = Future<void> Function();
+
+class MessageInput extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onPickImage;
+  final VoidCallback onPickVideo;
+  final VoidCallback onRemoveImage;
+  final VoidCallback onRemoveVideo;
+  final SendCallback onSend;
+  final void Function(String) onTyping;
+  final String? pickedImageFile; // path
+  final String? pickedVideoFile; // path
+  final bool isSending;
+
+  const MessageInput({
+    super.key,
+    required this.controller,
+    required this.onPickImage,
+    required this.onPickVideo,
+    required this.onRemoveImage,
+    required this.onRemoveVideo,
+    required this.onSend,
+    required this.onTyping,
+    required this.pickedImageFile,
+    required this.pickedVideoFile,
+    required this.isSending,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    width: 2,
+                    color: AppColors.deeperPeriwinkle,
+                  ),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Column(
+                  children: [
+                    if (pickedImageFile != null && !isSending)
+                      ImagePreview(
+                        filePath: pickedImageFile!,
+                        onRemove: onRemoveImage,
+                      ),
+                    if (pickedVideoFile != null && !isSending)
+                      SizedBox(
+                        child: VideoPreview(
+                          filePath: pickedVideoFile!,
+                          onRemove: onRemoveVideo,
+                        ),
+                      ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 120),
+                      child: TextField(
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        onChanged: onTyping,
+                        controller: controller,
+                        maxLines: null,
+                        keyboardType: TextInputType.multiline,
+                        decoration: const InputDecoration(
+                          hintText: 'Message',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  Methods().showMediaPickerDialog(
+                    context,
+                    onPickImage,
+                    onPickVideo,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: AppColors.deeperPeriwinkle,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.attach_file,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Methods().showMediaPickerDialog(
-                          context,
-                          () => pickImage(),
-                          () => pickVideo(),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.deeperPeriwinkle,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.attach_file,
+              ),
+              const SizedBox(width: 5),
+              isSending
+                  ? Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.deeperPeriwinkle,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: Colors.white,
-                          size: 20,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 5),
-                    GestureDetector(
-                      onTap: () {
-                        sendHelpMessage();
+                    )
+                  : GestureDetector(
+                      onTap: () async {
+                        await onSend();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -595,10 +708,7 @@ class _ChatState extends State<Chat> {
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
@@ -606,7 +716,593 @@ class _ChatState extends State<Chat> {
   }
 }
 
-/// Keeps selection state per-message without forcing a full screen rebuild.
+// class Chat extends StatefulWidget {
+//   final String? clientId;
+//   final String? clientName;
+//   const Chat({super.key, required this.clientId, this.clientName});
+//   const Chat.admin({
+//     super.key,
+//     required this.clientId,
+//     required this.clientName,
+//   });
+
+//   @override
+//   State<Chat> createState() => _ChatState();
+// }
+
+// class _ChatState extends State<Chat> {
+//   final ScrollController _scrollController = ScrollController();
+//   final _newestKey = GlobalKey();
+
+//   final TextEditingController messageController = TextEditingController();
+//   final firestore = FirebaseFirestore.instance;
+//   bool isAdmin = false;
+
+//   String get userId =>
+//       isAdmin ? widget.clientId! : FirebaseAuth.instance.currentUser!.uid;
+
+//   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+
+//   String get chatId => '${userId.substring(2, 14)}cc-4372-a';
+//   String get sender => isAdmin ? "ommeo" : 'user';
+
+//   String username = "";
+//   final bool _isLoadingMore = false; // remove final if needed
+//   late final ChatSyncService sync;
+//   late final LocalChatStore store;
+
+//   // Selection controller
+//   final SelectionController selection = SelectionController();
+
+//   bool isCurrentlyTyping = false;
+//   Timer? _typingTimer;
+
+//   String? pickedImageFile;
+//   String? pickedVideoFile;
+
+//   bool isSending = false;
+
+//   Future<void> pickImage() async {
+//     FilePickerResult? result = await FilePicker.platform.pickFiles(
+//       type: FileType.image,
+//     );
+//     setState(() {
+//       pickedImageFile = result?.files.single.path;
+//       pickedVideoFile = null;
+//     });
+//     if (result != null) {}
+//   }
+
+//   Future<void> pickVideo() async {
+//     pickedVideoFile = null;
+//     FilePickerResult? result = await FilePicker.platform.pickFiles(
+//       type: FileType.video,
+//     );
+
+//     if (result != null && mounted) {
+//       final filePath = result.files.single.path;
+//       if (filePath == null) return;
+
+//       setState(() {
+//         pickedVideoFile = filePath;
+//         pickedImageFile = null;
+//       });
+//     }
+//   }
+
+//   void _scrollToBottom() {
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (_scrollController.hasClients) {
+//         _scrollController.animateTo(
+//           _scrollController.position.maxScrollExtent,
+//           duration: const Duration(milliseconds: 300),
+//           curve: Curves.easeOut,
+//         );
+//       }
+//     });
+//   }
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     getUserInfo();
+
+//     store = context.read<LocalChatStore>();
+//     sync = context.read<ChatSyncService>();
+//     sync.start(chatId, userId);
+
+//     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+//   }
+
+//   @override
+//   void dispose() {
+//     _typingTimer?.cancel();
+//     _scrollController.dispose();
+//     sync.stop();
+//     super.dispose();
+//   }
+
+//   void getUserInfo() async {
+//     final userSnapshot = await firestore.collection("users").doc(userId).get();
+//     final userData = userSnapshot.data();
+//     setState(() {
+//       isAdmin = userData?["isAdmin"] ?? false;
+//       username = userData?["name"] ?? "User";
+//     });
+//   }
+
+//   Future<void> sendHelpMessage() async {
+//     final String message = messageController.text.trim();
+
+//     if (message.isEmpty && pickedImageFile == null && pickedVideoFile == null) {
+//       return;
+//     }
+
+//     final String? rawMediaUrl = pickedImageFile ?? pickedVideoFile;
+
+//     setState(() {
+//       isSending = true;
+//     });
+//     _scrollToBottom();
+
+//     String? mediaUrl;
+//     MessageType type = MessageType.text;
+
+//     try {
+//       if (pickedImageFile != null) {
+//         type = MessageType.image;
+//         final ref = FirebaseStorage.instance
+//             .ref()
+//             .child('chat_media')
+//             .child(
+//               '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedImageFile!.split('/').last}',
+//             );
+//         await ref.putFile(File(pickedImageFile!));
+//         mediaUrl = await ref.getDownloadURL();
+//         setState(() {
+//           pickedImageFile = null;
+//         });
+//       }
+
+//       if (pickedVideoFile != null) {
+//         type = MessageType.video;
+//         final ref = FirebaseStorage.instance
+//             .ref()
+//             .child('chat_media')
+//             .child(
+//               '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedVideoFile!.split('/').last}',
+//             );
+//         await ref.putFile(File(pickedVideoFile!));
+//         mediaUrl = await ref.getDownloadURL();
+//         setState(() {
+//           pickedVideoFile = null;
+//         });
+//       }
+
+//       await sync.sendMessage(
+//         chatId: chatId,
+//         senderId: userId,
+//         sender: sender,
+//         text: message.isNotEmpty ? message : null,
+//         mediaUrl: mediaUrl,
+//         type: type,
+//         rawMediaUrl: rawMediaUrl,
+//       );
+
+//       messageController.clear();
+//       setState(() {
+//         isSending = false;
+//       });
+
+//       final adminChatRef = firestore
+//           .collection('admin')
+//           .doc("idforadminv1")
+//           .collection('help_chats')
+//           .doc(userId);
+
+//       final batch = firestore.batch();
+//       final lastMessage = message.isEmpty ? type.name : message;
+
+//       if (isAdmin) {
+//         batch.update(adminChatRef, {"last_message": lastMessage});
+//       } else {
+//         batch.set(adminChatRef, {
+//           "userId": widget.clientId,
+//           "username": username,
+//           "last_message": lastMessage,
+//         });
+//       }
+
+//       await batch.commit();
+//     } catch (e) {
+//       setState(() {
+//         isSending = false;
+//       });
+//       debugPrint('❌ Failed to send help message: $e');
+//     }
+//   }
+
+//   void onTyping(String text) {
+//     if (!isCurrentlyTyping) {
+//       isCurrentlyTyping = true;
+//       firestore.collection('users').doc(userId).update({'isTyping': true});
+//     }
+//     _typingTimer?.cancel();
+//     _typingTimer = Timer(const Duration(seconds: 2), () {
+//       firestore.collection('users').doc(userId).update({'isTyping': false});
+//       isCurrentlyTyping = false;
+//     });
+//   }
+
+//   String formatTimestamp(DateTime dt) {
+//     return DateFormat('h:mm a').format(dt);
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       appBar: PreferredSize(
+//         preferredSize: const Size.fromHeight(60.0),
+//         child: Container(
+//           decoration: const BoxDecoration(
+//             gradient: LinearGradient(
+//               begin: Alignment.centerRight,
+//               end: Alignment.centerLeft,
+//               colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+//             ),
+//           ),
+//           child: AppBar(
+//             backgroundColor: Colors.transparent,
+//             elevation: 1,
+//             leading: GestureDetector(
+//               onTap: () => Navigator.of(context).pop(),
+//               child: const Icon(
+//                 FontAwesomeIcons.arrowLeft,
+//                 color: Colors.white,
+//               ),
+//             ),
+//             title: ValueListenableBuilder<int>(
+//               valueListenable: selection.count,
+//               builder: (context, addUp, _) {
+//                 if (addUp > 0) {
+//                   return CustomText(
+//                     text: "$addUp selected",
+//                     textWeight: FontWeight.w600,
+//                   );
+//                 }
+//                 return Row(
+//                   children: [
+//                     const CircleAvatar(
+//                       radius: 18,
+//                       backgroundColor: Colors.grey,
+//                       child: Icon(Icons.person, color: Colors.white),
+//                     ),
+//                     const SizedBox(width: 10),
+//                     Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Text(
+//                           isAdmin ? widget.clientName ?? "" : "Support Centre",
+//                           style: const TextStyle(
+//                             color: Colors.white,
+//                             fontWeight: FontWeight.bold,
+//                             fontSize: 16,
+//                           ),
+//                         ),
+//                         const Text(
+//                           'Online',
+//                           style: TextStyle(
+//                             fontSize: 12,
+//                             fontWeight: FontWeight.bold,
+//                             color: AppColors.success,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ],
+//                 );
+//               },
+//             ),
+//             actions: [
+//               ValueListenableBuilder<int>(
+//                 valueListenable: selection.count,
+//                 builder: (context, addUp, _) {
+//                   if (addUp == 0) {
+//                     return Row(
+//                       children: const [
+//                         Icon(Icons.call, color: Colors.white),
+//                         SizedBox(width: 15),
+//                         Icon(Icons.videocam, color: Colors.white),
+//                         SizedBox(width: 10),
+//                       ],
+//                     );
+//                   }
+//                   return Row(
+//                     children: [
+//                       IconButton(
+//                         icon: const Icon(Icons.delete, color: Colors.white),
+//                         onPressed: () {
+//                           Methods().showDeleteConfirmationDialog(context, () {
+//                             if (selection.selectedIds().length > 1) {
+//                               sync.deleteMany(
+//                                 senderId: userId,
+//                                 docIds: selection.selectedIds(),
+//                               );
+//                             } else {
+//                               sync.deleteMessage(
+//                                 senderId: userId,
+//                                 docId: selection.selectedIds()[0],
+//                               );
+//                             }
+//                             selection.clear();
+//                             Navigator.of(context).pop(true);
+//                           });
+//                         },
+//                       ),
+//                       IconButton(
+//                         icon: const Icon(Icons.clear, color: Colors.white),
+//                         onPressed: selection.clear,
+//                       ),
+//                     ],
+//                   );
+//                 },
+//               ),
+//             ],
+//           ),
+//         ),
+//       ),
+//       body: Column(
+//         children: [
+//           const SizedBox(height: 10),
+//           const Center(
+//             child: Text(
+//               'Chat started at 01:25 PM',
+//               style: TextStyle(color: Colors.grey, fontSize: 12),
+//             ),
+//           ),
+//           Expanded(
+//             child: StreamBuilder<List<Message>>(
+//               stream: store.watchLatest(chatId, limit: 50),
+//               builder: (context, snapshot) {
+//                 final msgs = snapshot.data ?? const <Message>[];
+//                 if (snapshot.connectionState == ConnectionState.waiting) {
+//                   return const Center(child: CircularProgressIndicator());
+//                 }
+//                 if (msgs.isEmpty) {
+//                   return const Center(child: Text('No messages yet.'));
+//                 }
+
+//                 // scroll when new data comes
+//                 WidgetsBinding.instance.addPostFrameCallback((_) {
+//                   _scrollToBottom();
+//                 });
+
+//                 return ListView.builder(
+//                   controller: _scrollController,
+//                   itemCount: msgs.length + (_isLoadingMore ? 1 : 0),
+//                   itemBuilder: (context, index) {
+//                     if (_isLoadingMore && index == msgs.length) {
+//                       return const Center(child: CircularProgressIndicator());
+//                     }
+
+//                     final message = msgs[index];
+//                     final msgId = message.docId;
+//                     final isMine = message.sender == sender;
+//                     final ts = message.createdAt;
+
+//                     bool isSameSenderAsPrevious = false;
+//                     if (index > 0) {
+//                       final prevSender = msgs[index - 1];
+//                       isSameSenderAsPrevious =
+//                           prevSender.sender == message.sender;
+//                     }
+
+//                     final isLast = index == msgs.length - 1;
+
+//                     return ValueListenableBuilder<bool>(
+//                       valueListenable: selection.listen(msgId),
+//                       builder: (context, isSelected, _) {
+//                         return Column(
+//                           mainAxisSize: MainAxisSize.min,
+//                           children: [
+//                             MessageBubble(
+//                               key: isLast ? _newestKey : ValueKey(msgId),
+//                               message: message,
+//                               timestamp: formatTimestamp(ts),
+//                               isPreviouseMessageMine: isMine,
+//                               isFirstSequence: !isSameSenderAsPrevious,
+//                               isSelected: isSelected,
+//                               onLongPress: () => selection.toggle(msgId),
+//                               onTap: () {
+//                                 if (selection.count.value > 0) {
+//                                   selection.toggle(msgId);
+//                                 }
+//                               },
+//                             ),
+
+//                             if (isLast &&
+//                                 isSending &&
+//                                 (pickedImageFile != null ||
+//                                     pickedVideoFile != null))
+//                               Align(
+//                                 alignment: Alignment.bottomRight,
+//                                 child: Container(
+//                                   margin: EdgeInsets.only(right: 18, top: 5),
+//                                   decoration: BoxDecoration(
+//                                     borderRadius: BorderRadius.circular(5),
+//                                     color: Colors.white,
+//                                   ),
+//                                   height: 100,
+//                                   width: 100,
+//                                   child: Stack(
+//                                     children: [
+//                                       Center(
+//                                         child: Icon(
+//                                           Icons.file_copy_sharp,
+//                                           color: Colors.grey,
+//                                           size: 70,
+//                                         ),
+//                                       ),
+//                                       Center(
+//                                         child: CircularProgressIndicator(
+//                                           color: Colors.white,
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 ),
+//                               ),
+//                           ],
+//                         );
+//                       },
+//                     );
+//                   },
+//                 );
+//               },
+//             ),
+//           ),
+//           // typing indicator
+//           StreamBuilder<DocumentSnapshot>(
+//             stream: firestore
+//                 .collection('users')
+//                 .doc(widget.clientId)
+//                 .snapshots(),
+//             builder: (context, snapshot) {
+//               if (!snapshot.hasData) return const SizedBox.shrink();
+//               final data = snapshot.data!.data() as Map<String, dynamic>;
+//               final isTyping = data['isTyping'] ?? false;
+//               return isTyping && isAdmin
+//                   ? Container(
+//                       padding: const EdgeInsets.only(left: 20),
+//                       alignment: Alignment.bottomLeft,
+//                       child: const Text(
+//                         'typing...',
+//                         style: TextStyle(color: Colors.black, fontSize: 14),
+//                       ),
+//                     )
+//                   : const SizedBox.shrink();
+//             },
+//           ),
+//           // input
+//           Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+//             child: Row(
+//               crossAxisAlignment: CrossAxisAlignment.end,
+//               children: [
+//                 Expanded(
+//                   child: SafeArea(
+//                     child: Container(
+//                       decoration: BoxDecoration(
+//                         color: Colors.white,
+//                         border: Border.all(
+//                           width: 2,
+//                           color: AppColors.deeperPeriwinkle,
+//                         ),
+//                         borderRadius: BorderRadius.circular(7),
+//                       ),
+//                       child: Column(
+//                         children: [
+//                           if (pickedImageFile != null && !isSending)
+//                             ImagePreview(
+//                               filePath: pickedImageFile!,
+//                               onRemove: () {
+//                                 setState(() {
+//                                   pickedImageFile = null;
+//                                 });
+//                               },
+//                             ),
+//                           if (pickedVideoFile != null && !isSending)
+//                             SizedBox(
+//                               child: VideoPreview(
+//                                 filePath: pickedVideoFile!,
+//                                 onRemove: () {
+//                                   setState(() {
+//                                     pickedVideoFile = null;
+//                                   });
+//                                 },
+//                               ),
+//                             ),
+//                           ConstrainedBox(
+//                             constraints: const BoxConstraints(maxHeight: 120),
+//                             child: TextField(
+//                               style: const TextStyle(
+//                                 color: Colors.black,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                               onChanged: onTyping,
+//                               controller: messageController,
+//                               maxLines: null,
+//                               keyboardType: TextInputType.multiline,
+//                               decoration: const InputDecoration(
+//                                 hintText: 'Message',
+//                                 border: InputBorder.none,
+//                                 contentPadding: EdgeInsets.symmetric(
+//                                   horizontal: 12,
+//                                   vertical: 5,
+//                                 ),
+//                               ),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//                 const SizedBox(width: 8),
+//                 Row(
+//                   children: [
+//                     GestureDetector(
+//                       onTap: () {
+//                         Methods().showMediaPickerDialog(
+//                           context,
+//                           () => pickImage(),
+//                           () => pickVideo(),
+//                         );
+//                       },
+//                       child: Container(
+//                         padding: const EdgeInsets.all(8),
+//                         decoration: const BoxDecoration(
+//                           color: AppColors.deeperPeriwinkle,
+//                           shape: BoxShape.circle,
+//                         ),
+//                         child: const Icon(
+//                           Icons.attach_file,
+//                           color: Colors.white,
+//                           size: 20,
+//                         ),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 5),
+//                     GestureDetector(
+//                       onTap: () {
+//                         sendHelpMessage();
+//                       },
+//                       child: Container(
+//                         padding: const EdgeInsets.all(8),
+//                         decoration: const BoxDecoration(
+//                           color: AppColors.deeperPeriwinkle,
+//                           shape: BoxShape.circle,
+//                         ),
+//                         child: const Icon(
+//                           Icons.send,
+//                           color: Colors.white,
+//                           size: 20,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
+
+/// Keeps selection state per-message without forcing a pr screen rebuild.
 class SelectionController {
   final Map<String, ValueNotifier<bool>> _byId = {};
   final ValueNotifier<int> count = ValueNotifier<int>(0);
@@ -701,12 +1397,14 @@ class VideoPreview extends StatefulWidget {
   final String filePath;
   final VoidCallback onRemove;
   final bool isSending;
+  final bool forBubble;
 
   const VideoPreview({
     super.key,
     required this.filePath,
     required this.onRemove,
     this.isSending = false,
+    this.forBubble = false,
   });
 
   @override
@@ -754,18 +1452,19 @@ class _VideoPreviewState extends State<VideoPreview> {
                   )
                 : const Center(child: CircularProgressIndicator()),
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: widget.onRemove,
-              child: const CircleAvatar(
-                radius: 14,
-                backgroundColor: Colors.black54,
-                child: Icon(Icons.close, color: Colors.white, size: 16),
+          if (!widget.forBubble)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: widget.onRemove,
+                child: const CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.black54,
+                  child: Icon(Icons.close, color: Colors.white, size: 16),
+                ),
               ),
             ),
-          ),
           Positioned.fill(
             child: Center(
               child: GestureDetector(
@@ -1086,22 +1785,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 }
 
 
-/* rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    // This rule matches any file directly within the 'user_profile_photos' directory.
-    // The {fileId} wildcard captures the entire filename (e.g., "someUserUID.jpg").
-    match /user_profile_photos/{fileId} {
-      // Allow read and write access to the file only if:
-      // 1. The user making the request is authenticated (request.auth is not null).
-      // 2. The full filename (fileId) exactly matches the authenticated user's UID
-      //    concatenated with the '.jpg' extension.
-      //    This ensures that users can only read and write their own profile image,
-      //    provided it's named according to their UID and is a JPG file.
-      allow read, write: if request.auth != null && fileId == request.auth.uid + '.jpg';
-    }
-  }
-} */
 
 // // adb connect 192.168.43.1
 
