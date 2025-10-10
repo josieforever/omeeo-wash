@@ -266,87 +266,69 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
             const SizedBox(height: 15),
 
             // Calendar (toggleable selection)
-            // Calendar (toggleable selection)
             Container(
               height: 300,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+              margin: const EdgeInsets.symmetric(horizontal: 30),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.fromARGB(97, 193, 193, 193),
+                        Color.fromARGB(255, 193, 193, 193),
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  color: Colors.transparent,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color.fromARGB(97, 193, 193, 193),
-                          Color.fromARGB(255, 193, 193, 193),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: MediaQuery.removePadding(
-                      context: context,
-                      removeTop: true,
-                      removeBottom: true,
-                      child: Theme(
-                        data: _hasPickedDate
-                            ? Theme.of(context).copyWith(
-                                colorScheme: Theme.of(context).colorScheme
-                                    .copyWith(
-                                      primary: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      onPrimary: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                    ),
-                              )
-                            : Theme.of(context),
-                        child: CalendarDatePicker(
-                          key: ValueKey(
-                            '${_hasPickedDate}_${pickedDate?.toIso8601String() ?? "none"}',
-                          ),
-                          initialDate:
-                              pickedDate ?? DateUtils.dateOnly(DateTime.now()),
-                          firstDate: DateUtils.dateOnly(DateTime.now()),
-                          lastDate: DateUtils.dateOnly(
-                            DateTime.now().add(const Duration(days: 60)),
-                          ),
-                          selectableDayPredicate: (day) => true,
-                          onDateChanged: (date) {
-                            if (pickedDate != null &&
-                                DateUtils.isSameDay(pickedDate!, date)) {
-                              // deselect same day
-                              _bookedSub?.cancel();
-                              setState(() {
-                                pickedDate = null;
-                                _hasPickedDate = false;
-                                selectedTime = null;
-                                for (final t in availableTimes) {
-                                  t['isSelected'] = false;
-                                }
-                              });
-                            } else {
-                              // select new day
-                              _bookedSub?.cancel();
-                              setState(() {
-                                pickedDate = date;
-                                _hasPickedDate = true;
-                                selectedTime = null;
-                                for (final t in availableTimes) {
-                                  t['isSelected'] = false;
-                                }
-                              });
-                              // Re-subscribe / reload time slots for this date if needed:
-                              // _listenForBookedTimes(date);
-                            }
-                          },
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    removeBottom: true,
+                    child: Theme(
+                      data: _hasPickedDate
+                          ? Theme.of(context).copyWith(
+                              colorScheme: Theme.of(context).colorScheme
+                                  .copyWith(
+                                    primary: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    onPrimary: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                            )
+                          : Theme.of(context),
+                      child: CalendarDatePicker(
+                        key: ValueKey(
+                          '${_hasPickedDate}_${pickedDate?.toIso8601String() ?? "none"}',
                         ),
+                        initialDate: pickedDate ?? DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 60)),
+                        selectableDayPredicate: (day) => true,
+                        onDateChanged: (date) {
+                          if (pickedDate != null &&
+                              DateUtils.isSameDay(pickedDate!, date)) {
+                            // deselect
+                            _bookedSub?.cancel();
+                            setState(() {
+                              pickedDate = null;
+                              _hasPickedDate = false;
+                              selectedTimeLabel = null;
+                              _selectedHhmm = null;
+                              _slots = [];
+                            });
+                          } else {
+                            _onPickDate(date);
+                          }
+                        },
                       ),
                     ),
                   ),
