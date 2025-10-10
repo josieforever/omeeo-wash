@@ -321,22 +321,12 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                             setState(() {
                               pickedDate = null;
                               _hasPickedDate = false;
-                              selectedTime = null;
-                              for (var t in availableTimes) {
-                                t['isSelected'] = false;
-                              }
+                              selectedTimeLabel = null;
+                              _selectedHhmm = null;
+                              _slots = [];
                             });
                           } else {
-                            // select new day
-                            _bookedSub?.cancel();
-                            setState(() {
-                              pickedDate = date;
-                              _hasPickedDate = true;
-                              selectedTime = null;
-                              for (var t in availableTimes) {
-                                t['isSelected'] = false;
-                              }
-                            });
+                            _onPickDate(date);
                           }
                         },
                       ),
