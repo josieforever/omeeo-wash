@@ -15,12 +15,13 @@ class ChatSyncService {
       firestore.collection('users').doc(senderId).collection('help_messages');
 
   /// Start sync for a chat
+
   Future<void> start(
     String chatId,
     String senderId, {
     int initialPage = 50,
   }) async {
-    // 1) Backfill once if local empty
+    // 1) Initial backfill (only if local is empty)
     final latestLocal = await local.latestCreatedAt(chatId);
     if (latestLocal == null) {
       final firstPage = await _msgs(senderId)
@@ -30,32 +31,32 @@ class ChatSyncService {
           .get();
 
       final firstMsgs = firstPage.docs.map(_toMessage).toList();
-      if (firstMsgs.isNotEmpty) {
-        await local.deleteAllByDocIds(firstMsgs.map((m) => m.docId).toList());
-        await local.upsertMany(firstMsgs);
-      }
+
+      //  No deletes — insert only if missing locally
+      await local.upsertManyIfMissing(firstMsgs);
     }
 
-    // 2) Delta: strictly newer than latest local
+    // 2) Delta sync: strictly newer than latest local
     final since = await local.latestCreatedAt(chatId);
     if (since != null) {
       final deltaSnap = await _msgs(senderId)
           .where('deleted', isEqualTo: false)
           .orderBy('createdAt') // asc
-          .startAfter([Timestamp.fromDate(since)]) // strictly newer
+          .startAfter([Timestamp.fromDate(since)])
           .get();
 
       final deltaMsgs = deltaSnap.docs.map(_toMessage).toList();
-      if (deltaMsgs.isNotEmpty) {
-        await local.deleteAllByDocIds(deltaMsgs.map((m) => m.docId).toList());
-        await local.upsertMany(deltaMsgs);
-      }
+
+      // No deletes — insert only if missing (or use upsertManyIfNewer if you added it)
+      await local.upsertManyIfMissing(deltaMsgs);
+      // If you added updatedAt support, prefer:
+      // await local.upsertManyIfNewer(deltaMsgs);
     }
 
-    // 3) Realtime tail (start after latest local)
+    // 3) Realtime tail from latest local
     _tailSub?.cancel();
-    final tailSince = await local.latestCreatedAt(chatId);
 
+    final tailSince = await local.latestCreatedAt(chatId);
     Query<Map<String, dynamic>> q = _msgs(
       senderId,
     ).where('deleted', isEqualTo: false).orderBy('createdAt');
@@ -65,27 +66,36 @@ class ChatSyncService {
     }
 
     _tailSub = q.snapshots().listen((snap) async {
-      final toUpsert = <Message>[];
-      final toDelete = <String>[];
+      final added = <Message>[];
+      final modified = <Message>[];
 
       for (final ch in snap.docChanges) {
         switch (ch.type) {
           case DocumentChangeType.added:
+            added.add(_toMessage(ch.doc));
+            break;
           case DocumentChangeType.modified:
-            toUpsert.add(_toMessage(ch.doc));
+            modified.add(_toMessage(ch.doc));
             break;
           case DocumentChangeType.removed:
-            toDelete.add(ch.doc.id);
+            // If you never want to delete locally, ignore removals.
+            // If you soft-delete locally, you could:
+            // await local.softDelete(ch.doc.id);
             break;
         }
       }
 
-      if (toUpsert.isNotEmpty) {
-        await local.deleteAllByDocIds(toUpsert.map((m) => m.docId).toList());
-        await local.upsertMany(toUpsert);
+      // Insert only if missing (prevents duplicate writes)
+      if (added.isNotEmpty) {
+        await local.upsertManyIfMissing(added);
       }
-      if (toDelete.isNotEmpty) {
-        await local.deleteAllByDocIds(toDelete);
+
+      // Modified docs: overwrite or only-if-newer if you implemented it
+      if (modified.isNotEmpty) {
+        // If you implemented updatedAt logic:
+        // await local.upsertManyIfNewer(modified);
+        // Else just upsert (safe idempotent replace on docId index)
+        await local.upsertMany(modified);
       }
     });
   }
@@ -126,6 +136,7 @@ class ChatSyncService {
     required String sender,
     String? text,
     String? mediaUrl, // for image/video
+    String? rawMediaUrl, // for image/video
     MessageType type = MessageType.text,
   }) async {
     final ref = _msgs(senderId).doc(); // generate id locally
@@ -138,7 +149,7 @@ class ChatSyncService {
       ..senderId = senderId
       ..sender = sender
       ..text = text
-      ..mediaUrl = mediaUrl
+      ..mediaUrl = rawMediaUrl
       ..type = type
       ..createdAt = now
       ..updatedAt = now

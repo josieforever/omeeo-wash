@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart'
+    show CachedNetworkImage, CachedNetworkImageProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -113,7 +115,6 @@ class _ChatState extends State<Chat> {
     sync = context.read<ChatSyncService>();
     sync.start(chatId, userId);
 
-    // Scroll to bottom on open
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -140,6 +141,8 @@ class _ChatState extends State<Chat> {
     if (message.isEmpty && pickedImageFile == null && pickedVideoFile == null) {
       return;
     }
+
+    final String? rawMediaUrl = pickedImageFile ?? pickedVideoFile;
 
     setState(() {
       isSending = true;
@@ -187,14 +190,13 @@ class _ChatState extends State<Chat> {
         text: message.isNotEmpty ? message : null,
         mediaUrl: mediaUrl,
         type: type,
+        rawMediaUrl: rawMediaUrl,
       );
 
+      messageController.clear();
       setState(() {
         isSending = false;
       });
-
-      // scroll after sending
-      // _scrollToBottom();
 
       final adminChatRef = firestore
           .collection('admin')
@@ -215,9 +217,11 @@ class _ChatState extends State<Chat> {
         });
       }
 
-      messageController.clear();
       await batch.commit();
     } catch (e) {
+      setState(() {
+        isSending = false;
+      });
       debugPrint('❌ Failed to send help message: $e');
     }
   }
@@ -266,7 +270,10 @@ class _ChatState extends State<Chat> {
               valueListenable: selection.count,
               builder: (context, addUp, _) {
                 if (addUp > 0) {
-                  return CustomText(text: "$addUp selected");
+                  return CustomText(
+                    text: "$addUp selected",
+                    textWeight: FontWeight.w600,
+                  );
                 }
                 return Row(
                   children: [
@@ -417,6 +424,7 @@ class _ChatState extends State<Chat> {
                                 }
                               },
                             ),
+
                             if (isLast &&
                                 isSending &&
                                 (pickedImageFile != null ||
@@ -427,7 +435,7 @@ class _ChatState extends State<Chat> {
                                   margin: EdgeInsets.only(right: 18, top: 5),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
-                                    color: Colors.black,
+                                    color: Colors.white,
                                   ),
                                   height: 100,
                                   width: 100,
@@ -437,7 +445,7 @@ class _ChatState extends State<Chat> {
                                         child: Icon(
                                           Icons.file_copy_sharp,
                                           color: Colors.grey,
-                                          size: 60,
+                                          size: 70,
                                         ),
                                       ),
                                       Center(
@@ -517,7 +525,6 @@ class _ChatState extends State<Chat> {
                                     pickedVideoFile = null;
                                   });
                                 },
-                                isBubble: false,
                               ),
                             ),
                           ConstrainedBox(
@@ -688,17 +695,17 @@ class _ImagePreviewState extends State<ImagePreview> {
   }
 }
 
+//VIDEO PREVIEW
+
 class VideoPreview extends StatefulWidget {
   final String filePath;
   final VoidCallback onRemove;
-  final bool isBubble;
   final bool isSending;
 
   const VideoPreview({
     super.key,
     required this.filePath,
     required this.onRemove,
-    required this.isBubble,
     this.isSending = false,
   });
 
@@ -713,7 +720,7 @@ class _VideoPreviewState extends State<VideoPreview> {
   void initState() {
     super.initState();
 
-    if (widget.isBubble) {
+    if (widget.filePath.startsWith("http")) {
       _controller = VideoPlayerController.networkUrl(widget.filePath as Uri)
         ..initialize().then((_) {
           setState(() {});
@@ -768,10 +775,8 @@ class _VideoPreviewState extends State<VideoPreview> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => FullScreenVideoPlayer(
-                          filePath: widget.filePath,
-                          isBubble: false,
-                        ),
+                        builder: (_) =>
+                            FullScreenVideoPlayer(filePath: widget.filePath),
                       ),
                     );
                   }
@@ -790,13 +795,8 @@ class _VideoPreviewState extends State<VideoPreview> {
 
 class FullScreenVideoPlayer extends StatefulWidget {
   final String filePath;
-  final bool isBubble;
 
-  const FullScreenVideoPlayer({
-    super.key,
-    required this.filePath,
-    required this.isBubble,
-  });
+  const FullScreenVideoPlayer({super.key, required this.filePath});
 
   @override
   FullScreenVideoPlayerState createState() => FullScreenVideoPlayerState();
@@ -814,7 +814,7 @@ class FullScreenVideoPlayerState extends State<FullScreenVideoPlayer> {
   void initState() {
     super.initState();
 
-    if (widget.isBubble) {
+    if (widget.filePath.startsWith("http")) {
       _controller = VideoPlayerController.networkUrl(widget.filePath as Uri)
         ..initialize().then((_) {
           setState(() {});
@@ -1063,10 +1063,11 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
               tag: widget.imagePath,
               child: PhotoView(
                 imageProvider: widget.imagePath.startsWith('http')
-                    ? NetworkImage(widget.imagePath)
-                    : FileImage(File(widget.imagePath)) as ImageProvider,
+                    ? CachedNetworkImageProvider(widget.imagePath)
+                    : FileImage(File(widget.imagePath)),
                 minScale: PhotoViewComputedScale.contained,
                 maxScale: PhotoViewComputedScale.covered * 3.0,
+                backgroundDecoration: const BoxDecoration(color: Colors.black),
               ),
             ),
             Positioned(

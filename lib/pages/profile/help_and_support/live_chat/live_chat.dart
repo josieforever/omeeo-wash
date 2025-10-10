@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:bubble/bubble.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:omeeowash/models/message.dart';
@@ -80,15 +83,15 @@ class MessageBubble extends StatelessWidget {
         case MessageType.image:
           return GestureDetector(
             onTap: () {
-              if (message.mediaUrl != null) {
+              final imagePath = message.mediaUrl;
+              if (imagePath != null) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        FullScreenImageViewer(imagePath: message.mediaUrl!),
+                    builder: (_) => FullScreenImageViewer(imagePath: imagePath),
                   ),
                 );
               } else {
-                onTap!();
+                if (onTap != null) onTap!();
               }
             },
             child: Column(
@@ -96,26 +99,38 @@ class MessageBubble extends StatelessWidget {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: 300),
-                    child: Hero(
-                      tag: message.mediaUrl!,
-                      child: Image.network(message.mediaUrl!),
+                if (message.mediaUrl != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: Hero(
+                        tag: message
+                            .mediaUrl!, // use docId instead of mediaUrl to avoid null
+                        child: (message.mediaUrl!.startsWith('http'))
+                            ? CachedNetworkImage(
+                                imageUrl: message.mediaUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                errorWidget: (context, url, error) =>
+                                    const Icon(Icons.error),
+                              )
+                            : Image.file(
+                                File(message.mediaUrl!),
+                                fit: BoxFit.cover,
+                              ),
+                      ),
                     ),
                   ),
-                ),
                 if ((message.text ?? '').isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Text(
-                      message.text!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isMe ? Colors.white : Colors.black,
-                      ),
+                  Text(
+                    message.text ?? '',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isMe ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
               ],
@@ -133,29 +148,24 @@ class MessageBubble extends StatelessWidget {
                   if (message.mediaUrl != null) {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => FullScreenVideoPlayer(
-                          filePath: message.mediaUrl!,
-                          isBubble: true,
-                        ),
+                        builder: (_) =>
+                            FullScreenVideoPlayer(filePath: message.mediaUrl!),
                       ),
                     );
                   }
                 },
                 child: VideoPreview(
-                  isBubble: true,
                   filePath: message.mediaUrl!,
                   onRemove: () {},
                 ),
               ),
               if ((message.text ?? '').isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 5),
-                  child: Text(
-                    message.text!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isMe ? Colors.white : Colors.black,
-                    ),
+                Text(
+                  message.text ?? '',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isMe ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
             ],

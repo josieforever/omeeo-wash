@@ -73,4 +73,32 @@ class LocalChatStore {
       }
     });
   }
+
+  // Does a message exist by its Firestore docId?
+  Future<bool> existsByDocId(String docId) async {
+    final m = await isar.messages.getByDocId(docId);
+    return m != null;
+  }
+
+  // Fetch message by docId (convenience)
+  Future<Message?> getByDocId(String docId) => isar.messages.getByDocId(docId);
+
+  // Bulk: which of these docIds already exist? (uses the index in one go)
+  Future<Set<String>> existingDocIds(Iterable<String> docIds) async {
+    if (docIds.isEmpty) return <String>{};
+    final found = await isar.messages.getAllByDocId(docIds.toList());
+    return found.whereType<Message>().map((m) => m.docId).toSet();
+  }
+
+  // Upsert only the ones that are missing locally
+  Future<void> upsertManyIfMissing(List<Message> msgs) async {
+    if (msgs.isEmpty) return;
+    final ids = msgs.map((m) => m.docId);
+    final have = await existingDocIds(ids);
+    final newOnes = msgs.where((m) => !have.contains(m.docId)).toList();
+    if (newOnes.isEmpty) return;
+    await isar.writeTxn(() async {
+      await isar.messages.putAll(newOnes);
+    });
+  }
 }
