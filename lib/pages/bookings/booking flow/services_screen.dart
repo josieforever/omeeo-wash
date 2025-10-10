@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/helpers/miscellaneous.dart';
-import 'package:omeeowash/pages/bookings/booking flow/common_widgets.dart';
-import 'package:omeeowash/pages/bookings/booking flow/select_date_screen.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
