@@ -85,9 +85,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromARGB(26, 7, 0, 133),
+                            color: Theme.of(context).colorScheme.shadow,
                             blurRadius: 12,
                             spreadRadius: 2,
                             offset: Offset(0, 6),
@@ -526,8 +526,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                               content: Center(
                                                 child: Text(
                                                   displayMessage,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .inversePrimary,
                                                   ),
                                                 ),
                                               ),
@@ -547,8 +549,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                               content: Center(
                                                 child: Text(
                                                   'An unexpected error occurred: ${e.toString()}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .inversePrimary,
                                                   ),
                                                 ),
                                               ),

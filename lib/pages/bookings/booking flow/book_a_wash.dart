@@ -173,7 +173,7 @@ class ProfilePhotoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Theme.of(context).colorScheme.shadow,
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -212,11 +212,11 @@ class ProfilePhotoCard extends StatelessWidget {
                         colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
                       ),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         FontAwesomeIcons.camera,
                         size: 14,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.inversePrimary,
                       ),
                     ),
                   ),
@@ -671,7 +671,9 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                                     content: Center(
                                       child: CustomText(
                                         text: 'Changes saved successfully!',
-                                        textColor: AppColors.white,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).colorScheme.inversePrimary,
                                       ),
                                     ),
                                     backgroundColor: Colors.green,
@@ -693,7 +695,9 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                                       child: CustomText(
                                         text:
                                             'Failed to save new changes: ${e.toString()}',
-                                        textColor: AppColors.white,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).colorScheme.inversePrimary,
                                       ),
                                     ),
                                     backgroundColor: Colors.red,
@@ -710,7 +714,9 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                                   child: CustomText(
                                     text:
                                         'Please correct the errors in the form.',
-                                    textColor: AppColors.white,
+                                    textColor: Theme.of(
+                                      context,
+                                    ).colorScheme.inversePrimary,
                                   ),
                                 ),
                                 backgroundColor: Colors.orange,

@@ -1,38 +1,68 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:omeeowash/models/booking_model.dart';
-import 'package:provider/provider.dart';
 
 class BookingProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Booking? _booking; // For a single booking detail screen
-  List<Booking> _bookings = []; // For a user’s full booking list
-
-  StreamSubscription<DocumentSnapshot>? _bookingSubscription;
-  StreamSubscription<QuerySnapshot>? _bookingsSubscription;
+  Booking? _booking; // single booking detail in memory
+  List<Booking> _bookings = []; // last streamed list (optional cache)
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>?
+  _bookingSubscription;
 
   Booking? get booking => _booking;
   List<Booking> get bookings => _bookings;
 
-  /// 🔹 Listen to all bookings for a specific user in real-time
+  // ------------------------
+  // Creation
+  // ------------------------
+
+  /// Create a booking with an auto-generated Firestore ID.
+  Future<String> createBooking(Booking booking) async {
+    final docRef = _firestore.collection('bookings').doc(); // auto-id
+    final toWrite = booking.copyWith(id: docRef.id).toMap();
+    await docRef.set(toWrite);
+    return docRef.id;
+  }
+
+  /// Create a booking using the given `booking.id` as the Firestore ID.
+  Future<void> createBookingWithId(Booking booking) async {
+    final docRef = _firestore.collection('bookings').doc(booking.id);
+    await docRef.set(booking.toMap());
+  }
+
+  // ------------------------
+  // Reads
+  // ------------------------
+
+  /// One-off read of a booking (no subscription).
+  Future<Booking?> getBookingOnce(String bookingId) async {
+    final snap = await _firestore.collection('bookings').doc(bookingId).get();
+    if (!snap.exists || snap.data() == null) return null;
+    return Booking.fromMap(snap.data()!, snap.id);
+  }
+
+  /// Stream all bookings for a user (ordered by scheduledTime desc).
   Stream<List<Booking>> listenToBookings(String userId) {
     return _firestore
         .collection('bookings')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
+        .orderBy('scheduledTime', descending: true)
         .snapshots()
         .map((snapshot) {
-          _bookings = snapshot.docs
-              .map((doc) => Booking.fromMap(doc.data(), doc.id))
+          final list = snapshot.docs
+              .map(
+                (d) => Booking.fromMap(d.data() as Map<String, dynamic>, d.id),
+              )
               .toList();
+          _bookings = list;
           notifyListeners();
-          return _bookings;
+          return list;
         });
   }
 
-  /// 🔹 Listen to a single booking in real-time
+  /// Stream a single booking by id.
   void listenToBooking(String bookingId) {
     _bookingSubscription?.cancel();
     _bookingSubscription = _firestore
@@ -40,38 +70,76 @@ class BookingProvider with ChangeNotifier {
         .doc(bookingId)
         .snapshots()
         .listen((doc) {
-          if (doc.exists) {
+          if (doc.exists && doc.data() != null) {
             _booking = Booking.fromMap(doc.data()!, doc.id);
-            notifyListeners();
+          } else {
+            _booking = null;
           }
+          notifyListeners();
         });
   }
 
-  /// 🔹 Stop listeners (call when leaving screen)
+  /// Stop live listeners (call in dispose / on screen exit).
   void cancelListeners() {
     _bookingSubscription?.cancel();
-    _bookingsSubscription?.cancel();
     _bookingSubscription = null;
-    _bookingsSubscription = null;
   }
 
-  /// 🔹 Update booking status
+  // ------------------------
+  // Pagination for lists
+  // ------------------------
+
+  /// Fetch a page of bookings for a user.
+  /// Returns (bookings, lastDoc) where lastDoc can be passed back in for next page.
+  Future<({List<Booking> items, DocumentSnapshot? lastDoc})>
+  fetchUserBookingsPage({
+    required String userId,
+    int pageSize = 20,
+    DocumentSnapshot? startAfter,
+  }) async {
+    Query query = _firestore
+        .collection('bookings')
+        .where('userId', isEqualTo: userId)
+        .orderBy('scheduledTime', descending: true)
+        .limit(pageSize);
+
+    if (startAfter != null) {
+      query = (query as Query<Map<String, dynamic>>).startAfterDocument(
+        startAfter,
+      );
+    }
+
+    final snap = await query.get();
+    final items = snap.docs
+        .map((d) => Booking.fromMap(d.data() as Map<String, dynamic>, d.id))
+        .toList();
+
+    final last = snap.docs.isNotEmpty ? snap.docs.last : null;
+    return (items: items, lastDoc: last);
+  }
+
+  // ------------------------
+  // Mutations / helpers
+  // ------------------------
+
   Future<void> updateStatus(String bookingId, String status) async {
     await _firestore.collection('bookings').doc(bookingId).update({
       'status': status,
-      'updatedAt': DateTime.now(),
     });
   }
 
-  /// 🔹 Assign valet driver to a booking
-  Future<void> assignValet(String bookingId, String driverId) async {
+  Future<void> cancelBooking(String bookingId) async {
+    await updateStatus(bookingId, 'canceled');
+  }
+
+  /// Assign or unassign a valet driver (pass null to unassign).
+  Future<void> assignValet(String bookingId, {String? driverId}) async {
     await _firestore.collection('bookings').doc(bookingId).update({
       'valetDriverId': driverId,
-      'updatedAt': DateTime.now(),
     });
   }
 
-  /// 🔹 Update valet driver’s live location
+  /// Update valet driver’s live location.
   Future<void> updateValetLocation({
     required String bookingId,
     required double lat,
@@ -80,83 +148,46 @@ class BookingProvider with ChangeNotifier {
     await _firestore.collection('bookings').doc(bookingId).update({
       'valetLat': lat,
       'valetLng': lng,
-      'lastLocationUpdate': DateTime.now(),
+      'lastLocationUpdate': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Update service location type: "washing_bay" | "mobile" | "valet".
+  Future<void> updateServiceLocation(
+    String bookingId,
+    String? serviceLocation,
+  ) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'serviceLocation': serviceLocation,
+    });
+  }
+
+  /// Set payment method: "card" | "momo" | "cash".
+  Future<void> setPaymentMethod(String bookingId, String method) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'paymentMethod': method,
+    });
+  }
+
+  /// Link to a payment record (payments/{paymentId}); pass null to clear.
+  Future<void> linkPaymentId(String bookingId, String? paymentId) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'paymentId': paymentId,
+    });
+  }
+
+  /// Generic safe partial update for any set of fields from the Booking model.
+  Future<void> updateFields(
+    String bookingId,
+    Map<String, dynamic> fields,
+  ) async {
+    // You can add validation/whitelisting here if needed.
+    await _firestore.collection('bookings').doc(bookingId).update(fields);
   }
 
   @override
   void dispose() {
     cancelListeners();
     super.dispose();
-  }
-}
-
-class BookingScreen extends StatelessWidget {
-  final String userId;
-  const BookingScreen({super.key, required this.userId});
-
-  @override
-  Widget build(BuildContext context) {
-    final bookingProvider = Provider.of<BookingProvider>(
-      context,
-      listen: false,
-    );
-
-    return StreamBuilder<List<Booking>>(
-      stream: bookingProvider.listenToBookings(userId), // ✅ Stream of bookings
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text("No bookings found."));
-        }
-
-        final bookings = snapshot.data!;
-
-        return ListView.builder(
-          itemCount: bookings.length,
-          itemBuilder: (context, index) {
-            final booking = bookings[index];
-
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              child: ListTile(
-                title: Text("Service: ${booking.serviceType}"),
-                subtitle: Text("Status: ${booking.status}"),
-                trailing: DropdownButton<String>(
-                  value: booking.status,
-                  items: const [
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(
-                      value: 'confirmed',
-                      child: Text('Confirmed'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'in_progress',
-                      child: Text('In Progress'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'completed',
-                      child: Text('Completed'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'canceled',
-                      child: Text('Canceled'),
-                    ),
-                  ],
-                  onChanged: (newStatus) {
-                    if (newStatus != null) {
-                      bookingProvider.updateStatus(booking.id, newStatus);
-                    }
-                  },
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 }

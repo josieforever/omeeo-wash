@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -7,20 +8,36 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geo;
 
-// Google Places Autocomplete
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
+// ✅ Autocomplete via REST + TypeAhead
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:omeeowash/pages/bookings/booking flow/confirm_booking.dart';
+import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 
 // App imports
-import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart';
+import 'package:omeeowash/pages/bookings/booking flow/common_widgets.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
+// ⚠️ IMPORTANT: Ensure this key has Places API enabled.
 const String kGoogleApiKey = 'AIzaSyAhUAyOfnZrilFp3OVqH1vEmpn0j5fL8SY';
 
+/// ---- On-site (washing bay) constants ----
+const String kOmeeoWashAddress = 'Israel Teikofio Street, Sowutuom, Accra';
+const LatLng kOmeeoWashLatLng = LatLng(5.6288569, -0.2725429);
+
 class SelectVehicleAndLocationScreen extends StatefulWidget {
-  final String? serviceType;
-  const SelectVehicleAndLocationScreen({super.key, this.serviceType});
+  final int duration;
+  final String? serviceType; // "express" | "standard" | "premium"
+  final double? price;
+  final DateTime scheduledTime; // from SelectDateScreen
+  const SelectVehicleAndLocationScreen({
+    super.key,
+    this.serviceType,
+    this.price,
+    required this.scheduledTime,
+    required this.duration,
+  });
 
   @override
   State<SelectVehicleAndLocationScreen> createState() =>
@@ -32,18 +49,97 @@ class _SelectVehicleAndLocationScreenState
   String placeSelected = "none"; // onSite | atHome | valet | none
   String carSelected = "none"; // hatchback | sedan | suv | truck | none
 
-  // Saved addresses & coordinates for Mobile (atHome) and Valet
+  // Saved addresses & coordinates for On-site, Mobile (atHome) and Valet
+  String? onSiteAddress = kOmeeoWashAddress;
   String? atHomeAddress;
   String? valetAddress;
+
+  LatLng? onSiteLatLng = kOmeeoWashLatLng;
   LatLng? atHomeLatLng;
   LatLng? valetLatLng;
 
-  @override
-  void initState() {
-    super.initState();
+  bool get _canContinue => placeSelected != 'none' && carSelected != 'none';
+
+  // --- Helpers ---
+  String _normalizeServiceLocation(String place) {
+    switch (place) {
+      case 'onSite':
+        return 'washing_bay';
+      case 'atHome':
+        return 'mobile';
+      case 'valet':
+        return 'valet';
+      default:
+        return 'washing_bay';
+    }
   }
 
-  bool get _canContinue => placeSelected != 'none' && carSelected != 'none';
+  Future<void> _onContinue() async {
+    if (!_canContinue) return;
+
+    // Validate address when required
+    if (placeSelected == 'atHome' && atHomeLatLng == null) {
+      // prompt to pick address
+      final res = await _showMapLocationPicker(
+        context: context,
+        title: 'Choose Mobile Service Location',
+        initialAddress: atHomeAddress,
+        initialLatLng: atHomeLatLng,
+      );
+      if (res == null) return;
+      setState(() {
+        atHomeAddress = res.address;
+        atHomeLatLng = LatLng(res.lat, res.lng);
+      });
+    } else if (placeSelected == 'valet' && valetLatLng == null) {
+      final res = await _showMapLocationPicker(
+        context: context,
+        title: 'Choose Valet Pickup Location',
+        initialAddress: valetAddress,
+        initialLatLng: valetLatLng,
+      );
+      if (res == null) return;
+      setState(() {
+        valetAddress = res.address;
+        valetLatLng = LatLng(res.lat, res.lng);
+      });
+    }
+
+    // Build location payload
+    final serviceLocation = _normalizeServiceLocation(placeSelected);
+
+    String? address;
+    LatLng? coords;
+    if (placeSelected == 'atHome') {
+      address = atHomeAddress;
+      coords = atHomeLatLng;
+    } else if (placeSelected == 'valet') {
+      address = valetAddress;
+      coords = valetLatLng;
+    } else {
+      // ✅ onSite – use our washing bay constants
+      address = onSiteAddress;
+      coords = onSiteLatLng;
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (BuildContext context) => ConfirmBooking(
+          // Forward everything needed to create the Booking + booked_times later
+          serviceType: widget.serviceType,
+          price: widget.price,
+          scheduledTime: widget.scheduledTime,
+          serviceLocation:
+              serviceLocation, // "washing_bay" | "mobile" | "valet"
+          vehicleType: carSelected, // "hatchback" | "sedan" | "suv" | "truck"
+          address: address,
+          duration: widget.duration,
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +150,10 @@ class _SelectVehicleAndLocationScreenState
       floatingActionButton: RegularButton(
         margin: const EdgeInsets.symmetric(horizontal: 10),
         height: 60,
-        onPressed: () {
-          if (!_canContinue) return;
-          // TODO: proceed to next step with: placeSelected, atHome/valet address (+coords), carSelected
-        },
+        onPressed: _canContinue ? _onContinue : null,
         borderRadius: 8,
         textWidget: CustomText(
-          text: 'Continue to Location',
+          text: 'Continue to Review',
           textColor: Theme.of(context).colorScheme.inversePrimary,
           textSize: TextSizes.heading3,
           textWeight: FontWeight.w700,
@@ -71,12 +164,12 @@ class _SelectVehicleAndLocationScreenState
           end: Alignment.centerLeft,
           colors: _canContinue
               ? const [
-                  Color.fromARGB(255, 73, 64, 241),
-                  Color.fromARGB(255, 149, 60, 237),
+                  Color.fromARGB(255, 198, 198, 198),
+                  Color.fromARGB(255, 44, 44, 44),
                 ]
-              : const [
-                  Color.fromARGB(97, 193, 193, 193),
-                  Color.fromARGB(255, 193, 193, 193),
+              : [
+                  Color.fromARGB(184, 215, 215, 215),
+                  Color.fromARGB(162, 65, 65, 65),
                 ],
         ),
       ),
@@ -96,7 +189,8 @@ class _SelectVehicleAndLocationScreenState
             ),
 
             const SizedBox(height: 10),
-            LnProgressIndicator(value: progressIndicatorValues[0]),
+            // step 3 of 4 in the flow
+            LnProgressIndicator(value: progressIndicatorValues[2]),
             const SizedBox(height: 15),
 
             Row(
@@ -137,8 +231,8 @@ class _SelectVehicleAndLocationScreenState
                 iconBgSelected: placeSelected == "onSite",
                 iconAsset: 'assets/icons/emoji_transportation.svg',
                 title: 'Visit Our Washing Bay',
-                subtitle:
-                    'Bring your vehicle to one of our professional locations',
+                // ✅ show the fixed on-site address
+                subtitle: onSiteAddress ?? 'Omeeo Car Wash • Sowutuom, Accra',
               ),
             ),
 
@@ -157,8 +251,8 @@ class _SelectVehicleAndLocationScreenState
                     : Theme.of(context).colorScheme.inversePrimary,
                 iconBgSelected: placeSelected == "atHome",
                 iconAsset: 'assets/icons/family_group.svg',
-                title: 'Mobile Service',
                 subtitle: atHomeAddress ?? "We'll come to your home or office",
+                title: 'Mobile Service',
               ),
             ),
 
@@ -295,7 +389,6 @@ class _SelectVehicleAndLocationScreenState
   /// Handle selecting a place. For 'atHome' and 'valet' we open the Map picker.
   Future<void> _handleSelectPlace(String target) async {
     if (target == 'onSite') {
-      // Toggle on-site (no map needed)
       setState(() {
         placeSelected = (placeSelected == 'onSite') ? 'none' : 'onSite';
       });
@@ -315,7 +408,6 @@ class _SelectVehicleAndLocationScreenState
     );
 
     if (result == null) {
-      // Revert selection if there was no previously saved point
       final hadExisting = target == 'atHome'
           ? (atHomeAddress != null && atHomeAddress!.trim().isNotEmpty)
           : (valetAddress != null && valetAddress!.trim().isNotEmpty);
@@ -347,42 +439,423 @@ class _SelectVehicleAndLocationScreenState
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black54,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (ctx) {
-        return _MapPickerBody(
-          title: title,
-          initialAddress: initialAddress,
-          initialLatLng: initialLatLng,
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(15), // 👈 smooth rounded corners
+          child: Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            child: _MapSearchBody(
+              title: title,
+              initialAddress: initialAddress,
+              initialLatLng: initialLatLng,
+            ),
+          ),
         );
       },
     );
   }
 }
 
-// Map picker body
-
-class _MapPickerBody extends StatefulWidget {
+// -----------------------------------------------------------------------------
+// NEW: Map Picker Container (Search + Map View) with working TypeAhead
+// -----------------------------------------------------------------------------
+class _MapSearchBody extends StatefulWidget {
   final String title;
   final String? initialAddress;
   final LatLng? initialLatLng;
 
-  const _MapPickerBody({
+  const _MapSearchBody({
     required this.title,
     this.initialAddress,
     this.initialLatLng,
   });
 
   @override
-  State<_MapPickerBody> createState() => _MapPickerBodyState();
+  State<_MapSearchBody> createState() => _MapSearchBodyState();
 }
 
-class _MapPickerBodyState extends State<_MapPickerBody> {
+class _MapSearchBodyState extends State<_MapSearchBody> {
   final TextEditingController _searchController = TextEditingController();
+
+  // Places Autocomplete session
+  final Uuid _uuid = const Uuid();
+  String _sessionToken = const Uuid().v4();
+
+  // local selected location (from search)
+  MapLocation? _searchResult;
+  bool _showMapView = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAddress != null && widget.initialAddress!.isNotEmpty) {
+      _searchController.text = widget.initialAddress!;
+    }
+  }
+
+  Future<List<_PlaceSuggestion>> _fetchSuggestions(String input) async {
+    if (input.trim().isEmpty) return [];
+    String? locationBias;
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.always ||
+          perm == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+        );
+        locationBias = "${pos.latitude},${pos.longitude}";
+      }
+    } catch (_) {}
+
+    final params = <String, String>{
+      'input': input,
+      'key': kGoogleApiKey,
+      'sessiontoken': _sessionToken,
+      'language': 'en',
+      'components': 'country:gh',
+      if (locationBias != null) 'location': locationBias,
+      if (locationBias != null) 'radius': '30000',
+    };
+
+    final uri = Uri.https(
+      'maps.googleapis.com',
+      '/maps/api/place/autocomplete/json',
+      params,
+    );
+    final res = await http.get(uri);
+
+    if (res.statusCode != 200) return [];
+    final data = json.decode(res.body);
+    if ((data['status'] ?? '') != 'OK') {
+      // fallback without country filter
+      final fallback = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/place/autocomplete/json',
+        {...params..remove('components')},
+      );
+      final res2 = await http.get(fallback);
+      if (res2.statusCode != 200) return [];
+      final data2 = json.decode(res2.body);
+      if ((data2['status'] ?? '') != 'OK') return [];
+      final List preds2 = data2['predictions'] ?? [];
+      return preds2
+          .map<_PlaceSuggestion>(
+            (p) => _PlaceSuggestion(
+              description: p['description'] ?? '',
+              placeId: p['place_id'] ?? '',
+            ),
+          )
+          .where((s) => s.placeId.isNotEmpty)
+          .toList();
+    }
+
+    final List preds = data['predictions'] ?? [];
+    return preds
+        .map<_PlaceSuggestion>(
+          (p) => _PlaceSuggestion(
+            description: p['description'] ?? '',
+            placeId: p['place_id'] ?? '',
+          ),
+        )
+        .where((s) => s.placeId.isNotEmpty)
+        .toList();
+  }
+
+  Future<_PlaceDetails?> _fetchPlaceDetail(String placeId) async {
+    final uri =
+        Uri.https('maps.googleapis.com', '/maps/api/place/details/json', {
+          'place_id': placeId,
+          'fields': 'geometry,formatted_address,name',
+          'key': kGoogleApiKey,
+          'sessiontoken': _sessionToken,
+        });
+    final res = await http.get(uri);
+    if (res.statusCode != 200) return null;
+
+    final data = json.decode(res.body);
+    if ((data['status'] ?? '') != 'OK') return null;
+
+    final result = data['result'];
+    final loc = result['geometry']?['location'];
+    if (loc == null) return null;
+
+    final lat = (loc['lat'] as num).toDouble();
+    final lng = (loc['lng'] as num).toDouble();
+    final addr =
+        (result['formatted_address'] ?? result['name'] ?? '') as String;
+
+    return _PlaceDetails(latLng: LatLng(lat, lng), address: addr);
+  }
+
+  void _openMapView({LatLng? latLng, String? address}) {
+    setState(() {
+      _showMapView = true;
+      if (latLng != null && address != null) {
+        _searchResult = MapLocation(
+          address: address,
+          lat: latLng.latitude,
+          lng: latLng.longitude,
+        );
+        _searchController.text = address;
+      }
+    });
+  }
+
+  void _confirmAndPop(MapLocation result) {
+    Navigator.pop(context, result);
+  }
+
+  void _goBackToSearch() {
+    setState(() {
+      _showMapView = false;
+      _searchResult = null;
+      _searchController.text = widget.initialAddress ?? '';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 1.0,
+      minChildSize: 1.0,
+      maxChildSize: 1.0,
+      expand: true,
+      builder: (context, scrollController) {
+        return Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                child: Row(
+                  children: [
+                    if (_showMapView)
+                      IconButton(
+                        onPressed: _goBackToSearch,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                    Expanded(
+                      child: CustomText(
+                        text: widget.title,
+                        textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                        textSize: TextSizes.subtitle1,
+                        textWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context, null),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Search Bar with suggestions
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Material(
+                        color: Theme.of(context).colorScheme.secondary,
+                        elevation: 1,
+                        borderRadius: BorderRadius.circular(8),
+                        child: TypeAheadField<_PlaceSuggestion>(
+                          suggestionsCallback: (pattern) async {
+                            if (pattern.length == 1) {
+                              // new session when user starts fresh
+                              _sessionToken = _uuid.v4();
+                            }
+                            return _fetchSuggestions(pattern);
+                          },
+                          builder: (context, controller, focusNode) =>
+                              TextField(
+                                controller: _searchController,
+                                focusNode: focusNode,
+                                decoration: InputDecoration(
+                                  hintText: 'Search for a new location...',
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 12,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  controller.text = val;
+                                  controller.selection =
+                                      TextSelection.fromPosition(
+                                        TextPosition(offset: val.length),
+                                      );
+                                },
+                              ),
+                          itemBuilder: (context, suggestion) {
+                            return ListTile(
+                              dense: true,
+                              title: Text(
+                                suggestion.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                          emptyBuilder: (context) => const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: Text('No places found'),
+                          ),
+                          onSelected: (suggestion) async {
+                            _searchController.text = suggestion.description;
+                            FocusScope.of(context).unfocus();
+
+                            final details = await _fetchPlaceDetail(
+                              suggestion.placeId,
+                            );
+                            if (details == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not get coordinates.'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (_showMapView) {
+                              await _searchResultMapKey.currentState?._moveTo(
+                                details.latLng,
+                              );
+                            } else {
+                              _openMapView(
+                                latLng: details.latLng,
+                                address: details.address,
+                              );
+                            }
+                          },
+                          decorationBuilder: (context, child) => Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(.2),
+                              ),
+                            ),
+                            child: child,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _openMapView(
+                        latLng: widget.initialLatLng,
+                        address: _searchController.text.isNotEmpty
+                            ? _searchController.text
+                            : widget.initialAddress,
+                      ),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(
+                          child: Transform.scale(
+                            scale: 2,
+                            child: Image.asset(
+                              'assets/images/pick_location.png',
+                              width: 24,
+                              height: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Map or Search placeholder
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _showMapView
+                        ? _MapPickerMapBody(
+                            key: _searchResultMapKey,
+                            initialLatLng:
+                                _searchResult?.toLatLng() ??
+                                widget.initialLatLng,
+                            initialAddress:
+                                _searchResult?.address ?? widget.initialAddress,
+                            onConfirm: _confirmAndPop,
+                          )
+                        : _buildInitialSearchUI(scrollController),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInitialSearchUI(ScrollController scrollController) {
+    return SingleChildScrollView(
+      controller: scrollController,
+      padding: const EdgeInsets.only(top: 20),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.location_on_outlined,
+              size: 50,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 10),
+            CustomText(
+              text: "Search a place or tap the map icon to drop a pin.",
+              textSize: TextSizes.bodyText1,
+              textColor: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+final GlobalKey<_MapPickerMapBodyState> _searchResultMapKey = GlobalKey();
+
+// -----------------------------------------------------------------------------
+// Map View
+// -----------------------------------------------------------------------------
+class _MapPickerMapBody extends StatefulWidget {
+  final LatLng? initialLatLng;
+  final String? initialAddress;
+  final Function(MapLocation) onConfirm;
+
+  const _MapPickerMapBody({
+    super.key,
+    this.initialLatLng,
+    this.initialAddress,
+    required this.onConfirm,
+  });
+
+  @override
+  State<_MapPickerMapBody> createState() => _MapPickerMapBodyState();
+}
+
+class _MapPickerMapBodyState extends State<_MapPickerMapBody> {
   LatLng? selectedLatLng;
   String currentAddress = '';
   GoogleMapController? mapController;
@@ -392,19 +865,12 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
     super.initState();
     selectedLatLng = widget.initialLatLng;
     currentAddress = widget.initialAddress ?? '';
-
-    if (currentAddress.isNotEmpty) {
-      _searchController.text = currentAddress;
+    if (selectedLatLng != null && currentAddress.isEmpty) {
+      _moveTo(selectedLatLng!, animate: false);
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _moveTo(LatLng latLng) async {
+  Future<void> _moveTo(LatLng latLng, {bool animate = true}) async {
     selectedLatLng = latLng;
     String newAddress = '';
     try {
@@ -420,7 +886,7 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
           p.locality,
           p.administrativeArea,
           p.country,
-        ].where((e) => e != null && e!.trim().isNotEmpty).join(', ');
+        ].where((e) => e != null && e.trim().isNotEmpty).join(', ');
       } else {
         newAddress =
             'Dropped Pin (${latLng.latitude.toStringAsFixed(5)}, ${latLng.longitude.toStringAsFixed(5)})';
@@ -434,7 +900,7 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
       currentAddress = newAddress;
     });
 
-    if (mapController != null) {
+    if (mapController != null && animate) {
       await mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(target: latLng, zoom: 16),
@@ -443,15 +909,8 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
     }
   }
 
-  // 1. New method to zoom in
-  void _zoomIn() {
-    mapController?.animateCamera(CameraUpdate.zoomIn());
-  }
-
-  // 2. New method to zoom out
-  void _zoomOut() {
-    mapController?.animateCamera(CameraUpdate.zoomOut());
-  }
+  void _zoomIn() => mapController?.animateCamera(CameraUpdate.zoomIn());
+  void _zoomOut() => mapController?.animateCamera(CameraUpdate.zoomOut());
 
   Future<void> _useCurrentLocation() async {
     LocationPermission perm = await Geolocator.checkPermission();
@@ -492,295 +951,149 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
           )
         : null;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.86,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-              colors: [Color(0xFFE8E3FF), Color(0xFFF1E1FF)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    return Column(
+      children: [
+        // Address display
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).textTheme.headlineLarge?.color,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CustomText(
-                        text: widget.title,
-                        textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                        textSize: TextSizes.subtitle1,
-                        textWeight: FontWeight.w700,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context, null),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ),
+          child: Text(
+            currentAddress.isEmpty
+                ? 'Tap on the map or search above'
+                : currentAddress,
+            style: Theme.of(context).textTheme.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 10),
 
-              // Places search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).textTheme.headlineLarge?.color,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.inversePrimary,
-                      width: 1,
-                    ),
+        // Use current location
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _useCurrentLocation,
+            icon: Icon(
+              Icons.my_location,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            label: const Text('Use current location'),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Map
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    // ✅ default to the washing bay if nothing provided
+                    target: widget.initialLatLng ?? kOmeeoWashLatLng,
+                    zoom: 14,
                   ),
-                  child: GooglePlaceAutoCompleteTextField(
-                    // FIX 2: Pass the declared controller
-                    textEditingController: _searchController,
-                    googleAPIKey: kGoogleApiKey,
-
-                    language: 'en',
-
-                    // FIX 3: Use the correct 'countries' property
-                    countries: const ["gh"],
-
-                    // ESSENTIAL: Set to true to enable lat/lng retrieval
-                    isLatLngRequired: true,
-
-                    // This boxDecoration affects the autocomplete suggestion box, not the TextField.
-                    boxDecoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-
-                    inputDecoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                      ),
-                      hintText: 'Search for a new location...',
-                      border: InputBorder.none,
-                      icon: Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Icon(
-                          Icons.search,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-
-                    // FIX 4: Use getPlaceDetailWithLatLng for reliable coordinates
-                    getPlaceDetailWithLatLng: (Prediction prediction) async {
-                      final lat = double.tryParse(prediction.lat ?? '');
-                      final lng = double.tryParse(prediction.lng ?? '');
-
-                      if (lat != null && lng != null) {
-                        final latLng = LatLng(lat, lng);
-                        await _moveTo(latLng);
-                        // Update the text field with the selected description
-                        _searchController.text = prediction.description ?? '';
-                        setState(() {});
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Could not get coordinates for selected place.',
-                            ),
-                          ),
-                        );
-                      }
-                    },
-
-                    // We also need to set the itemClick callback
-                    itemClick: (Prediction prediction) {
-                      // This runs first when an item is clicked. We use it to populate the text field.
-                      _searchController.text = prediction.description ?? '';
-                      _searchController.selection = TextSelection.fromPosition(
-                        TextPosition(
-                          offset: prediction.description?.length ?? 0,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Address display
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).textTheme.headlineLarge?.color,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    currentAddress.isEmpty
-                        ? 'Tap the map to drop a pin'
-                        : currentAddress,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Use current location
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _useCurrentLocation,
-                    icon: Icon(
-                      Icons.my_location,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    label: const Text('Use current location'),
-                  ),
-                ),
-              ),
-
-              // Map
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    // 3. Use Stack to overlay buttons on the map
-                    child: Stack(
-                      children: [
-                        GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target:
-                                widget.initialLatLng ??
-                                const LatLng(5.614818, -0.205874),
-                            zoom: 14,
-                          ),
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
-                          // Keep zoom controls disabled for custom buttons
-                          zoomControlsEnabled: false,
-                          onMapCreated: (c) => mapController = c,
-                          onTap: (latLng) async {
-                            await _moveTo(latLng);
-                            setState(() {});
-                          },
-                          markers: {if (selectedMarker != null) selectedMarker},
-                          // 💡 THE FIX: Allow vertical drag gestures to be handled by the map
-                          // even though a parent widget (DraggableScrollableSheet) also wants them.
-                          gestureRecognizers:
-                              <Factory<OneSequenceGestureRecognizer>>{
-                                Factory<OneSequenceGestureRecognizer>(
-                                  () => EagerGestureRecognizer(),
-                                ),
-                                Factory<PanGestureRecognizer>(
-                                  () => PanGestureRecognizer(),
-                                ),
-                                Factory<VerticalDragGestureRecognizer>(
-                                  () => VerticalDragGestureRecognizer(),
-                                ),
-                              },
-                        ),
-
-                        // 4. Custom Zoom Buttons
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: Column(
-                            children: [
-                              Transform.scale(
-                                scale: 0.7,
-                                child: FloatingActionButton.small(
-                                  heroTag: 'zoom_in',
-                                  onPressed: _zoomIn,
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  child: const Icon(Icons.add),
-                                ),
-                              ),
-
-                              Transform.scale(
-                                scale: 0.7,
-                                child: FloatingActionButton.small(
-                                  heroTag: 'zoom_out',
-                                  onPressed: _zoomOut,
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  child: const Icon(Icons.remove),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Confirm
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: RegularButton(
-                  onPressed: () {
-                    if (selectedLatLng == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please drop a pin on the map.'),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.pop(
-                      context,
-                      MapLocation(
-                        address: currentAddress.isEmpty
-                            ? 'Dropped Pin'
-                            : currentAddress,
-                        lat: selectedLatLng!.latitude,
-                        lng: selectedLatLng!.longitude,
-                      ),
-                    );
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: false,
+                  onMapCreated: (c) => mapController = c,
+                  onTap: (latLng) async {
+                    await _moveTo(latLng);
+                    setState(() {});
                   },
-                  borderRadius: 8,
-                  textWidget: CustomText(
-                    text: 'Confirm Location',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.heading3,
-                    textWeight: FontWeight.w700,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 10,
-                  ),
-                  gradient: const LinearGradient(
-                    begin: Alignment.centerRight,
-                    end: Alignment.centerLeft,
-                    colors: [
-                      Color.fromARGB(255, 73, 64, 241),
-                      Color.fromARGB(255, 149, 60, 237),
+                  markers: {if (selectedMarker != null) selectedMarker},
+                  // Allow map gestures inside bottom sheet
+                  gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                    Factory<OneSequenceGestureRecognizer>(
+                      () => EagerGestureRecognizer(),
+                    ),
+                    Factory<PanGestureRecognizer>(() => PanGestureRecognizer()),
+                    Factory<VerticalDragGestureRecognizer>(
+                      () => VerticalDragGestureRecognizer(),
+                    ),
+                  },
+                ),
+
+                // Custom Zoom Buttons
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Column(
+                    children: [
+                      Transform.scale(
+                        scale: 0.7,
+                        child: FloatingActionButton.small(
+                          heroTag: 'zoom_in_map',
+                          onPressed: _zoomIn,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          child: const Icon(Icons.add),
+                        ),
+                      ),
+                      Transform.scale(
+                        scale: 0.7,
+                        child: FloatingActionButton.small(
+                          heroTag: 'zoom_out_map',
+                          onPressed: _zoomOut,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
+                          child: const Icon(Icons.remove),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Confirm Button
+        RegularButton(
+          onPressed: () {
+            if (selectedLatLng == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please drop a pin on the map.')),
+              );
+              return;
+            }
+            widget.onConfirm(
+              MapLocation(
+                address: currentAddress.isEmpty
+                    ? 'Dropped Pin'
+                    : currentAddress,
+                lat: selectedLatLng!.latitude,
+                lng: selectedLatLng!.longitude,
               ),
+            );
+          },
+          borderRadius: 8,
+          textWidget: CustomText(
+            text: 'Confirm Location',
+            textColor: Theme.of(context).textTheme.headlineLarge?.color,
+            textSize: TextSizes.heading3,
+            textWeight: FontWeight.w700,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+          gradient: const LinearGradient(
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+            colors: [
+              Color.fromARGB(255, 198, 198, 198),
+              Color.fromARGB(255, 44, 44, 44),
             ],
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }
@@ -791,10 +1104,24 @@ class MapLocation {
   final double lat;
   final double lng;
   MapLocation({required this.address, required this.lat, required this.lng});
+
+  LatLng toLatLng() => LatLng(lat, lng);
 }
 
-// Presentational tiles
+// Suggestion + Details models (for TypeAhead + Details)
+class _PlaceSuggestion {
+  final String description;
+  final String placeId;
+  _PlaceSuggestion({required this.description, required this.placeId});
+}
 
+class _PlaceDetails {
+  final LatLng latLng;
+  final String address;
+  _PlaceDetails({required this.latLng, required this.address});
+}
+
+// Presentational tiles (unchanged)
 class _PlaceTile extends StatelessWidget {
   final bool selected;
   final Color borderColor;
@@ -822,12 +1149,12 @@ class _PlaceTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(width: 2, color: borderColor),
         color: fillColor,
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color.fromARGB(26, 0, 0, 0),
+            color: Theme.of(context).colorScheme.shadow,
             blurRadius: 12,
             spreadRadius: 2,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -841,7 +1168,7 @@ class _PlaceTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: iconBgSelected
                   ? Theme.of(context).colorScheme.inversePrimary
-                  : Theme.of(context).colorScheme.secondary,
+                  : Theme.of(context).colorScheme.onSecondary,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Transform.scale(
@@ -914,12 +1241,12 @@ class _CarTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(width: 2, color: borderColor),
         color: fillColor,
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color.fromARGB(26, 0, 0, 0),
+            color: Theme.of(context).colorScheme.shadow,
             blurRadius: 12,
             spreadRadius: 2,
-            offset: Offset(0, 6),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -933,7 +1260,7 @@ class _CarTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: iconBgSelected
                   ? Theme.of(context).colorScheme.inversePrimary
-                  : Theme.of(context).colorScheme.secondary,
+                  : Theme.of(context).colorScheme.onSecondary,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Transform.scale(

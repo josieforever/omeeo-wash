@@ -129,10 +129,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         child: Switch(
           value: value,
           onChanged: (val) => _updateNotificationSetting(keyName, val),
-          activeColor: CupertinoColors.white,
+          activeColor: Theme.of(context).colorScheme.inversePrimary,
           activeTrackColor: CupertinoColors.systemGreen,
           inactiveTrackColor: const Color.fromARGB(255, 78, 78, 81),
-          inactiveThumbColor: CupertinoColors.white,
+          inactiveThumbColor: Theme.of(context).colorScheme.inversePrimary,
         ),
       ),
     );

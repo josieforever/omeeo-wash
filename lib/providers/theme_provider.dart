@@ -17,14 +17,16 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get lightTheme => ThemeData(
     fontFamily: 'Poppins',
     brightness: Brightness.light,
-    scaffoldBackgroundColor: Color.fromARGB(255, 233, 233, 233),
+    scaffoldBackgroundColor: Color.fromARGB(255, 255, 255, 255),
     colorScheme: ColorScheme.light(
-      primary: Colors.black,
+      primary: Colors.black87,
       inversePrimary: Colors.white,
-      secondary: Color.fromARGB(255, 214, 214, 214),
+      secondary: Color.fromARGB(255, 231, 231, 231),
+      onSecondary: Color.fromARGB(255, 243, 243, 243),
       tertiary: Color.fromARGB(255, 150, 150, 150),
       surface: Color.fromARGB(255, 85, 85, 85),
       scrim: Color.fromARGB(175, 203, 199, 205),
+      shadow: Color.fromARGB(57, 160, 160, 160),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(color: AppColors.white),

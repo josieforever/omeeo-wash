@@ -209,7 +209,10 @@ class AddressesMiddleBar extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.only(left: 20),
                     color: Colors.red,
-                    child: const Icon(Icons.delete, color: Colors.white),
+                    child: Icon(
+                      Icons.delete,
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
                   ),
                   confirmDismiss: (_) async {
                     return await showDialog<bool>(
@@ -312,7 +315,7 @@ class LocationButton extends StatelessWidget {
         color: Theme.of(context).textTheme.headlineLarge?.color,
         boxShadow: [
           BoxShadow(
-            color: Color.fromARGB(26, 12, 0, 235),
+            color: Theme.of(context).colorScheme.shadow,
             blurRadius: 12,
             spreadRadius: 2,
             offset: const Offset(0, 6), // x, y
@@ -470,10 +473,14 @@ class NoAddressBookScreen extends StatelessWidget {
 
             child: Column(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 35,
                   backgroundColor: Color(0xFF9A5DF1),
-                  child: Icon(Icons.location_on, color: Colors.white, size: 35),
+                  child: Icon(
+                    Icons.location_on,
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                    size: 35,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -546,7 +553,7 @@ class NoAddressBookScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.inversePrimary,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(

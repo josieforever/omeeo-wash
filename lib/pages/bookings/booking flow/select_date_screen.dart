@@ -1,16 +1,26 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/helpers/miscellaneous.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/select_vehicle_size_and_location_screen.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
+import 'package:omeeowash/pages/bookings/booking flow/common_widgets.dart';
+import 'package:omeeowash/pages/bookings/booking flow/select_vehicle_size_and_location_screen.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class SelectDateScreen extends StatefulWidget {
-  final String? serviceType;
-  const SelectDateScreen({super.key, this.serviceType});
+  final int duration;
+  final String? serviceType; // e.g. express | standard | premium
+  final double? price; // optional price from previous step
+  // Availability filter (only for showing booked/available in this step)
+  final String serviceLocation; // "washing_bay" | "mobile" | "valet"
+  const SelectDateScreen({
+    super.key,
+    this.serviceType,
+    this.price,
+    this.serviceLocation = 'washing_bay',
+    required this.duration, // default for availability filtering
+  });
 
   @override
   State<SelectDateScreen> createState() => _SelectDateScreenState();
@@ -18,66 +28,178 @@ class SelectDateScreen extends StatefulWidget {
 
 class _SelectDateScreenState extends State<SelectDateScreen> {
   String serviceType = "none";
+  double? price;
 
-  // Make date nullable so we can "deselect".
+  // Date & time selections
   DateTime? pickedDate;
-  String? selectedTime; // track currently selected time label
-  bool _hasPickedDate = false; // controls when times appear
+  String? selectedTimeLabel; // "08:30 AM" (UI)
+  String? _selectedHhmm; // "0830" (key we compute)
+  bool _hasPickedDate = false;
 
-  // sample times
-  final List<Map<String, dynamic>> availableTimes = [
-    {"time": "08:00 AM", "isSelected": false, "isBooked": true},
-    {"time": "08:30 AM", "isSelected": false, "isBooked": false},
-    {"time": "09:00 AM", "isSelected": false, "isBooked": false},
-    {"time": "09:30 AM", "isSelected": false, "isBooked": false},
-    {"time": "10:00 AM", "isSelected": false, "isBooked": false},
-    {"time": "10:30 AM", "isSelected": false, "isBooked": false},
-    {"time": "11:00 AM", "isSelected": false, "isBooked": false},
-    {"time": "11:30 AM", "isSelected": false, "isBooked": true},
-    {"time": "12:00 PM", "isSelected": false, "isBooked": false},
-    {"time": "12:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "01:00 PM", "isSelected": false, "isBooked": false},
-    {"time": "01:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "02:00 PM", "isSelected": false, "isBooked": false},
-    {"time": "02:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "03:00 PM", "isSelected": false, "isBooked": true},
-    {"time": "03:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "04:00 PM", "isSelected": false, "isBooked": false},
-    {"time": "04:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "05:00 PM", "isSelected": false, "isBooked": false},
-    {"time": "05:30 PM", "isSelected": false, "isBooked": false},
-    {"time": "06:00 PM", "isSelected": false, "isBooked": false},
-  ];
+  // live Firestore subscription for booked slots
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _bookedSub;
+
+  // generated slots for the chosen date (with booked status)
+  List<_SlotVM> _slots = [];
+  bool _loadingSlots = false;
+
+  // Service durations (optional)
+  final Map<String, String> serviceDurations = const {
+    "express": "10 min",
+    "standard": "30 min",
+    "premium": "120 min",
+  };
+
+  // Business hours (adjust if needed)
+  static const int _startMin = 8 * 60; // 08:00
+  static const int _endMin = 18 * 60; // 18:00
+  static const int _stepMin = 30; // every 30 minutes
 
   @override
   void initState() {
     super.initState();
-    if (widget.serviceType != null) {
+    if (widget.serviceType != null && widget.serviceType!.trim().isNotEmpty) {
       serviceType = widget.serviceType!;
     }
+    price = widget.price;
+  }
+
+  @override
+  void dispose() {
+    _bookedSub?.cancel();
+    super.dispose();
+  }
+
+  bool get canContinue => pickedDate != null && selectedTimeLabel != null;
+
+  String get dateTitle =>
+      pickedDate == null ? '' : DateFormat('MMMM d, y').format(pickedDate!);
+
+  /// Build DateTime from picked date + the selected "hh:mm a" label.
+  DateTime? _composeScheduledDateTime() {
+    if (pickedDate == null || selectedTimeLabel == null) return null;
+    final t = DateFormat('hh:mm a').parse(selectedTimeLabel!);
+    return DateTime(
+      pickedDate!.year,
+      pickedDate!.month,
+      pickedDate!.day,
+      t.hour,
+      t.minute,
+    );
+  }
+
+  void _goNext() {
+    if (!canContinue) return;
+    final scheduled = _composeScheduledDateTime();
+    if (scheduled == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (BuildContext context) => SelectVehicleAndLocationScreen(
+          serviceType: serviceType, // "express" | "standard" | "premium"
+          price: price,
+          scheduledTime: scheduled,
+          duration: widget.duration,
+          // Note: actual serviceLocation will be chosen next screen.
+        ),
+      ),
+    );
+  }
+
+  // --- Availability: Firestore integration ---
+
+  // Generate list of hhmm keys between start/end by step
+  List<String> _generateHhmmKeys() {
+    final keys = <String>[];
+    for (int m = _startMin; m <= _endMin; m += _stepMin) {
+      final h = (m ~/ 60).toString().padLeft(2, '0');
+      final mm = (m % 60).toString().padLeft(2, '0');
+      keys.add('$h$mm'); // e.g., "0830"
+    }
+    return keys;
+  }
+
+  String _toLabel(String hhmm) {
+    final h = int.parse(hhmm.substring(0, 2));
+    final m = int.parse(hhmm.substring(2, 4));
+    final dt = DateTime(0, 1, 1, h, m);
+    return DateFormat('hh:mm a').format(dt); // "08:30 AM"
+  }
+
+  Future<void> _onPickDate(DateTime? date) async {
+    _bookedSub?.cancel();
+    setState(() {
+      pickedDate = date;
+      _hasPickedDate = date != null;
+      selectedTimeLabel = null;
+      _selectedHhmm = null;
+      _slots = [];
+    });
+
+    if (date == null) return;
+
+    setState(() => _loadingSlots = true);
+
+    final dateKey = DateFormat('yyyy-MM-dd').format(date);
+    final location = widget.serviceLocation; // e.g., "washing_bay"
+
+    // 🔁 Only filter by date (avoids needing a composite index); filter location client-side
+    final q = FirebaseFirestore.instance
+        .collection('booked_times')
+        .where('date', isEqualTo: dateKey);
+
+    _bookedSub = q.snapshots().listen(
+      (snap) {
+        final booked = snap.docs
+            .where((d) => (d.data()['location'] as String?) == location)
+            .map((d) => (d.data()['hhmm'] as String?) ?? '')
+            .where((s) => s.isNotEmpty)
+            .toSet();
+
+        final keys = _generateHhmmKeys();
+        final slots = keys
+            .map(
+              (k) => _SlotVM(
+                hhmm: k,
+                label: _toLabel(k),
+                isBooked: booked.contains(k),
+              ),
+            )
+            .toList();
+
+        setState(() {
+          _slots = slots; // if booked.isEmpty → all available
+          _loadingSlots = false;
+        });
+      },
+      onError: (_) {
+        // 👇 Fallback: show all times as available so the UI still works
+        final keys = _generateHhmmKeys();
+        setState(() {
+          _slots = keys
+              .map((k) => _SlotVM(hhmm: k, label: _toLabel(k), isBooked: false))
+              .toList();
+          _loadingSlots = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Using offline availability')),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool canContinue = pickedDate != null && selectedTime != null;
-    final String dateTitle = pickedDate == null
-        ? ''
-        : DateFormat('MMMM d, y').format(pickedDate!);
+    final bool disabled = !canContinue;
+    final String duration =
+        serviceDurations[serviceType] ?? "60 min"; // fallback
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: RegularButton(
         margin: const EdgeInsets.symmetric(horizontal: 10),
         height: 60,
-        onPressed: () {
-          if (!canContinue) return;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (BuildContext context) =>
-                  const SelectVehicleAndLocationScreen(),
-            ),
-          );
-        },
+        onPressed: disabled ? null : _goNext,
         borderRadius: 8,
         textWidget: CustomText(
           text: 'Continue to Location',
@@ -89,14 +211,14 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
         gradient: LinearGradient(
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
-          colors: canContinue
+          colors: disabled
               ? const [
-                  Color.fromARGB(255, 198, 198, 198),
-                  Color.fromARGB(255, 44, 44, 44),
-                ]
-              : [
                   Color.fromARGB(184, 215, 215, 215),
                   Color.fromARGB(162, 65, 65, 65),
+                ]
+              : const [
+                  Color.fromARGB(255, 198, 198, 198),
+                  Color.fromARGB(255, 44, 44, 44),
                 ],
         ),
       ),
@@ -143,7 +265,7 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
 
             const SizedBox(height: 15),
 
-            // Calendar (simulate deselect by toggling pickedDate nullable)
+            // Calendar (toggleable selection)
             Container(
               height: 300,
               margin: const EdgeInsets.symmetric(horizontal: 30),
@@ -170,7 +292,6 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                     removeTop: true,
                     removeBottom: true,
                     child: Theme(
-                      // 👉 Only override the selection color if a date is picked
                       data: _hasPickedDate
                           ? Theme.of(context).copyWith(
                               colorScheme: Theme.of(context).colorScheme
@@ -183,36 +304,30 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                                     ).colorScheme.primary,
                                   ),
                             )
-                          : Theme.of(
-                              context,
-                            ), // default app colors (no purple override)
+                          : Theme.of(context),
                       child: CalendarDatePicker(
                         key: ValueKey(
                           '${_hasPickedDate}_${pickedDate?.toIso8601String() ?? "none"}',
-                        ), // forces rebuild when toggle/deselect
+                        ),
                         initialDate: pickedDate ?? DateTime.now(),
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 60)),
                         selectableDayPredicate: (day) => true,
                         onDateChanged: (date) {
-                          setState(() {
-                            if (pickedDate != null &&
-                                DateUtils.isSameDay(pickedDate!, date)) {
-                              // deselect same day
+                          if (pickedDate != null &&
+                              DateUtils.isSameDay(pickedDate!, date)) {
+                            // deselect
+                            _bookedSub?.cancel();
+                            setState(() {
                               pickedDate = null;
                               _hasPickedDate = false;
-                              selectedTime = null;
-                              for (var t in availableTimes)
-                                t['isSelected'] = false;
-                            } else {
-                              // select new day
-                              pickedDate = date;
-                              _hasPickedDate = true;
-                              selectedTime = null;
-                              for (var t in availableTimes)
-                                t['isSelected'] = false;
-                            }
-                          });
+                              selectedTimeLabel = null;
+                              _selectedHhmm = null;
+                              _slots = [];
+                            });
+                          } else {
+                            _onPickDate(date);
+                          }
                         },
                       ),
                     ),
@@ -221,7 +336,7 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
               ),
             ),
 
-            // Smoothly reveal the Available Times section AFTER picking a date
+            // Times after date picked
             const SizedBox(height: 10),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
@@ -287,69 +402,70 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                         const SizedBox(height: 10),
 
                         // Time grid
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 15),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              const double spacing = 10.0;
-                              const double runSpacing = 10.0;
-                              const double targetTileWidth = 120;
+                        if (_loadingSlots)
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 15),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                const double spacing = 10.0;
+                                const double runSpacing = 10.0;
+                                const double targetTileWidth = 120;
 
-                              int columns =
-                                  (constraints.maxWidth / targetTileWidth)
-                                      .floor()
-                                      .clamp(2, 4);
+                                int columns =
+                                    (constraints.maxWidth / targetTileWidth)
+                                        .floor()
+                                        .clamp(2, 4);
+                                final double totalSpacing =
+                                    spacing * (columns - 1);
+                                final double itemWidth =
+                                    (constraints.maxWidth - totalSpacing) /
+                                    columns;
 
-                              final double totalSpacing =
-                                  spacing * (columns - 1);
-                              final double itemWidth =
-                                  (constraints.maxWidth - totalSpacing) /
-                                  columns;
-
-                              return Wrap(
-                                spacing: spacing,
-                                runSpacing: runSpacing,
-                                children: [
-                                  for (var time in availableTimes)
-                                    SizedBox(
-                                      width: itemWidth,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          if (time['isBooked'] == true) {
-                                            return; // locked
-                                          }
-                                          setState(() {
-                                            for (var t in availableTimes) {
-                                              t['isSelected'] = false;
-                                            }
-                                            time['isSelected'] = true;
-                                            selectedTime =
-                                                time['time'] as String;
-                                          });
-                                        },
-                                        child: _TimeTile(
-                                          label: time['time'] as String,
-                                          isSelected:
-                                              time['isSelected'] as bool,
-                                          isBooked: time['isBooked'] as bool,
-                                          selectedFill: Theme.of(
-                                            context,
-                                          ).colorScheme.surface,
+                                return Wrap(
+                                  spacing: spacing,
+                                  runSpacing: runSpacing,
+                                  children: [
+                                    for (final slot in _slots)
+                                      SizedBox(
+                                        width: itemWidth,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (slot.isBooked) return;
+                                            setState(() {
+                                              _selectedHhmm = slot.hhmm;
+                                              selectedTimeLabel = slot.label;
+                                            });
+                                          },
+                                          child: _TimeTile(
+                                            label: slot.label,
+                                            isSelected:
+                                                _selectedHhmm == slot.hhmm,
+                                            isBooked: slot.isBooked,
+                                            selectedFill: Theme.of(
+                                              context,
+                                            ).colorScheme.surface,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                ],
-                              );
-                            },
+                                  ],
+                                );
+                              },
+                            ),
                           ),
-                        ),
                       ],
                     )
                   : const SizedBox.shrink(key: ValueKey('empty')),
             ),
+
             const SizedBox(height: 20),
+            // Summary box (dynamic)
             Container(
-              padding: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(7),
                 border: Border.all(
@@ -369,7 +485,10 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                           context,
                         ).textTheme.bodyMedium!.color!,
                       ),
-                      CustomText(text: '60 min', textWeight: FontWeight.bold),
+                      CustomText(
+                        text: serviceDurations[serviceType] ?? '60 min',
+                        textWeight: FontWeight.bold,
+                      ),
                     ],
                   ),
                   Row(
@@ -382,11 +501,29 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                         ).textTheme.bodyMedium!.color!,
                       ),
                       CustomText(
-                        text: 'Premium Detail',
+                        text: _displayServiceName(serviceType),
                         textWeight: FontWeight.bold,
                       ),
                     ],
                   ),
+                  if (price != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CustomText(
+                          text: 'Estimated Price',
+                          textColor: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium!.color!,
+                        ),
+                        CustomText(
+                          text: '${price!.toStringAsFixed(0)}',
+                          textWeight: FontWeight.bold,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -395,6 +532,19 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
         ),
       ),
     );
+  }
+
+  String _displayServiceName(String type) {
+    switch (type) {
+      case 'express':
+        return 'Express Wash';
+      case 'standard':
+        return 'Standard Wash';
+      case 'premium':
+        return 'Premium Detail';
+      default:
+        return 'Not selected';
+    }
   }
 
   Widget _legendDot({
@@ -424,6 +574,17 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
   }
 }
 
+class _SlotVM {
+  final String hhmm; // "0830"
+  final String label; // "08:30 AM"
+  final bool isBooked;
+  const _SlotVM({
+    required this.hhmm,
+    required this.label,
+    required this.isBooked,
+  });
+}
+
 class _TimeTile extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -442,9 +603,7 @@ class _TimeTile extends StatelessWidget {
     final borderColor = isSelected
         ? Theme.of(context).textTheme.headlineLarge!.color!
         : Theme.of(context).textTheme.bodySmall!.color!;
-
     final bgColor = isSelected ? selectedFill : Colors.transparent;
-
     final textColor = isSelected
         ? Theme.of(context).textTheme.headlineLarge?.color
         : Theme.of(context).textTheme.labelSmall?.color;
@@ -483,11 +642,3 @@ class _TimeTile extends StatelessWidget {
     );
   }
 }
-
-/* void killer({required String name, required double age}) {
-  const String water = "Poison";
-  // ignore: avoid_print
-  print("Please drink this $water, it does not contain any poison");
-
-  .
-} */

@@ -169,7 +169,7 @@ class SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppTheme.of(context).colorScheme.inversePrimary,
       body: Center(
         child: Lottie.asset(
           'assets/animations/omeeo_wash_black_stripes.json',
