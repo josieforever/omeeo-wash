@@ -5,6 +5,7 @@ import 'package:omeeowash/pages/bookings/booking%20flow/services_screen.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -35,7 +36,7 @@ class HomeScreenTopBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Color.fromARGB(60, 0, 0, 0),
+            color: Theme.of(context).colorScheme.shadow,
             blurRadius: 12,
             spreadRadius: 2,
             offset: const Offset(0, 6), // x, y
@@ -116,7 +117,7 @@ class HomeScreenTopBar extends StatelessWidget {
                   borderRadius: 25,
                   lottieAsset:
                       "assets/animations/floating_black.json", // 👈 your Lottie file
-                  /*  border: Border.all(color: Colors.white, width: 2), */
+                  /*  border: Border.all(color: Theme.of(context).colorScheme.inversePrimary, width: 2), */
                 ),
               ),
             ],
@@ -138,6 +139,16 @@ class HomeScreenMiddleSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 10),
+
+          RewardsPointsCard(
+            currentPoints: 850,
+            nextThreshold: 1000,
+            // Optional:
+            // title: 'Rewards Points',
+            // encouragingText: "You're doing great!",
+          ),
+
           const SizedBox(height: 10),
           CustomText(
             text: 'Our Services',
@@ -678,47 +689,26 @@ class HomeScreenMiddleSection extends StatelessWidget {
                 textWeight: FontWeight.w900,
               ),
               const SizedBox(height: 5),
-              Row(
-                children: [
-                  Expanded(
-                    child: LocationTab(
-                      textWidget1: 'Omeeo Wash',
-                      textWidget3: '0.8 mi away',
-                      icon: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      scale: 1.5,
-                      onPressed: () {},
-                      stars: '4.9',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: LocationTab(
-                      textWidget1: 'Omeeo Wash',
-                      textWidget3: '0.8 mi away',
-                      icon: Icon(
-                        Icons.location_on,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      scale: 1.5,
-                      onPressed: () {},
-                      stars: '4.9',
-                    ),
-                  ),
-                ],
+              StationCard(
+                title: 'Omeeo Car wash',
+                address: 'Israel teikofio street, Sowutuom, Accra',
+                rating: 5.0,
+                reviews: 10,
+                isOpen: true,
+                openLabel: 'Open until 8:00 PM',
+                phone: '+233557112580',
+                lat: 5.6289516,
+                lng: -0.2701519,
               ),
+
               const SizedBox(height: 20),
-              PromoButtom(
-                padding: EdgeInsets.all(15),
-                textWidget1: CustomText(text: 'First Wash Free!'),
-                textWidget2: CustomText(
-                  text: 'New customers get their first basic wash on us',
-                  textSize: TextSizes.bodyText2,
-                ),
-                onPressed: () {},
-                borderRadius: 20,
+              PromoBannerCard(
+                title: 'First Wash Free!',
+                badgeText: 'New Customers',
+                subtitle: 'First standard wash on us',
+                onPressed: () {
+                  // navigate to offer, open sheet, etc.
+                },
               ),
               const SizedBox(height: 10),
             ],
@@ -854,189 +844,6 @@ class ServiceTabExpanded extends StatelessWidget {
   }
 }
 
-class LocationTab extends StatelessWidget {
-  final String textWidget1;
-  final String? animation;
-  final String? textWidget2;
-  final String textWidget3;
-  final String? price;
-  final String? stars;
-  final Icon? icon;
-  final SvgPicture? svg;
-  final double? scale;
-  final VoidCallback onPressed;
-  final bool isSelected;
-  const LocationTab({
-    super.key,
-    required this.textWidget1,
-    this.textWidget2,
-    required this.textWidget3,
-    this.price,
-    this.icon,
-    required this.onPressed,
-    this.stars,
-    this.animation,
-    this.scale,
-    this.svg,
-    this.isSelected = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          color: isSelected
-              ? AppColors.pink
-              : Theme.of(context).colorScheme.inversePrimary,
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromARGB(26, 12, 0, 235),
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 6), // x, y
-            ),
-          ],
-        ),
-        padding: EdgeInsets.all(10),
-
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color.fromARGB(196, 235, 204, 255)
-                            : Theme.of(context).colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Transform.scale(
-                        scale: scale,
-                        child: Center(child: icon ?? svg),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomText(
-                      text: textWidget1,
-                      textColor: isSelected
-                          ? AppColors.white
-                          : Theme.of(context).textTheme.bodyLarge?.color,
-                      textSize: TextSizes.bodyText1,
-                      textWeight: FontWeight.bold,
-                    ),
-
-                    CustomText(
-                      text: textWidget3,
-                      textColor: isSelected
-                          ? AppColors.white
-                          : Theme.of(context).textTheme.bodyMedium?.color,
-                      textSize: TextSizes.bodyText1,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(
-                          FontAwesomeIcons.solidStar,
-                          size: IconSizes.tiny,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 5),
-                        CustomText(
-                          text: stars!,
-                          textColor: Theme.of(context).colorScheme.primary,
-                          textSize: TextSizes.caption,
-                          textWeight: FontWeight.bold,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/* class HomeScreenBottomSection extends StatelessWidget {
-  const HomeScreenBottomSection({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // background
-        Positioned.fill(
-          child: Container(
-            color: const Color.fromARGB(213, 255, 255, 255),
-            height: 600,
-          ),
-        ),
-        Positioned.fill(
-          child: Lottie.asset(
-            'assets/animations/background_animation.json',
-            fit: BoxFit.cover,
-          ),
-        ),
-
-        // Foreground content
-        Container(
-          color: const Color.fromARGB(55, 255, 255, 255),
-          width: MediaQuery.of(context).size.width,
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CustomText(
-                text: 'Nearby Locations',
-                textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                textSize: TextSizes.heading2,
-                textWeight: FontWeight.bold,
-              ),
-              const SizedBox(height: 20),
-              ServiceButton(
-                textWidget1: 'Omeeo Wash',
-                textWidget3: '0.8 mi away',
-                icon: FontAwesomeIcons.locationDot,
-                onPressed: () {},
-                stars: '4.9',
-                iconColor: Theme.of(context).colorScheme.primary,
-                iconSize: IconSizes.medium,
-              ),
-              const SizedBox(height: 20),
-              PromoButtom(
-                padding: EdgeInsets.all(10),
-                textWidget1: CustomText(text: 'First Wash Free!'),
-                textWidget2: CustomText(
-                  text: 'New customers get their first basic wash on us',
-                ),
-                onPressed: () {},
-                borderRadius: 7,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-} */
-
 class CustomDialog {
   static Future<void> show(
     BuildContext context, {
@@ -1070,17 +877,20 @@ class CustomDialog {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.inversePrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   message,
-                  style: const TextStyle(fontSize: 16, color: Colors.white70),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -1089,7 +899,9 @@ class CustomDialog {
                   children: [
                     TextButton(
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.inversePrimary,
                       ),
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -1099,7 +911,9 @@ class CustomDialog {
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.inversePrimary,
                         foregroundColor: AppColors.primaryPurple,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1205,5 +1019,629 @@ class _BannerCarouselState extends State<BannerCarousel> {
         ),
       ],
     );
+  }
+}
+
+/// A sleek, dynamic rewards card.
+/// Example:
+/// RewardsPointsCard(currentPoints: 850, nextThreshold: 1000)
+class RewardsPointsCard extends StatelessWidget {
+  final int currentPoints;
+  final int nextThreshold;
+  final String title;
+  final String encouragingText;
+  final double height;
+  final EdgeInsetsGeometry padding;
+
+  const RewardsPointsCard({
+    super.key,
+    required this.currentPoints,
+    required this.nextThreshold,
+    this.title = 'Rewards Points',
+    this.encouragingText = "You're doing great!",
+    this.height = 120,
+    this.padding = const EdgeInsets.all(15),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final int toGoRaw = (nextThreshold - currentPoints);
+    final int toGo = toGoRaw > 0 ? toGoRaw : 0;
+    final double progress = nextThreshold <= 0
+        ? 1.0
+        : (currentPoints / nextThreshold).clamp(0.0, 1.0);
+
+    final Color bg1 = const Color(0xFF1E1E1E);
+    final Color bg2 = const Color(0xFF2D2D2D);
+    final Color surface = const Color(0xFF121212);
+    final Color track = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(0.10);
+    final Color fill = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(0.85);
+    final Color subtle = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(0.70);
+    final Color verySubtle = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(0.55);
+
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [bg1, bg2],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: surface.withOpacity(.45),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Star in a pill
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.inversePrimary.withOpacity(.10),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.star_rounded,
+                  color: Theme.of(context).colorScheme.inversePrimary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Title + encouragement
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      encouragingText,
+                      style: TextStyle(
+                        color: subtle,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Points number on the right
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _fmt(currentPoints),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'points',
+                    style: TextStyle(
+                      color: verySubtle,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // Next reward + to-go
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Next reward at ${_fmt(nextThreshold)} pts',
+                  style: TextStyle(
+                    color: verySubtle,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Text(
+                toGo > 0 ? '${_fmt(toGo)} to go' : 'Goal reached!',
+                style: TextStyle(
+                  color: subtle,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Progress bar
+          _AnimatedProgressBar(
+            progress: progress,
+            backgroundColor: track,
+            fillColor: fill,
+            height: 10,
+            borderRadius: 99,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Minimal thousands separator without extra deps.
+  static String _fmt(int n) {
+    final s = n.toString();
+    final b = StringBuffer();
+    int count = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      b.write(s[i]);
+      count++;
+      if (count == 3 && i != 0) {
+        b.write(',');
+        count = 0;
+      }
+    }
+    return b.toString().split('').reversed.join();
+  }
+}
+
+/// Smooth animated progress bar used by the card
+class _AnimatedProgressBar extends StatelessWidget {
+  final double progress; // 0..1
+  final Color backgroundColor;
+  final Color fillColor;
+  final double height;
+  final double borderRadius;
+
+  const _AnimatedProgressBar({
+    required this.progress,
+    required this.backgroundColor,
+    required this.fillColor,
+    this.height = 8,
+    this.borderRadius = 12,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          return Stack(
+            children: [
+              Container(width: maxW, height: height, color: backgroundColor),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                width: maxW * progress,
+                height: height,
+                // a subtle sheen across the fill
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [fillColor, fillColor.withOpacity(.65)],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Callout / promo banner, e.g. "First Wash Free!"
+class PromoBannerCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String buttonText;
+  final String? badgeText;
+  final IconData leadingIcon;
+  final VoidCallback onPressed;
+  final double borderRadius;
+  final EdgeInsetsGeometry padding;
+
+  const PromoBannerCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.onPressed,
+    this.buttonText = 'Claim Now',
+    this.badgeText,
+    this.leadingIcon =
+        Icons.flare, // (Material 3 alt) use Icons.star_rounded if you like
+    this.borderRadius = 20,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color dark1 = const Color(0xFF1F1F1F);
+    final Color dark2 = const Color(0xFF2B2B2B);
+    final Color pillFg = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(.9);
+    final Color pillBg = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(.12);
+    final Color btnFg = Colors.black87;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [dark1, dark2],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.surface,
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: padding,
+      child: Row(
+        children: [
+          // Left: circular icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: pillBg,
+              borderRadius: BorderRadius.circular(17),
+            ),
+            child: Icon(
+              leadingIcon,
+              color: Theme.of(context).colorScheme.inversePrimary,
+              size: IconSizes.medium,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Middle: title (+ optional badge) and subtitle
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title + Badge row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.inversePrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.secondary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Right: CTA button
+          TextButton.icon(
+            onPressed: onPressed,
+            icon: const Icon(Icons.chevron_right_rounded, size: 16),
+            label: Text(
+              buttonText,
+              style: TextStyle(
+                color: btnFg,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                Theme.of(context).colorScheme.inversePrimary,
+              ),
+              foregroundColor: WidgetStatePropertyAll(btnFg),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              overlayColor: WidgetStatePropertyAll(Colors.black12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class StationCard extends StatelessWidget {
+  final String title;
+  final String address;
+  final double rating; // e.g. 4.8
+  final int reviews; // e.g. 342
+  final bool isOpen; // true = open, false = closed
+  final String openLabel; // e.g. "Open until 8:00 PM" or "Closed"
+  final String? phone; // for "Call Now"
+  final double? lat; // for "Get Directions"
+  final double? lng;
+
+  final VoidCallback? onDirections; // optional override
+  final VoidCallback? onCall; // optional override
+
+  const StationCard({
+    super.key,
+    required this.title,
+    required this.address,
+    required this.rating,
+    required this.reviews,
+    required this.isOpen,
+    required this.openLabel,
+    this.phone,
+    this.lat,
+    this.lng,
+    this.onDirections,
+    this.onCall,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final bg = Theme.of(context).brightness == Brightness.dark
+        ? cs.surface
+        : Theme.of(context).colorScheme.inversePrimary;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow,
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Text(
+            title,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.surface,
+              fontSize: TextSizes.subtitle1,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+
+          // Address
+          Text(
+            address,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.tertiary,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Rating pill + open pill
+          Row(
+            children: [
+              _ratingPill(context, rating, reviews),
+              const SizedBox(width: 12),
+              _openPill(context, openLabel, isOpen),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Buttons row
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onDirections ?? () => _launchDirections(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(
+                      context,
+                    ).colorScheme.inversePrimary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Get Directions',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onCall ?? () => _launchCall(),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.inversePrimary,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Call Now',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Pills ---
+
+  Widget _ratingPill(BuildContext context, double rating, int reviews) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSecondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.star_rounded,
+            size: 16,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            rating.toStringAsFixed(1),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5,
+              color: Theme.of(context).colorScheme.surface,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '($reviews)',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.surface,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _openPill(BuildContext context, String label, bool isOpen) {
+    final color = isOpen ? const Color(0xFF1F8F3A) : const Color(0xFFAA2E2E);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSecondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule_rounded, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.surface,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Launchers (maps / phone) ---
+
+  Future<void> _launchDirections() async {
+    final encodedAddress = Uri.encodeComponent(address);
+    Uri uri;
+    if (lat != null && lng != null) {
+      uri = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&q=$encodedAddress',
+      );
+    } else {
+      uri = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=$encodedAddress',
+      );
+    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _launchCall() async {
+    if (phone == null || phone!.trim().isEmpty) return;
+    final tel = Uri(scheme: 'tel', path: phone!.trim());
+    await launchUrl(tel);
   }
 }

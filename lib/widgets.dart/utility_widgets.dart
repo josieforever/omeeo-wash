@@ -51,7 +51,7 @@ class ServiceButton extends StatelessWidget {
               : Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(60, 0, 0, 0),
+              color: Theme.of(context).colorScheme.shadow,
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 6), // x, y
@@ -89,7 +89,7 @@ class ServiceButton extends StatelessWidget {
                     CustomText(
                       text: textWidget1,
                       textColor: isSelected
-                          ? AppColors.white
+                          ? Theme.of(context).colorScheme.inversePrimary
                           : Theme.of(context).textTheme.bodyLarge?.color,
                       textSize: TextSizes.bodyText1,
                       textWeight: FontWeight.bold,
@@ -99,14 +99,14 @@ class ServiceButton extends StatelessWidget {
                         : CustomText(
                             text: textWidget2!,
                             textColor: isSelected
-                                ? AppColors.white
+                                ? Theme.of(context).colorScheme.inversePrimary
                                 : Theme.of(context).textTheme.bodyMedium?.color,
                             textSize: TextSizes.bodyText1,
                           ),
                     CustomText(
                       text: textWidget3,
                       textColor: isSelected
-                          ? AppColors.white
+                          ? Theme.of(context).colorScheme.inversePrimary
                           : Theme.of(context).textTheme.bodyMedium?.color,
                       textSize: TextSizes.bodyText1,
                     ),
@@ -206,7 +206,7 @@ class CustomText extends StatelessWidget {
 
 class RegularButton extends StatefulWidget {
   final dynamic textWidget;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color? backgroundColor;
   final Gradient? gradient;
   final BoxBorder? border;
@@ -217,7 +217,7 @@ class RegularButton extends StatefulWidget {
 
   const RegularButton({
     super.key,
-    required this.onPressed,
+    this.onPressed,
     this.backgroundColor,
     this.padding,
     this.margin,
@@ -287,7 +287,7 @@ class IconStackTextButton extends StatelessWidget {
         decoration: BoxDecoration(
           border: border,
           borderRadius: BorderRadius.circular(borderRadius),
-          color: const Color.fromARGB(80, 0, 0, 0),
+          color: const Color.fromARGB(80, 117, 117, 117),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(borderRadius),
@@ -331,12 +331,16 @@ class IconStackTextButton extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    icon,
-                    if (numberWidget != null) ...[
-                      const SizedBox(height: 8),
-                      numberWidget!,
-                    ],
-                    const SizedBox(height: 5),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        icon,
+                        const SizedBox(width: 10),
+                        if (numberWidget != null) numberWidget!,
+                      ],
+                    ),
+
+                    const SizedBox(height: 2),
                     textWidget,
                   ],
                 ),
@@ -392,11 +396,11 @@ class ServiceButtonExpanded extends StatelessWidget {
                 : Theme.of(context).colorScheme.inversePrimary,
           ),
           color: isSelected
-              ? Theme.of(context).colorScheme.secondary
+              ? Theme.of(context).colorScheme.onSecondary
               : Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(26, 0, 0, 0),
+              color: Theme.of(context).colorScheme.shadow,
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 6), // x, y
@@ -569,7 +573,7 @@ class _PromoButtomState extends State<PromoButtom> {
               children: [
                 CustomText(
                   text: 'First Wash Free!',
-                  textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                  textColor: Theme.of(context).colorScheme.inversePrimary,
                   textSize: TextSizes.subtitle2,
                   textWeight: FontWeight.bold,
                 ),
@@ -590,7 +594,7 @@ class _PromoButtomState extends State<PromoButtom> {
             ),
             CustomText(
               text: 'New customers get their first basic wash on us',
-              textColor: Theme.of(context).textTheme.headlineLarge?.color,
+              textColor: Theme.of(context).colorScheme.inversePrimary,
               textSize: TextSizes.bodyText1,
               textWeight: FontWeight.normal,
             ),
@@ -636,9 +640,9 @@ class _TopNavBarTabState extends State<TopNavBarTab> {
       child: Container(
         decoration: BoxDecoration(
           color: topNavProvider.isTabSelected(widget.textWidget)
-              ? Theme.of(context).textTheme.headlineLarge?.color
-              : const Color.fromARGB(0, 255, 255, 255),
-          borderRadius: BorderRadius.circular(7),
+              ? Theme.of(context).colorScheme.inversePrimary
+              : Theme.of(context).colorScheme.secondary,
+          borderRadius: BorderRadius.circular(widget.borderRadius),
           border: widget.border,
         ),
         // fixed height
@@ -657,7 +661,7 @@ class _TopNavBarTabState extends State<TopNavBarTab> {
               const SizedBox(width: 10),
               CircleAvatar(
                 backgroundColor: topNavProvider.isTabSelected(widget.textWidget)
-                    ? const Color.fromARGB(255, 232, 222, 241)
+                    ? Theme.of(context).colorScheme.secondary
                     : const Color.fromARGB(43, 255, 255, 255),
                 radius: 12,
                 child: CustomText(
@@ -675,216 +679,422 @@ class _TopNavBarTabState extends State<TopNavBarTab> {
   }
 }
 
+/// Uses your app’s CustomText, TextSizes, IconSizes, StatusBar,
+/// PendingPanel, ConfirmedPanel, CurrentlyWashingPanel widgets.
+
 class BookingsServiceButton extends StatelessWidget {
-  final String textWidget1;
+  // Core display props (all optional-safe)
+  final String service; // e.g. "Express Wash" or "express"
+  final String?
+  serviceLocation; // e.g. "mobile" | "washing_bay" | "valet" or label
+  final String?
+  status; // e.g. "pending_cash" | "confirmed" | "in_progress" | "completed"
+  final String? day; // e.g. "🗓️ Today"
+  final String? time; // e.g. "⌚ 12:00"
+  final String? duration; // e.g. "⏱️ 90 min"
+  final String? price; // e.g. "150"
+  final String? address; // optional human address
+  final double? latitude; // optional coords
+  final double? longitude;
+
+  // Visuals
   final String? animation;
-  final String? textWidget2;
-  final String? status;
-  final String? time;
-  final String? duration;
-  final String? day;
-  final String? price;
-  final String? stars;
   final Icon? icon;
   final Color iconColor;
   final double iconSize;
   final double? scale;
+
+  // Tap action (kept for your flow)
   final VoidCallback onPressed;
+
   const BookingsServiceButton({
     super.key,
-    required this.textWidget1,
-    this.textWidget2,
+    required this.service,
+    this.serviceLocation,
+    this.status,
+    this.day,
+    this.time,
+    this.duration,
     this.price,
+    this.address,
+    this.latitude,
+    this.longitude,
     this.icon,
     required this.onPressed,
     required this.iconColor,
     required this.iconSize,
-    this.stars,
     this.animation,
     this.scale,
-    this.status,
-    this.time,
-    this.duration,
-    this.day,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Friendly labels
+    final String serviceLabel = _serviceLabel(service);
+    final String locationLabel = _serviceLocationLabel(serviceLocation);
+    final String statusLabel = _statusLabel(status);
+
     return GestureDetector(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-          ),
-          backgroundColor: Colors.white,
-          isScrollControlled: true, // Makes it full height if needed
-          builder: (context) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return Container(
-                  margin: const EdgeInsets.all(15),
-                  width:
-                      constraints.maxWidth * 0.89, // take all available width
-                  height: 680,
-                  padding: const EdgeInsets.all(16.0),
+      onTap: () => _openDetailsSheet(
+        context,
+        serviceLabel: serviceLabel,
+        locationLabel: locationLabel,
+        statusLabel: statusLabel,
+      ),
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.inversePrimary,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow,
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Leading service icon in a soft tile
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  child: Transform.scale(
+                    scale: scale ?? 1.4,
+                    child: _serviceIcon(context, serviceLabel),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Right column
+                Expanded(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // Wrap content
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Top row: Service + day
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          CustomText(
+                            text: serviceLabel,
+                            textColor: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.color,
+                            textSize: TextSizes.bodyText1,
+                            textWeight: FontWeight.bold,
+                          ),
+                          CustomText(
+                            text: day ?? '—',
+                            textSize: TextSizes.bodyText1,
+                          ),
+                        ],
+                      ),
+                      // Middle row: Location + time
+                      Row(
+                        children: [
+                          // Left: location, single line with ellipsis
+                          Expanded(
+                            child: Tooltip(
+                              // optional: long-press to see full address
+                              message: locationLabel ?? '',
+                              child: Text(
+                                locationLabel ?? '—',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyMedium?.color,
+                                  fontSize:
+                                      TextSizes.bodyText1, // keep your sizing
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Right: time
+                          Text(
+                            time ?? '—',
+                            style: TextStyle(
+                              fontSize: TextSizes.bodyText1,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyLarge?.color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      // Bottom row: Status + duration
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Your StatusBar, now dynamic
+                          StatusBar(status: statusLabel),
+                          CustomText(
+                            text: duration ?? '—',
+                            textSize: TextSizes.bodyText1,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Show only the relevant status panel (no clutter)
+            _statusPanel(statusLabel),
+
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ——————————————————————————————————————————
+  // Helpers
+  // ——————————————————————————————————————————
+
+  void _openDetailsSheet(
+    BuildContext context, {
+    required String serviceLabel,
+    required String locationLabel,
+    required String statusLabel,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          maxChildSize: 0.92,
+          initialChildSize: 0.72,
+          minChildSize: 0.42,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title row
+                  Row(
+                    children: [
+                      Icon(
+                        FontAwesomeIcons.clipboardList,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
                       const Text(
                         "Booking Details",
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      const Text("Service: Express Clean"),
-                      const Text("Date: Monday, 26th Aug"),
-                      const Text("Time: 10:30 AM"),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
+                      const Spacer(),
+                      IconButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Close"),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
-                );
-              },
+                  const SizedBox(height: 8),
+                  Divider(
+                    color: Theme.of(context).dividerColor.withOpacity(.5),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Service + status
+                  _kvRow(context, 'Service', serviceLabel),
+                  _kvRow(context, 'Status', statusLabel),
+
+                  // Schedule
+                  const SizedBox(height: 8),
+                  _kvRow(context, 'Day', day ?? '—'),
+                  _kvRow(context, 'Time', time ?? '—'),
+                  _kvRow(context, 'Duration', duration ?? '—'),
+
+                  // Location
+                  const SizedBox(height: 8),
+                  _kvRow(context, 'Location', locationLabel),
+                  if ((address ?? '').trim().isNotEmpty)
+                    _kvRow(context, 'Address', address!.trim()),
+                  if (latitude != null && longitude != null)
+                    _kvRow(
+                      context,
+                      'Coordinates',
+                      '${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}',
+                    ),
+
+                  // Price
+                  const SizedBox(height: 8),
+                  _kvRow(context, 'Price', price == null ? '—' : '₵$price'),
+
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.inversePrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 12,
+                        ),
+                      ),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text(
+                        'Open booking',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Container(
-            width: constraints.maxWidth, // make it responsive
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(7),
-              color: Theme.of(context).textTheme.headlineLarge?.color,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color.fromARGB(26, 12, 0, 235),
-                  blurRadius: 12,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 6), // x, y
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.only(
-                              top: 20,
-                              bottom: 20,
-                              left: 20,
-                              right: 25,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(7),
-                              gradient: const LinearGradient(
-                                begin: Alignment.centerRight,
-                                end: Alignment.centerLeft,
-                                colors: [
-                                  Color(0xFF6D66F6), // Right
-                                  Color(0xFFA558F2), // Left
-                                ],
-                              ),
-                            ),
-                            child: Transform.scale(
-                              scale: scale,
-                              child: Icon(
-                                textWidget1 == 'Express Clean'
-                                    ? Icons.local_car_wash_outlined
-                                    : textWidget1 == 'Premium Detail'
-                                    ? FontAwesomeIcons.sprayCan
-                                    : FontAwesomeIcons.shower,
-                                size: TextSizes.bodyText1,
-                                color: const Color.fromARGB(255, 226, 226, 226),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
+    );
+  }
 
-                          // Expanded ensures the right column flexes to fill space
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      flex: 13,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              CustomText(
-                                text: textWidget1,
-                                textColor: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
-                                textSize: TextSizes.bodyText1,
-                                textWeight: FontWeight.bold,
-                              ),
-                              CustomText(
-                                text: day!,
-                                textSize: TextSizes.bodyText1,
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              CustomText(
-                                text: textWidget2!,
-                                textColor: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.color,
-                                textSize: TextSizes.bodyText1,
-                              ),
-                              CustomText(
-                                text: time!,
-                                textSize: TextSizes.bodyText1,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              StatusBar(status: 'Pending'),
-                              CustomText(
-                                text: duration!,
-                                textSize: TextSizes.bodyText1,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 10),
-                PendingPanel(),
-                const SizedBox(height: 10),
-                ConfirmedPanel(),
-                const SizedBox(height: 10),
-                CurrentlyWashingPanel(),
-                const SizedBox(height: 10),
-              ],
+  Widget _kvRow(BuildContext context, String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              k,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
             ),
-          );
-        },
+          ),
+          Expanded(
+            child: Text(
+              v,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  // Pick the right status panel
+  Widget _statusPanel(String statusLabel) {
+    switch (statusLabel.toLowerCase()) {
+      case 'pending':
+      case 'pending (cash)':
+        return PendingPanel();
+      case 'confirmed':
+        return ConfirmedPanel();
+      case 'in progress':
+      case 'currently washing':
+        return CurrentlyWashingPanel();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  // Friendly service label (accepts code or label)
+  String _serviceLabel(String raw) {
+    final s = raw.trim().toLowerCase();
+    if (s == 'express') return 'Express Wash';
+    if (s == 'standard') return 'Standard Wash';
+    if (s == 'premium') return 'Premium Detail';
+    // If dev passed already-formatted text, keep it
+    return raw;
+  }
+
+  // Friendly location label with emoji
+  String _serviceLocationLabel(String? raw) {
+    final s = (raw ?? '').trim().toLowerCase();
+    switch (s) {
+      case 'mobile':
+        return '📍 Mobile Service';
+      case 'washing_bay':
+      case 'onsite':
+      case 'on_site':
+        return '🏁 Washing Bay';
+      case 'valet':
+        return '🅿️ Valet Service';
+      default:
+        // If dev passed "📍Omeeo Car wash" keep it as-is.
+        return raw == null || raw.isEmpty ? '—' : raw;
+    }
+  }
+
+  // Map backend status → readable label
+  String _statusLabel(String? raw) {
+    final s = (raw ?? '').trim().toLowerCase();
+    switch (s) {
+      case 'pending':
+      case 'pending_cash':
+      case 'awaiting_payment':
+        return 'Pending (Cash)';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'in_progress':
+      case 'washing':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+      case 'canceled':
+        return 'Cancelled';
+      default:
+        return raw == null || raw.isEmpty ? '—' : raw;
+    }
+  }
+
+  // Service icon widget (monochrome-friendly)
+  Widget _serviceIcon(BuildContext context, String label) {
+    final color = Theme.of(context).colorScheme.primary;
+    if (label.toLowerCase().contains('express')) {
+      return Icon(FontAwesomeIcons.shower, color: color, size: 18);
+    }
+    if (label.toLowerCase().contains('standard')) {
+      return Icon(Icons.alarm, color: color, size: 20);
+    }
+    // Premium → your SVG
+    return SvgPicture.asset(
+      'assets/icons/cleaning.svg',
+      height: 24,
+      width: 24,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }
 }
@@ -920,11 +1130,11 @@ class ProfileButton extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
-          color: Theme.of(context).textTheme.headlineLarge?.color,
+          borderRadius: BorderRadius.circular(25),
+          color: Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(26, 12, 0, 235),
+              color: Theme.of(context).colorScheme.shadow,
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 6), // x, y
@@ -941,8 +1151,8 @@ class ProfileButton extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(32, 137, 43, 226),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Theme.of(context).colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Transform.scale(
                     scale: scale,
@@ -1010,10 +1220,10 @@ class SignOut extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(7),
           border: Border.all(color: const Color.fromARGB(154, 255, 145, 145)),
-          color: Theme.of(context).textTheme.headlineLarge?.color,
+          color: Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
             BoxShadow(
-              color: Color.fromARGB(26, 12, 0, 235),
+              color: Theme.of(context).colorScheme.shadow,
               blurRadius: 12,
               spreadRadius: 2,
               offset: const Offset(0, 6), // x, y
@@ -1135,14 +1345,14 @@ class _LoyaltyPointsBarState extends State<LoyaltyPointsBar> {
               children: [
                 CustomText(
                   text: widget.point,
-                  textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                  textColor: Theme.of(context).colorScheme.inversePrimary,
                   textSize: TextSizes.heading1,
                   textWeight: FontWeight.bold,
                 ),
 
                 CustomText(
                   text: 'points',
-                  textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                  textColor: Theme.of(context).colorScheme.inversePrimary,
                   textSize: TextSizes.caption,
                   textWeight: FontWeight.normal,
                 ),
@@ -1496,8 +1706,8 @@ class PendingPanel extends StatelessWidget {
       padding: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Color(0xFFFBF8E8),
-        border: Border.all(color: Color(0xFFE9C56A)),
-        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: Color(0xFFE9C56A), width: 1.7),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
@@ -1562,8 +1772,8 @@ class ConfirmedPanel extends StatelessWidget {
       padding: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Color.fromARGB(19, 0, 158, 16),
-        border: Border.all(color: Color.fromARGB(88, 0, 158, 16)),
-        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: Color.fromARGB(88, 0, 158, 16), width: 1.7),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
@@ -1637,7 +1847,7 @@ class ConfirmedPanel extends StatelessWidget {
           /* Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Theme.of(context).textTheme.headlineLarge?.color,
+              color: Theme.of(context).colorScheme.inversePrimary,
               borderRadius: BorderRadius.circular(7),
             ),
             padding: EdgeInsets.symmetric(horizontal: 5, vertical: 10),
@@ -1723,10 +1933,10 @@ class ConfirmedPanel extends StatelessWidget {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Theme.of(context).textTheme.headlineLarge?.color,
-              borderRadius: BorderRadius.circular(7),
+              color: Theme.of(context).colorScheme.inversePrimary,
+              borderRadius: BorderRadius.circular(17),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+            padding: EdgeInsets.symmetric(horizontal: 1, vertical: 5),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
@@ -1867,9 +2077,9 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Color.fromARGB(112, 211, 88, 0)),
-        borderRadius: BorderRadius.circular(10),
-        color: Color.fromARGB(153, 229, 231, 235),
+        border: Border.all(color: Color.fromARGB(112, 211, 88, 0), width: 1.7),
+        borderRadius: BorderRadius.circular(20),
+        color: Color.fromARGB(37, 237, 165, 114),
       ),
       padding: EdgeInsets.all(10),
       child: Column(
@@ -1877,12 +2087,23 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CustomText(
-                text: 'Wash Progress',
-                textSize: TextSizes.bodyText1,
-                textWeight: FontWeight.bold,
-                textColor: Theme.of(context).textTheme.bodyLarge?.color,
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 255, 112, 10),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Wash Progress',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 211, 88, 0),
+                  ),
+                ],
               ),
+
               CustomText(
                 text: '25 min left',
                 textSize: TextSizes.bodyText3,
@@ -2082,8 +2303,8 @@ class _FadingCircleState extends State<FadingCircle>
         alignment: Alignment.center,
         child: Text(
           widget.number.toString(),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.inversePrimary,
             fontSize: 15,
             fontWeight: FontWeight.bold,
           ),

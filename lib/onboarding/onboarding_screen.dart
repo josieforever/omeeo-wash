@@ -111,9 +111,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       Text(
                         _pages[index]['title']!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 25,
-                          color: AppColors.white,
+                          color: Theme.of(context).colorScheme.inversePrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -121,9 +121,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       Text(
                         _pages[index]['subtitle']!,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
-                          color: AppColors.white,
+                          color: Theme.of(context).colorScheme.inversePrimary,
                         ),
                       ),
                       SizedBox(
@@ -155,9 +155,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   TextButton(
                     onPressed: _skip,
-                    child: const Text(
+                    child: Text(
                       "Skip",
-                      style: TextStyle(color: AppColors.white),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.inversePrimary,
+                      ),
                     ),
                   ),
                   Row(
@@ -170,8 +172,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         height: _currentPage == index ? 12 : 8,
                         decoration: BoxDecoration(
                           color: _currentPage == index
-                              ? AppColors.white
-                              : AppColors.white.withOpacity(0.4),
+                              ? Theme.of(context).colorScheme.inversePrimary
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.inversePrimary.withOpacity(0.4),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -180,7 +184,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ElevatedButton(
                     onPressed: _nextPage,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
                       foregroundColor: AppColors.primaryPurple,
                     ),
                     child: Text(

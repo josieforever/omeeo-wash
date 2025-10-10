@@ -89,9 +89,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromARGB(26, 7, 0, 133),
+                            color: Theme.of(context).colorScheme.shadow,
                             blurRadius: 12,
                             spreadRadius: 2,
                             offset: Offset(0, 6),
@@ -528,7 +528,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                               child: CustomText(
                                                 text:
                                                     'Account created successfully!',
-                                                textColor: AppColors.white,
+                                                textColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.inversePrimary,
                                               ),
                                             ),
                                             backgroundColor: Colors.green,
@@ -559,7 +561,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                               child: CustomText(
                                                 text:
                                                     'Sign up failed: ${e.toString()}',
-                                                textColor: AppColors.white,
+                                                textColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.inversePrimary,
                                               ),
                                             ),
                                             backgroundColor: Colors.red,
@@ -579,7 +583,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                             child: CustomText(
                                               text:
                                                   'Please correct the errors in the form.',
-                                              textColor: AppColors.white,
+                                              textColor: Theme.of(
+                                                context,
+                                              ).colorScheme.inversePrimary,
                                             ),
                                           ),
                                           backgroundColor: Colors.orange,

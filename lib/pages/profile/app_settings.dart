@@ -132,10 +132,10 @@ class AppSettingsPage extends StatelessWidget {
         child: Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: CupertinoColors.white,
+          activeColor: Theme.of(context).colorScheme.inversePrimary,
           activeTrackColor: CupertinoColors.systemGreen,
           inactiveTrackColor: const Color.fromARGB(255, 78, 78, 81),
-          inactiveThumbColor: CupertinoColors.white,
+          inactiveThumbColor: Theme.of(context).colorScheme.inversePrimary,
         ),
       ),
     );

@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+
+// ✅ Add these
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+// your own imports
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
-import 'package:provider/provider.dart';
 
 class BookingScreen extends StatelessWidget {
   const BookingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return SafeArea(
       child: Container(
         color: Colors.transparent,
-        child: Column(children: [BookingScreenTopBar(), TopNavTabSwitcher()]),
+        child: Column(
+          children: const [
+            BookingScreenTopBar(),
+            // 👇 only this part scrolls
+            Expanded(child: TopNavTabSwitcher()),
+          ],
+        ),
       ),
     );
   }
@@ -21,42 +33,49 @@ class BookingScreen extends StatelessWidget {
 
 class BookingScreenTopBar extends StatelessWidget {
   const BookingScreenTopBar({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
+      margin: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.inversePrimary,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow,
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          const SizedBox(height: 50),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Title
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CustomText(
                     text: 'My Bookings',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.primary,
                     textSize: TextSizes.heading1,
                     textWeight: FontWeight.w900,
                   ),
                   CustomText(
                     text: 'Manage appointments 📚',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.heading3,
                   ),
                 ],
               ),
+              // Actions
               Row(
                 children: [
                   IconButton(
@@ -64,7 +83,7 @@ class BookingScreenTopBar extends StatelessWidget {
                     icon: Icon(
                       FontAwesomeIcons.filter,
                       size: IconSizes.midSmall,
-                      color: Theme.of(context).textTheme.headlineLarge?.color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -73,16 +92,15 @@ class BookingScreenTopBar extends StatelessWidget {
                     icon: Icon(
                       FontAwesomeIcons.plus,
                       size: IconSizes.midSmall,
-                      color: Theme.of(context).textTheme.headlineLarge?.color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          CustomTopNav(),
           const SizedBox(height: 10),
+          const CustomTopNav(),
         ],
       ),
     );
@@ -97,41 +115,63 @@ class CustomTopNav extends StatefulWidget {
 }
 
 class _CustomTopNavState extends State<CustomTopNav> {
+  Stream<List<Map<String, dynamic>>> _userBookings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const Stream.empty();
+    return FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: uid) // ✅ no composite index needed
+        .snapshots()
+        .map((s) => s.docs.map((d) => d.data()).toList());
+  }
+
   @override
   Widget build(BuildContext context) {
     final topNavProvider = Provider.of<TopNavProvider>(context);
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        color: const Color.fromARGB(55, 255, 255, 255),
-      ),
 
-      padding: EdgeInsets.all(6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: TopNavBarTab(
-              onPressed: () {
-                topNavProvider.selectTab('Booking Status');
-              },
-              textWidget: 'Booking Status',
-              numberWidget: '2',
-              borderRadius: 10,
-            ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _userBookings(),
+      builder: (context, snap) {
+        final data = snap.data ?? const [];
+        const activeSet = {'pending_cash', 'confirmed', 'in_progress'};
+        const historySet = {'completed', 'cancelled', 'canceled'};
+
+        final activeCount = data
+            .where((b) => activeSet.contains('${b['status']}'))
+            .length;
+        final historyCount = data
+            .where((b) => historySet.contains('${b['status']}'))
+            .length;
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(17),
+            color: Theme.of(context).colorScheme.secondary,
           ),
-          Expanded(
-            child: TopNavBarTab(
-              onPressed: () {
-                topNavProvider.selectTab('History');
-              },
-              textWidget: 'History',
-              numberWidget: '2',
-              borderRadius: 10,
-            ),
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: TopNavBarTab(
+                  onPressed: () => topNavProvider.selectTab('Booking Status'),
+                  textWidget: 'Booking Status',
+                  numberWidget: activeCount.toString(),
+                  borderRadius: 15,
+                ),
+              ),
+              Expanded(
+                child: TopNavBarTab(
+                  onPressed: () => topNavProvider.selectTab('History'),
+                  textWidget: 'History',
+                  numberWidget: historyCount.toString(),
+                  borderRadius: 15,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -149,69 +189,104 @@ class TopNavTabSwitcher extends StatelessWidget {
       case 'History':
         return const HistoryTabScreen();
       default:
-        return const StatusTabScreen(); // default fallback
+        return const StatusTabScreen();
     }
   }
+}
+
+/// Removes overscroll glow
+class _NoGlowScroll extends ScrollBehavior {
+  const _NoGlowScroll();
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }
 
 class StatusTabScreen extends StatelessWidget {
   const StatusTabScreen({super.key});
 
+  Stream<List<Map<String, dynamic>>> _userBookings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const Stream.empty();
+    return FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: uid) // ✅ single filter
+        .snapshots()
+        .map((s) => s.docs.map((d) => d.data()).toList());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Foreground content
-        Container(
-          width: MediaQuery.of(context).size.width,
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
-              BookingsServiceButton(
-                textWidget1: 'Premium Detail',
-                textWidget2: '📍Omeeo Car wash',
-                status: 'Confirmed',
-                day: 'Today',
-                time: '2:30 PM',
-                duration: '⏱️ 90 min',
-                icon: Icon(
-                  FontAwesomeIcons.carSide,
-                  size: TextSizes.bodyText1,
-                  color: const Color.fromARGB(255, 226, 226, 226),
-                ),
-                scale: 1.7,
-                onPressed: () {},
-                price: '150',
-                iconColor: Theme.of(context).colorScheme.primary,
-                iconSize: IconSizes.medium,
-              ),
-              const SizedBox(height: 10),
-              BookingsServiceButton(
-                textWidget1: 'Premium Detail',
-                textWidget2: '📍Omeeo Car wash',
-                status: 'Confirmed',
-                day: 'Today',
-                time: '2:30 PM',
-                duration: '⏱️ 90 min',
-                icon: Icon(
-                  FontAwesomeIcons.carSide,
-                  size: TextSizes.bodyText1,
-                  color: const Color.fromARGB(255, 226, 226, 226),
-                ),
-                scale: 1.7,
-                onPressed: () {},
-                price: '150',
-                iconColor: Theme.of(context).colorScheme.primary,
-                iconSize: IconSizes.medium,
-              ),
+    return ScrollConfiguration(
+      behavior: const _NoGlowScroll(),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _userBookings(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const _ListLoading();
+          }
+          if (snap.hasError) {
+            return const _ErrorState(message: 'Could not load bookings.');
+          }
 
-              const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ],
+          final raw = snap.data ?? const [];
+          const active = {'pending_cash', 'confirmed', 'in_progress'};
+          final items = raw
+              .where((b) => active.contains('${b['status']}'))
+              .toList();
+
+          // sort by scheduledTime asc
+          items.sort((a, b) {
+            final at = _extractDate(a['scheduledTime']);
+            final bt = _extractDate(b['scheduledTime']);
+            return (at ?? DateTime.now()).compareTo(bt ?? DateTime.now());
+          });
+
+          if (items.isEmpty) {
+            return const _EmptyState(
+              title: 'No bookings yet',
+              subtitle: 'When you book a wash, it will show up here.',
+              icon: FontAwesomeIcons.calendarXmark,
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 24),
+            physics: const BouncingScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final b = items[i];
+              final dt = _extractDate(b['scheduledTime']);
+              final serviceType = '${b['serviceType']}'.trim();
+
+              return BookingsServiceButton(
+                service: _serviceLabel(serviceType),
+                serviceLocation: _locationLabel(b),
+                status: '${b['status']}',
+                day: _dayLabel(dt),
+                time: _timeLabel(dt, b['scheduledTimeLabel']),
+                duration: _durationForService(serviceType) == null
+                    ? '⏱️ —'
+                    : '⏱️ ${_durationForService(serviceType)} min',
+                price: (b['price']?.toString()),
+                icon: Icon(
+                  FontAwesomeIcons.carSide,
+                  size: TextSizes.bodyText1,
+                  color: const Color.fromARGB(255, 226, 226, 226),
+                ),
+                scale: 1.7,
+                onPressed: () {},
+                iconColor: Theme.of(context).colorScheme.primary,
+                iconSize: IconSizes.medium,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -219,98 +294,255 @@ class StatusTabScreen extends StatelessWidget {
 class HistoryTabScreen extends StatelessWidget {
   const HistoryTabScreen({super.key});
 
+  Stream<List<Map<String, dynamic>>> _userBookings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const Stream.empty();
+    return FirebaseFirestore.instance
+        .collection('bookings')
+        .where('userId', isEqualTo: uid)
+        .snapshots()
+        .map((s) => s.docs.map((d) => d.data()).toList());
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
-      color: const Color.fromARGB(55, 255, 255, 255),
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Express Clean',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Completed',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '45',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Express Clean',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Completed',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '45',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Express Clean',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Completed',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '45',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
-            const SizedBox(height: 10),
-            BookingsServiceButton(
-              textWidget1: 'Express Clean',
-              textWidget2: '📍Omeeo Car wash',
-              status: 'Completed',
-              day: '🗓️Today',
-              time: '⌚2:30 PM',
-              duration: '⌚90 min',
-              icon: Icon(
-                FontAwesomeIcons.carSide,
-                size: TextSizes.bodyText1,
-                color: const Color.fromARGB(255, 226, 226, 226),
-              ),
-              scale: 1.7,
-              onPressed: () {},
-              price: '45',
-              iconColor: Theme.of(context).colorScheme.primary,
-              iconSize: IconSizes.medium,
-            ),
+    return ScrollConfiguration(
+      behavior: const _NoGlowScroll(),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _userBookings(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const _ListLoading();
+          }
+          if (snap.hasError) {
+            return const _ErrorState(message: 'Could not load history.');
+          }
 
-            const SizedBox(height: 40),
+          final raw = snap.data ?? const [];
+          const hist = {'completed', 'cancelled', 'canceled'};
+          final items = raw
+              .where((b) => hist.contains('${b['status']}'))
+              .toList();
+
+          // sort by scheduledTime desc
+          items.sort((a, b) {
+            final at = _extractDate(a['scheduledTime']);
+            final bt = _extractDate(b['scheduledTime']);
+            return (bt ?? DateTime(0)).compareTo(at ?? DateTime(0));
+          });
+
+          if (items.isEmpty) {
+            return const _EmptyState(
+              title: 'No past bookings',
+              subtitle: 'Your completed or cancelled bookings will show here.',
+              icon: FontAwesomeIcons.clockRotateLeft,
+            );
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 24),
+            physics: const BouncingScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, i) {
+              final b = items[i];
+              final dt = _extractDate(b['scheduledTime']);
+              final serviceType = '${b['serviceType']}'.trim();
+
+              return BookingsServiceButton(
+                service: _serviceLabel(serviceType),
+                serviceLocation: _locationLabel(b),
+                status: '${b['status']}',
+                day: _dayLabel(dt),
+                time: _timeLabel(dt, b['scheduledTimeLabel']),
+                duration: _durationForService(serviceType) == null
+                    ? '⏱️ —'
+                    : '⏱️ ${_durationForService(serviceType)} min',
+                price: (b['price']?.toString()),
+                icon: Icon(
+                  FontAwesomeIcons.carSide,
+                  size: TextSizes.bodyText1,
+                  color: const Color.fromARGB(255, 226, 226, 226),
+                ),
+                scale: 1.7,
+                onPressed: () {},
+                iconColor: Theme.of(context).colorScheme.primary,
+                iconSize: IconSizes.medium,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// ---------- Small UI states ----------
+
+class _ListLoading extends StatelessWidget {
+  const _ListLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.0),
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  const _ErrorState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FontAwesomeIcons.triangleExclamation,
+              size: 28,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  const _EmptyState({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 30, color: cs.primary.withOpacity(.65)),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ---------- Helpers (dates, labels, mapping) ----------
+
+DateTime? _extractDate(dynamic v) {
+  if (v == null) return null;
+  if (v is Timestamp) return v.toDate();
+  if (v is DateTime) return v;
+  if (v is String) {
+    // support ISO strings like "2025-10-17"
+    try {
+      return DateTime.parse(v);
+    } catch (_) {}
+  }
+  return null;
+}
+
+String _dayLabel(DateTime? dt) {
+  if (dt == null) return '—';
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final d = DateTime(dt.year, dt.month, dt.day);
+
+  if (d == today) return 'Today';
+
+  const w = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final wd = w[dt.weekday - 1];
+  return '$wd ${dt.day}/${dt.month}';
+}
+
+String _timeLabel(DateTime? dt, dynamic fallbackField) {
+  if (dt != null) {
+    final h12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour < 12 ? 'AM' : 'PM';
+    return '$h12:$m $ampm';
+  }
+  final s = (fallbackField ?? '').toString().trim(); // e.g., "12:00"
+  return s.isEmpty ? '—' : s;
+}
+
+int? _durationForService(String serviceType) {
+  switch (serviceType.toLowerCase()) {
+    case 'express':
+    case 'express wash':
+      return 10;
+    case 'standard':
+    case 'standard wash':
+      return 30;
+    case 'premium':
+    case 'premium detail':
+      return 120;
+    default:
+      return null;
+  }
+}
+
+String _serviceLabel(String raw) {
+  switch (raw.toLowerCase()) {
+    case 'express':
+      return 'Express Wash';
+    case 'standard':
+      return 'Standard Wash';
+    case 'premium':
+      return 'Premium Detail';
+    default:
+      if (raw.isEmpty) return 'Service';
+      return raw[0].toUpperCase() + raw.substring(1);
+  }
+}
+
+String _locationLabel(Map<String, dynamic> b) {
+  final loc = (b['serviceLocation'] ?? '').toString();
+  final addr = (b['address'] ?? '').toString();
+  final address = addr.isNotEmpty ? addr : loc;
+  return '📍 $address';
 }
