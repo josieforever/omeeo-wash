@@ -4,7 +4,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/helpers/miscellaneous.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 

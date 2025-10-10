@@ -4,6 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/pages/profile/help_and_support/booking_and_scheduling.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/app.config.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/live_chat.dart';
 import 'package:omeeowash/pages/profile/help_and_support/services_and_pricing.dart';
 import 'package:omeeowash/pages/profile/help_and_support/troubleshooting.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -23,45 +25,13 @@ class _HelpAndSupportState extends State<HelpAndSupport> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [HelpAndSupportTopBar(), HelpAndSupportPage()],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [HelpAndSupportTopBar(), HelpAndSupportPage()],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -77,6 +47,8 @@ class HelpAndSupportPage extends StatefulWidget {
 class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
   late UserProvider userProvider;
   late UserModel user;
+
+  bool isAdmin = AppConfig().isAdmin;
 
   @override
   void initState() {
@@ -137,19 +109,22 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
               borderRadius: BorderRadius.circular(5),
               color: const Color.fromARGB(32, 137, 43, 226),
             ),
-            child: CustomText(
-              text: buttonText,
-              textColor: Theme.of(context).colorScheme.primary,
-              textSize: TextSizes.bodyText1,
-              textWeight: FontWeight.bold,
-              textAlign: TextAlign.center,
+            child: GestureDetector(
+              onTap: onPressed,
+              child: CustomText(
+                text: buttonText,
+                textColor: Theme.of(context).colorScheme.primary,
+                textSize: TextSizes.bodyText1,
+                textWeight: FontWeight.bold,
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
           SizedBox(height: 5),
           CustomText(
             text: infomation,
             textColor: Theme.of(context).textTheme.bodyMedium?.color,
-            textSize: TextSizes.bodyText2,
+            textSize: TextSizes.overline,
           ),
         ],
       ),
@@ -226,9 +201,11 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
 
   Widget _buildCard(String title, String subtitle, List<Widget> children) {
     return Card(
+      color: Theme.of(context).colorScheme.inversePrimary,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      // color: Colo,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
@@ -255,17 +232,43 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
 
   @override
   Widget build(BuildContext context) {
+    ColorScheme myColors = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         _buildCard("Contact Support", "", [
-          _buildActionTab(
-            icon: Icons.chat,
-            title: "Live Chat",
-            subtitle: "Chat with our support team",
-            buttonText: 'Start Chat',
-            onPressed: () {},
-            infomation: '24 Hours',
-          ),
+          if (!isAdmin)
+            _buildActionTab(
+              icon: Icons.chat,
+              title: "Live Chat",
+              subtitle: "Chat with our support team",
+              buttonText: 'Start Chat',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        LiveChat(isAdmin: isAdmin),
+                  ),
+                );
+              },
+              infomation: '24 Hours',
+            ),
+          if (isAdmin)
+            _buildActionTab(
+              icon: Icons.chat,
+              title: "Live Chat",
+              subtitle: "Messages from clients",
+              buttonText: "Support Chats",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext context) =>
+                        LiveChat(isAdmin: isAdmin),
+                  ),
+                );
+              },
+              infomation: '24 Hours',
+            ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
           _buildActionTab(
             icon: Icons.phone_in_talk_outlined,
@@ -350,16 +353,11 @@ class HelpAndSupportTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ColorScheme myColors = Theme.of(context).colorScheme;
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: myColors.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -375,9 +373,7 @@ class HelpAndSupportTopBar extends StatelessWidget {
                     children: [
                       CustomText(
                         text: 'Help & Support',
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.headlineLarge?.color,
+                        textColor: Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.heading2,
                         textWeight: FontWeight.w900,
                       ),
@@ -385,9 +381,7 @@ class HelpAndSupportTopBar extends StatelessWidget {
                   ),
                   CustomText(
                     text: 'Get assistance and find answers',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: myColors.primary,
                     textSize: TextSizes.bodyText1,
                   ),
                 ],
@@ -454,17 +448,21 @@ class _FaqScreenState extends State<FaqScreen> {
       child: ExpansionPanelList.radio(
         elevation: 0,
         dividerColor: Theme.of(context).textTheme.bodyMedium?.color,
+
         children: _faqs.map<ExpansionPanelRadio>((faq) {
           return ExpansionPanelRadio(
             value: faq.question,
             headerBuilder: (context, isExpanded) {
-              return ListTile(
-                title: Text(
-                  faq.question,
-                  style: TextStyle(
-                    fontSize: TextSizes.bodyText1,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
+              return Container(
+                color: Colors.amber,
+                child: ListTile(
+                  title: Text(
+                    faq.question,
+                    style: TextStyle(
+                      fontSize: TextSizes.bodyText1,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
                   ),
                 ),
               );

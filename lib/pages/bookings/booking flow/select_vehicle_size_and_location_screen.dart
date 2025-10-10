@@ -420,7 +420,7 @@ class _MapPickerBodyState extends State<_MapPickerBody> {
           p.locality,
           p.administrativeArea,
           p.country,
-        ].where((e) => e != null && e!.trim().isNotEmpty).join(', ');
+        ].where((e) => e != null && e.trim().isNotEmpty).join(', ');
       } else {
         newAddress =
             'Dropped Pin (${latLng.latitude.toStringAsFixed(5)}, ${latLng.longitude.toStringAsFixed(5)})';

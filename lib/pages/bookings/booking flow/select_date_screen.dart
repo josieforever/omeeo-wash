@@ -202,15 +202,17 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                               pickedDate = null;
                               _hasPickedDate = false;
                               selectedTime = null;
-                              for (var t in availableTimes)
+                              for (var t in availableTimes) {
                                 t['isSelected'] = false;
+                              }
                             } else {
                               // select new day
                               pickedDate = date;
                               _hasPickedDate = true;
                               selectedTime = null;
-                              for (var t in availableTimes)
+                              for (var t in availableTimes) {
                                 t['isSelected'] = false;
+                              }
                             }
                           });
                         },
