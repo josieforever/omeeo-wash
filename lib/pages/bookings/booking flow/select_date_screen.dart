@@ -316,7 +316,7 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                         onDateChanged: (date) {
                           if (pickedDate != null &&
                               DateUtils.isSameDay(pickedDate!, date)) {
-                            // deselect
+                            // deselect same date
                             _bookedSub?.cancel();
                             setState(() {
                               pickedDate = null;
@@ -325,16 +325,19 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                               for (var t in availableTimes) {
                                 t['isSelected'] = false;
                               }
-                            } else {
-                              // select new day
+                            });
+                          } else {
+                            // select new day
+                            _bookedSub?.cancel();
+                            setState(() {
                               pickedDate = date;
                               _hasPickedDate = true;
                               selectedTime = null;
                               for (var t in availableTimes) {
                                 t['isSelected'] = false;
                               }
-                            }
-                          });
+                            });
+                          }
                         },
                       ),
                     ),
