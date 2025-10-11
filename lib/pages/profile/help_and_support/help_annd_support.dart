@@ -87,14 +87,14 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Column(
@@ -107,7 +107,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
             decoration: BoxDecoration(
               border: Border.all(width: 1, color: iconColor),
               borderRadius: BorderRadius.circular(5),
-              color: const Color.fromARGB(32, 137, 43, 226),
+              color: Theme.of(context).colorScheme.secondary,
             ),
             child: GestureDetector(
               onTap: onPressed,
@@ -123,7 +123,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
           SizedBox(height: 5),
           CustomText(
             text: infomation,
-            textColor: Theme.of(context).textTheme.bodyMedium?.color,
+            textColor: Theme.of(context).colorScheme.surface,
             textSize: TextSizes.overline,
           ),
         ],
@@ -145,14 +145,14 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Container(
@@ -163,7 +163,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         ),
         child: CustomText(
           text: buttonText,
-          textColor: Theme.of(context).textTheme.headlineLarge?.color,
+          textColor: Theme.of(context).colorScheme.inversePrimary,
           textSize: TextSizes.bodyText1,
           textWeight: FontWeight.bold,
           textAlign: TextAlign.center,
@@ -185,14 +185,14 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Icon(FontAwesomeIcons.chevronRight, size: IconSizes.small),
@@ -218,7 +218,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
                 style: TextStyle(
                   fontSize: TextSizes.subtitle2,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
               ),
             ),
@@ -232,8 +232,6 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
 
   @override
   Widget build(BuildContext context) {
-    ColorScheme myColors = Theme.of(context).colorScheme;
-
     return Column(
       children: [
         _buildCard("Contact Support", "", [
@@ -252,6 +250,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
                 );
               },
               infomation: '24 Hours',
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           if (isAdmin)
             _buildActionTab(
@@ -268,6 +267,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
                 );
               },
               infomation: '24 Hours',
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
           _buildActionTab(
@@ -277,6 +277,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
             buttonText: 'Call Now',
             onPressed: () {},
             infomation: 'Mon-Sun 6AM-10PM',
+            iconColor: Theme.of(context).colorScheme.primary,
           ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
           _buildActionTab(
@@ -286,6 +287,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
             buttonText: 'Send Email',
             onPressed: () {},
             infomation: 'Response within 24h',
+            iconColor: Theme.of(context).colorScheme.primary,
           ),
         ]),
         _buildCard("Frequently Asked Questions", "", [FaqScreen()]),
@@ -301,6 +303,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
               icon: Icons.library_books_rounded,
               title: "Booking & Scheduling",
               subtitle: "Learn how to book and manage appointments",
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
@@ -315,6 +318,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
               icon: Icons.wb_incandescent_sharp,
               title: "Services & Pricing",
               subtitle: "Information about our wash packages",
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           ),
           Divider(indent: 15, endIndent: 15, thickness: 0.5),
@@ -330,6 +334,7 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
               icon: Icons.help,
               title: "Troubleshooting",
               subtitle: "Common issues and solutions",
+              iconColor: Theme.of(context).colorScheme.primary,
             ),
           ),
         ]),
@@ -444,36 +449,39 @@ class _FaqScreenState extends State<FaqScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      color: Theme.of(context).colorScheme.inversePrimary,
       margin: EdgeInsets.symmetric(horizontal: 15),
       child: ExpansionPanelList.radio(
         elevation: 0,
-        dividerColor: Theme.of(context).textTheme.bodyMedium?.color,
+        dividerColor: Theme.of(context).colorScheme.surface,
 
         children: _faqs.map<ExpansionPanelRadio>((faq) {
           return ExpansionPanelRadio(
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
             value: faq.question,
             headerBuilder: (context, isExpanded) {
               return Container(
-                color: Colors.amber,
+                color: Theme.of(context).colorScheme.inversePrimary,
                 child: ListTile(
                   title: Text(
                     faq.question,
                     style: TextStyle(
                       fontSize: TextSizes.bodyText1,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
               );
             },
             body: Container(
+              color: Theme.of(context).colorScheme.inversePrimary,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               child: Text(
                 faq.answer,
                 style: TextStyle(
                   fontSize: TextSizes.bodyText1,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
               ),
             ),

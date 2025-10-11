@@ -74,8 +74,13 @@ class MessageBubble extends StatelessWidget {
           return Text(
             message.text ?? '',
             style: TextStyle(
+              backgroundColor: isMe
+                  ? Theme.of(context).colorScheme.secondary
+                  : Colors.transparent,
               fontSize: 16,
-              color: isMe ? Colors.white : Colors.black,
+              color: isMe
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.secondary,
               fontWeight: FontWeight.w500,
             ),
           );
@@ -129,7 +134,9 @@ class MessageBubble extends StatelessWidget {
                     message.text ?? '',
                     style: TextStyle(
                       fontSize: 16,
-                      color: isMe ? Colors.white : Colors.black,
+                      color: isMe
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.secondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -182,7 +189,7 @@ class MessageBubble extends StatelessWidget {
           child: Container(
             color: isSelected
                 ? const Color.fromARGB(255, 218, 215, 255)
-                : Colors.transparent,
+                : Theme.of(context).colorScheme.inversePrimary,
             child: Padding(
               padding: outerPadding,
               child: Align(
@@ -197,8 +204,8 @@ class MessageBubble extends StatelessWidget {
                     padding: const BubbleEdges.only(bottom: 3),
                     nip: nip,
                     color: isMe
-                        ? const Color(0xFF6D66F6)
-                        : AppColors.periwinklePurple,
+                        ? Theme.of(context).colorScheme.secondary
+                        : Theme.of(context).colorScheme.primary,
                     child: Column(
                       crossAxisAlignment: isMe
                           ? CrossAxisAlignment.end
@@ -209,7 +216,9 @@ class MessageBubble extends StatelessWidget {
                         Text(
                           timestamp,
                           style: TextStyle(
-                            color: isMe ? Colors.white70 : Colors.grey[600],
+                            color: isMe
+                                ? Theme.of(context).colorScheme.tertiary
+                                : Theme.of(context).colorScheme.scrim,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),

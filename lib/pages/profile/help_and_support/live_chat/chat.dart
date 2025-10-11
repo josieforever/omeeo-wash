@@ -246,27 +246,21 @@ class _ChatState extends State<Chat> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       resizeToAvoidBottomInset: true,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerRight,
-              end: Alignment.centerLeft,
-              colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-            ),
-          ),
+          color: Theme.of(context).colorScheme.secondary,
 
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 1,
             leading: GestureDetector(
               onTap: () => Navigator.of(context).pop(),
-              child: const Icon(
+              child: Icon(
                 FontAwesomeIcons.arrowLeft,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             title: ValueListenableBuilder<int>(
@@ -276,14 +270,18 @@ class _ChatState extends State<Chat> {
                   return CustomText(
                     text: "$addUp selected",
                     textWeight: FontWeight.w600,
+                    textColor: Theme.of(context).colorScheme.primary,
                   );
                 }
                 return Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 18,
-                      backgroundColor: Colors.grey,
-                      child: Icon(Icons.person, color: Colors.white),
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      child: Icon(
+                        Icons.person,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -291,8 +289,8 @@ class _ChatState extends State<Chat> {
                       children: [
                         Text(
                           isAdmin ? widget.clientName ?? "" : "Support Centre",
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -317,10 +315,16 @@ class _ChatState extends State<Chat> {
                 builder: (context, addUp, _) {
                   if (addUp == 0) {
                     return Row(
-                      children: const [
-                        Icon(Icons.call, color: Colors.white),
+                      children: [
+                        Icon(
+                          Icons.call,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         SizedBox(width: 15),
-                        Icon(Icons.videocam, color: Colors.white),
+                        Icon(
+                          Icons.videocam,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         SizedBox(width: 10),
                       ],
                     );
@@ -328,7 +332,10 @@ class _ChatState extends State<Chat> {
                   return Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.white),
+                        icon: Icon(
+                          Icons.delete,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         onPressed: () {
                           Methods().showDeleteConfirmationDialog(context, () {
                             if (selection.selectedIds().length > 1) {
@@ -348,7 +355,10 @@ class _ChatState extends State<Chat> {
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.white),
+                        icon: Icon(
+                          Icons.clear,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         onPressed: selection.clear,
                       ),
                     ],
@@ -505,6 +515,13 @@ class _MessageListViewState extends State<MessageListView> {
 
             final isLast = index == msgs.length - 1;
 
+            if (message.type == MessageType.video &&
+                message.mediaUrl!.startsWith('http')) {
+              // _downloadAndReplaceVideo(message);
+
+              return const Center(child: CircularProgressIndicator());
+            }
+
             return ValueListenableBuilder<bool>(
               valueListenable: widget.selection.listen(msgId),
               builder: (context, isSelected, _) {
@@ -606,7 +623,7 @@ class MessageInput extends StatelessWidget {
                   color: Colors.white,
                   border: Border.all(
                     width: 2,
-                    color: AppColors.deeperPeriwinkle,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   borderRadius: BorderRadius.circular(7),
                 ),
@@ -663,13 +680,13 @@ class MessageInput extends StatelessWidget {
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: AppColors.deeperPeriwinkle,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.attach_file,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.inversePrimary,
                     size: 20,
                   ),
                 ),
@@ -678,16 +695,16 @@ class MessageInput extends StatelessWidget {
               isSending
                   ? Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.deeperPeriwinkle,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
                         shape: BoxShape.circle,
                       ),
-                      child: const SizedBox(
+                      child: SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.inversePrimary,
                         ),
                       ),
                     )
@@ -697,13 +714,13 @@ class MessageInput extends StatelessWidget {
                       },
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.deeperPeriwinkle,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.send,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.inversePrimary,
                           size: 20,
                         ),
                       ),
@@ -715,592 +732,6 @@ class MessageInput extends StatelessWidget {
     );
   }
 }
-
-// class Chat extends StatefulWidget {
-//   final String? clientId;
-//   final String? clientName;
-//   const Chat({super.key, required this.clientId, this.clientName});
-//   const Chat.admin({
-//     super.key,
-//     required this.clientId,
-//     required this.clientName,
-//   });
-
-//   @override
-//   State<Chat> createState() => _ChatState();
-// }
-
-// class _ChatState extends State<Chat> {
-//   final ScrollController _scrollController = ScrollController();
-//   final _newestKey = GlobalKey();
-
-//   final TextEditingController messageController = TextEditingController();
-//   final firestore = FirebaseFirestore.instance;
-//   bool isAdmin = false;
-
-//   String get userId =>
-//       isAdmin ? widget.clientId! : FirebaseAuth.instance.currentUser!.uid;
-
-//   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-
-//   String get chatId => '${userId.substring(2, 14)}cc-4372-a';
-//   String get sender => isAdmin ? "ommeo" : 'user';
-
-//   String username = "";
-//   final bool _isLoadingMore = false; // remove final if needed
-//   late final ChatSyncService sync;
-//   late final LocalChatStore store;
-
-//   // Selection controller
-//   final SelectionController selection = SelectionController();
-
-//   bool isCurrentlyTyping = false;
-//   Timer? _typingTimer;
-
-//   String? pickedImageFile;
-//   String? pickedVideoFile;
-
-//   bool isSending = false;
-
-//   Future<void> pickImage() async {
-//     FilePickerResult? result = await FilePicker.platform.pickFiles(
-//       type: FileType.image,
-//     );
-//     setState(() {
-//       pickedImageFile = result?.files.single.path;
-//       pickedVideoFile = null;
-//     });
-//     if (result != null) {}
-//   }
-
-//   Future<void> pickVideo() async {
-//     pickedVideoFile = null;
-//     FilePickerResult? result = await FilePicker.platform.pickFiles(
-//       type: FileType.video,
-//     );
-
-//     if (result != null && mounted) {
-//       final filePath = result.files.single.path;
-//       if (filePath == null) return;
-
-//       setState(() {
-//         pickedVideoFile = filePath;
-//         pickedImageFile = null;
-//       });
-//     }
-//   }
-
-//   void _scrollToBottom() {
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       if (_scrollController.hasClients) {
-//         _scrollController.animateTo(
-//           _scrollController.position.maxScrollExtent,
-//           duration: const Duration(milliseconds: 300),
-//           curve: Curves.easeOut,
-//         );
-//       }
-//     });
-//   }
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     getUserInfo();
-
-//     store = context.read<LocalChatStore>();
-//     sync = context.read<ChatSyncService>();
-//     sync.start(chatId, userId);
-
-//     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-//   }
-
-//   @override
-//   void dispose() {
-//     _typingTimer?.cancel();
-//     _scrollController.dispose();
-//     sync.stop();
-//     super.dispose();
-//   }
-
-//   void getUserInfo() async {
-//     final userSnapshot = await firestore.collection("users").doc(userId).get();
-//     final userData = userSnapshot.data();
-//     setState(() {
-//       isAdmin = userData?["isAdmin"] ?? false;
-//       username = userData?["name"] ?? "User";
-//     });
-//   }
-
-//   Future<void> sendHelpMessage() async {
-//     final String message = messageController.text.trim();
-
-//     if (message.isEmpty && pickedImageFile == null && pickedVideoFile == null) {
-//       return;
-//     }
-
-//     final String? rawMediaUrl = pickedImageFile ?? pickedVideoFile;
-
-//     setState(() {
-//       isSending = true;
-//     });
-//     _scrollToBottom();
-
-//     String? mediaUrl;
-//     MessageType type = MessageType.text;
-
-//     try {
-//       if (pickedImageFile != null) {
-//         type = MessageType.image;
-//         final ref = FirebaseStorage.instance
-//             .ref()
-//             .child('chat_media')
-//             .child(
-//               '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedImageFile!.split('/').last}',
-//             );
-//         await ref.putFile(File(pickedImageFile!));
-//         mediaUrl = await ref.getDownloadURL();
-//         setState(() {
-//           pickedImageFile = null;
-//         });
-//       }
-
-//       if (pickedVideoFile != null) {
-//         type = MessageType.video;
-//         final ref = FirebaseStorage.instance
-//             .ref()
-//             .child('chat_media')
-//             .child(
-//               '$currentUserId/${DateTime.now().millisecondsSinceEpoch}_${pickedVideoFile!.split('/').last}',
-//             );
-//         await ref.putFile(File(pickedVideoFile!));
-//         mediaUrl = await ref.getDownloadURL();
-//         setState(() {
-//           pickedVideoFile = null;
-//         });
-//       }
-
-//       await sync.sendMessage(
-//         chatId: chatId,
-//         senderId: userId,
-//         sender: sender,
-//         text: message.isNotEmpty ? message : null,
-//         mediaUrl: mediaUrl,
-//         type: type,
-//         rawMediaUrl: rawMediaUrl,
-//       );
-
-//       messageController.clear();
-//       setState(() {
-//         isSending = false;
-//       });
-
-//       final adminChatRef = firestore
-//           .collection('admin')
-//           .doc("idforadminv1")
-//           .collection('help_chats')
-//           .doc(userId);
-
-//       final batch = firestore.batch();
-//       final lastMessage = message.isEmpty ? type.name : message;
-
-//       if (isAdmin) {
-//         batch.update(adminChatRef, {"last_message": lastMessage});
-//       } else {
-//         batch.set(adminChatRef, {
-//           "userId": widget.clientId,
-//           "username": username,
-//           "last_message": lastMessage,
-//         });
-//       }
-
-//       await batch.commit();
-//     } catch (e) {
-//       setState(() {
-//         isSending = false;
-//       });
-//       debugPrint('❌ Failed to send help message: $e');
-//     }
-//   }
-
-//   void onTyping(String text) {
-//     if (!isCurrentlyTyping) {
-//       isCurrentlyTyping = true;
-//       firestore.collection('users').doc(userId).update({'isTyping': true});
-//     }
-//     _typingTimer?.cancel();
-//     _typingTimer = Timer(const Duration(seconds: 2), () {
-//       firestore.collection('users').doc(userId).update({'isTyping': false});
-//       isCurrentlyTyping = false;
-//     });
-//   }
-
-//   String formatTimestamp(DateTime dt) {
-//     return DateFormat('h:mm a').format(dt);
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       appBar: PreferredSize(
-//         preferredSize: const Size.fromHeight(60.0),
-//         child: Container(
-//           decoration: const BoxDecoration(
-//             gradient: LinearGradient(
-//               begin: Alignment.centerRight,
-//               end: Alignment.centerLeft,
-//               colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-//             ),
-//           ),
-//           child: AppBar(
-//             backgroundColor: Colors.transparent,
-//             elevation: 1,
-//             leading: GestureDetector(
-//               onTap: () => Navigator.of(context).pop(),
-//               child: const Icon(
-//                 FontAwesomeIcons.arrowLeft,
-//                 color: Colors.white,
-//               ),
-//             ),
-//             title: ValueListenableBuilder<int>(
-//               valueListenable: selection.count,
-//               builder: (context, addUp, _) {
-//                 if (addUp > 0) {
-//                   return CustomText(
-//                     text: "$addUp selected",
-//                     textWeight: FontWeight.w600,
-//                   );
-//                 }
-//                 return Row(
-//                   children: [
-//                     const CircleAvatar(
-//                       radius: 18,
-//                       backgroundColor: Colors.grey,
-//                       child: Icon(Icons.person, color: Colors.white),
-//                     ),
-//                     const SizedBox(width: 10),
-//                     Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Text(
-//                           isAdmin ? widget.clientName ?? "" : "Support Centre",
-//                           style: const TextStyle(
-//                             color: Colors.white,
-//                             fontWeight: FontWeight.bold,
-//                             fontSize: 16,
-//                           ),
-//                         ),
-//                         const Text(
-//                           'Online',
-//                           style: TextStyle(
-//                             fontSize: 12,
-//                             fontWeight: FontWeight.bold,
-//                             color: AppColors.success,
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ],
-//                 );
-//               },
-//             ),
-//             actions: [
-//               ValueListenableBuilder<int>(
-//                 valueListenable: selection.count,
-//                 builder: (context, addUp, _) {
-//                   if (addUp == 0) {
-//                     return Row(
-//                       children: const [
-//                         Icon(Icons.call, color: Colors.white),
-//                         SizedBox(width: 15),
-//                         Icon(Icons.videocam, color: Colors.white),
-//                         SizedBox(width: 10),
-//                       ],
-//                     );
-//                   }
-//                   return Row(
-//                     children: [
-//                       IconButton(
-//                         icon: const Icon(Icons.delete, color: Colors.white),
-//                         onPressed: () {
-//                           Methods().showDeleteConfirmationDialog(context, () {
-//                             if (selection.selectedIds().length > 1) {
-//                               sync.deleteMany(
-//                                 senderId: userId,
-//                                 docIds: selection.selectedIds(),
-//                               );
-//                             } else {
-//                               sync.deleteMessage(
-//                                 senderId: userId,
-//                                 docId: selection.selectedIds()[0],
-//                               );
-//                             }
-//                             selection.clear();
-//                             Navigator.of(context).pop(true);
-//                           });
-//                         },
-//                       ),
-//                       IconButton(
-//                         icon: const Icon(Icons.clear, color: Colors.white),
-//                         onPressed: selection.clear,
-//                       ),
-//                     ],
-//                   );
-//                 },
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//       body: Column(
-//         children: [
-//           const SizedBox(height: 10),
-//           const Center(
-//             child: Text(
-//               'Chat started at 01:25 PM',
-//               style: TextStyle(color: Colors.grey, fontSize: 12),
-//             ),
-//           ),
-//           Expanded(
-//             child: StreamBuilder<List<Message>>(
-//               stream: store.watchLatest(chatId, limit: 50),
-//               builder: (context, snapshot) {
-//                 final msgs = snapshot.data ?? const <Message>[];
-//                 if (snapshot.connectionState == ConnectionState.waiting) {
-//                   return const Center(child: CircularProgressIndicator());
-//                 }
-//                 if (msgs.isEmpty) {
-//                   return const Center(child: Text('No messages yet.'));
-//                 }
-
-//                 // scroll when new data comes
-//                 WidgetsBinding.instance.addPostFrameCallback((_) {
-//                   _scrollToBottom();
-//                 });
-
-//                 return ListView.builder(
-//                   controller: _scrollController,
-//                   itemCount: msgs.length + (_isLoadingMore ? 1 : 0),
-//                   itemBuilder: (context, index) {
-//                     if (_isLoadingMore && index == msgs.length) {
-//                       return const Center(child: CircularProgressIndicator());
-//                     }
-
-//                     final message = msgs[index];
-//                     final msgId = message.docId;
-//                     final isMine = message.sender == sender;
-//                     final ts = message.createdAt;
-
-//                     bool isSameSenderAsPrevious = false;
-//                     if (index > 0) {
-//                       final prevSender = msgs[index - 1];
-//                       isSameSenderAsPrevious =
-//                           prevSender.sender == message.sender;
-//                     }
-
-//                     final isLast = index == msgs.length - 1;
-
-//                     return ValueListenableBuilder<bool>(
-//                       valueListenable: selection.listen(msgId),
-//                       builder: (context, isSelected, _) {
-//                         return Column(
-//                           mainAxisSize: MainAxisSize.min,
-//                           children: [
-//                             MessageBubble(
-//                               key: isLast ? _newestKey : ValueKey(msgId),
-//                               message: message,
-//                               timestamp: formatTimestamp(ts),
-//                               isPreviouseMessageMine: isMine,
-//                               isFirstSequence: !isSameSenderAsPrevious,
-//                               isSelected: isSelected,
-//                               onLongPress: () => selection.toggle(msgId),
-//                               onTap: () {
-//                                 if (selection.count.value > 0) {
-//                                   selection.toggle(msgId);
-//                                 }
-//                               },
-//                             ),
-
-//                             if (isLast &&
-//                                 isSending &&
-//                                 (pickedImageFile != null ||
-//                                     pickedVideoFile != null))
-//                               Align(
-//                                 alignment: Alignment.bottomRight,
-//                                 child: Container(
-//                                   margin: EdgeInsets.only(right: 18, top: 5),
-//                                   decoration: BoxDecoration(
-//                                     borderRadius: BorderRadius.circular(5),
-//                                     color: Colors.white,
-//                                   ),
-//                                   height: 100,
-//                                   width: 100,
-//                                   child: Stack(
-//                                     children: [
-//                                       Center(
-//                                         child: Icon(
-//                                           Icons.file_copy_sharp,
-//                                           color: Colors.grey,
-//                                           size: 70,
-//                                         ),
-//                                       ),
-//                                       Center(
-//                                         child: CircularProgressIndicator(
-//                                           color: Colors.white,
-//                                         ),
-//                                       ),
-//                                     ],
-//                                   ),
-//                                 ),
-//                               ),
-//                           ],
-//                         );
-//                       },
-//                     );
-//                   },
-//                 );
-//               },
-//             ),
-//           ),
-//           // typing indicator
-//           StreamBuilder<DocumentSnapshot>(
-//             stream: firestore
-//                 .collection('users')
-//                 .doc(widget.clientId)
-//                 .snapshots(),
-//             builder: (context, snapshot) {
-//               if (!snapshot.hasData) return const SizedBox.shrink();
-//               final data = snapshot.data!.data() as Map<String, dynamic>;
-//               final isTyping = data['isTyping'] ?? false;
-//               return isTyping && isAdmin
-//                   ? Container(
-//                       padding: const EdgeInsets.only(left: 20),
-//                       alignment: Alignment.bottomLeft,
-//                       child: const Text(
-//                         'typing...',
-//                         style: TextStyle(color: Colors.black, fontSize: 14),
-//                       ),
-//                     )
-//                   : const SizedBox.shrink();
-//             },
-//           ),
-//           // input
-//           Container(
-//             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
-//             child: Row(
-//               crossAxisAlignment: CrossAxisAlignment.end,
-//               children: [
-//                 Expanded(
-//                   child: SafeArea(
-//                     child: Container(
-//                       decoration: BoxDecoration(
-//                         color: Colors.white,
-//                         border: Border.all(
-//                           width: 2,
-//                           color: AppColors.deeperPeriwinkle,
-//                         ),
-//                         borderRadius: BorderRadius.circular(7),
-//                       ),
-//                       child: Column(
-//                         children: [
-//                           if (pickedImageFile != null && !isSending)
-//                             ImagePreview(
-//                               filePath: pickedImageFile!,
-//                               onRemove: () {
-//                                 setState(() {
-//                                   pickedImageFile = null;
-//                                 });
-//                               },
-//                             ),
-//                           if (pickedVideoFile != null && !isSending)
-//                             SizedBox(
-//                               child: VideoPreview(
-//                                 filePath: pickedVideoFile!,
-//                                 onRemove: () {
-//                                   setState(() {
-//                                     pickedVideoFile = null;
-//                                   });
-//                                 },
-//                               ),
-//                             ),
-//                           ConstrainedBox(
-//                             constraints: const BoxConstraints(maxHeight: 120),
-//                             child: TextField(
-//                               style: const TextStyle(
-//                                 color: Colors.black,
-//                                 fontWeight: FontWeight.bold,
-//                               ),
-//                               onChanged: onTyping,
-//                               controller: messageController,
-//                               maxLines: null,
-//                               keyboardType: TextInputType.multiline,
-//                               decoration: const InputDecoration(
-//                                 hintText: 'Message',
-//                                 border: InputBorder.none,
-//                                 contentPadding: EdgeInsets.symmetric(
-//                                   horizontal: 12,
-//                                   vertical: 5,
-//                                 ),
-//                               ),
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 8),
-//                 Row(
-//                   children: [
-//                     GestureDetector(
-//                       onTap: () {
-//                         Methods().showMediaPickerDialog(
-//                           context,
-//                           () => pickImage(),
-//                           () => pickVideo(),
-//                         );
-//                       },
-//                       child: Container(
-//                         padding: const EdgeInsets.all(8),
-//                         decoration: const BoxDecoration(
-//                           color: AppColors.deeperPeriwinkle,
-//                           shape: BoxShape.circle,
-//                         ),
-//                         child: const Icon(
-//                           Icons.attach_file,
-//                           color: Colors.white,
-//                           size: 20,
-//                         ),
-//                       ),
-//                     ),
-//                     const SizedBox(width: 5),
-//                     GestureDetector(
-//                       onTap: () {
-//                         sendHelpMessage();
-//                       },
-//                       child: Container(
-//                         padding: const EdgeInsets.all(8),
-//                         decoration: const BoxDecoration(
-//                           color: AppColors.deeperPeriwinkle,
-//                           shape: BoxShape.circle,
-//                         ),
-//                         child: const Icon(
-//                           Icons.send,
-//                           color: Colors.white,
-//                           size: 20,
-//                         ),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
 
 /// Keeps selection state per-message without forcing a pr screen rebuild.
 class SelectionController {
