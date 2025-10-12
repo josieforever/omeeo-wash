@@ -454,14 +454,13 @@ class _FaqScreenState extends State<FaqScreen> {
       child: ExpansionPanelList.radio(
         elevation: 0,
         dividerColor: Theme.of(context).colorScheme.surface,
-
         children: _faqs.map<ExpansionPanelRadio>((faq) {
           return ExpansionPanelRadio(
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            backgroundColor: Theme.of(context).colorScheme.onSecondary,
             value: faq.question,
             headerBuilder: (context, isExpanded) {
               return Container(
-                color: Theme.of(context).colorScheme.inversePrimary,
+                color: Theme.of(context).colorScheme.onSecondary,
                 child: ListTile(
                   title: Text(
                     faq.question,

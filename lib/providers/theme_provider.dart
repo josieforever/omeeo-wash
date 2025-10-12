@@ -26,7 +26,7 @@ class ThemeProvider extends ChangeNotifier {
       tertiary: Color.fromARGB(255, 150, 150, 150),
       surface: Color.fromARGB(255, 85, 85, 85),
       scrim: Color.fromARGB(175, 203, 199, 205),
-      shadow: Color.fromARGB(57, 160, 160, 160),
+      shadow: Color.fromARGB(85, 160, 160, 160),
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(color: AppColors.white),

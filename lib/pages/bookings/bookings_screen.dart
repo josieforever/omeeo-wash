@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 // ✅ Add these
@@ -133,8 +134,8 @@ class _CustomTopNavState extends State<CustomTopNav> {
       stream: _userBookings(),
       builder: (context, snap) {
         final data = snap.data ?? const [];
-        const activeSet = {'pending_cash', 'confirmed', 'in_progress'};
-        const historySet = {'completed', 'cancelled', 'canceled'};
+        const activeSet = {'pending', 'confirmed', 'in_progress'};
+        const historySet = {'completed', 'cancelled'};
 
         final activeCount = data
             .where((b) => activeSet.contains('${b['status']}'))
@@ -208,12 +209,137 @@ class _NoGlowScroll extends ScrollBehavior {
 class StatusTabScreen extends StatelessWidget {
   const StatusTabScreen({super.key});
 
+  // Map DB strings to a small canonical set
+  String _canonicalStatus(dynamic s) {
+    final v = '${s ?? ''}'.trim().toLowerCase();
+    if (v == 'pending' ||
+        v == 'pending_cash' ||
+        v == 'pending-card' ||
+        v == 'awaiting_payment') {
+      return 'pending';
+    }
+    if (v == 'in_progress' ||
+        v == 'inprogress' ||
+        v == 'in-progress' ||
+        v == 'processing') {
+      return 'in_progress';
+    }
+    if (v == 'confirmed' || v == 'booked') {
+      return 'confirmed';
+    }
+    if (v == 'completed' || v == 'done' || v == 'finished') {
+      return 'completed';
+    }
+    if (v == 'cancelled' || v == 'canceled') {
+      return 'cancelled';
+    }
+    return v; // fallback
+  }
+
+  DateTime? _extractDate(dynamic tsOrIso) {
+    if (tsOrIso == null) return null;
+    try {
+      // Firestore Timestamp
+      if (tsOrIso is Timestamp) return tsOrIso.toDate();
+      // ISO string
+      if (tsOrIso is String) return DateTime.tryParse(tsOrIso);
+    } catch (_) {}
+    return null;
+  }
+
+  String _serviceLabel(String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'express':
+        return 'Express Wash';
+      case 'standard':
+        return 'Standard Wash';
+      case 'premium':
+      default:
+        return 'Premium Detail';
+    }
+  }
+
+  // import 'package:intl/intl.dart';
+  String _dayLabel(DateTime? dt) {
+    if (dt == null) return '—';
+    final now = DateUtils.dateOnly(DateTime.now());
+    final day = DateUtils.dateOnly(dt);
+    if (day == now) return 'Today';
+    if (day == now.add(const Duration(days: 1))) return 'Tomorrow';
+    return DateFormat('MMM d').format(day).toLowerCase(); // e.g., "dec 10"
+  }
+
+  String _timeLabel(DateTime? dt, dynamic labelFromDb) {
+    // Try to normalize a DB-provided label first.
+    final fromDb = _convertDbLabelTo12h(labelFromDb?.toString());
+    if (fromDb != null) return fromDb;
+
+    // Fallback to DateTime
+    if (dt == null) return '—';
+    return _format12h(dt.hour, dt.minute);
+  }
+
+  String? _convertDbLabelTo12h(String? raw) {
+    if (raw == null) return null;
+    final s = raw.trim();
+    if (s.isEmpty) return null;
+
+    // Matches: "14:05", "2:05", "2:05pm", "02:05 PM", etc.
+    final re = RegExp(r'^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$');
+    final m = re.firstMatch(s);
+    if (m == null) return null;
+
+    var h = int.tryParse(m.group(1)!) ?? 0;
+    final min = int.tryParse(m.group(2)!) ?? 0;
+    final ampmRaw = m.group(3);
+
+    if (ampmRaw != null) {
+      // Has AM/PM → normalize case and convert to 24h first
+      final ampm = ampmRaw.toUpperCase();
+      if (ampm == 'PM' && h != 12) h += 12;
+      if (ampm == 'AM' && h == 12) h = 0;
+    } else {
+      // No AM/PM → assume 24h input (e.g., "14:30")
+      h = h.clamp(0, 23);
+    }
+
+    return _format12h(h, min);
+  }
+
+  String _format12h(int hour24, int minute) {
+    final h12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    final mm = minute.toString().padLeft(2, '0');
+    final ampm = hour24 >= 12 ? 'PM' : 'AM';
+    return '$h12:$mm $ampm';
+  }
+
+  int? _durationForService(String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'express':
+        return 10;
+      case 'standard':
+        return 30;
+      case 'premium':
+        return 120;
+      default:
+        return null;
+    }
+  }
+
+  String _locationLabel(Map<String, dynamic> b) {
+    // Prefer address string, fallback to location name if you have one.
+    final addr =
+        '${b['address'] ?? b['location'] ?? b['serviceLocation'] ?? ''}'.trim();
+    if (addr.isEmpty) return '—';
+    return '📍 $addr';
+  }
+
   Stream<List<Map<String, dynamic>>> _userBookings() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return const Stream.empty();
     return FirebaseFirestore.instance
         .collection('bookings')
-        .where('userId', isEqualTo: uid) // ✅ single filter
+        .where('userId', isEqualTo: uid) // ✅ single-filter stream
         .snapshots()
         .map((s) => s.docs.map((d) => d.data()).toList());
   }
@@ -233,21 +359,21 @@ class StatusTabScreen extends StatelessWidget {
           }
 
           final raw = snap.data ?? const [];
-          const active = {'pending_cash', 'confirmed', 'in_progress'};
-          final items = raw
-              .where((b) => active.contains('${b['status']}'))
-              .toList();
+          final items = raw.where((b) {
+            final s = _canonicalStatus(b['status']);
+            return s == 'pending' || s == 'in_progress' || s == 'confirmed';
+          }).toList();
 
-          // sort by scheduledTime asc
+          // sort by scheduledTime asc (client-side)
           items.sort((a, b) {
-            final at = _extractDate(a['scheduledTime']);
-            final bt = _extractDate(b['scheduledTime']);
-            return (at ?? DateTime.now()).compareTo(bt ?? DateTime.now());
+            final at = _extractDate(a['scheduledTime']) ?? DateTime(2100);
+            final bt = _extractDate(b['scheduledTime']) ?? DateTime(2100);
+            return at.compareTo(bt);
           });
 
           if (items.isEmpty) {
             return const _EmptyState(
-              title: 'No bookings yet',
+              title: 'No active bookings',
               subtitle: 'When you book a wash, it will show up here.',
               icon: FontAwesomeIcons.calendarXmark,
             );
@@ -261,17 +387,19 @@ class StatusTabScreen extends StatelessWidget {
             itemBuilder: (context, i) {
               final b = items[i];
               final dt = _extractDate(b['scheduledTime']);
-              final serviceType = '${b['serviceType']}'.trim();
+              final serviceType = '${b['serviceType'] ?? ''}';
+              final canonical = _canonicalStatus(b['status']);
 
               return BookingsServiceButton(
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
-                status: '${b['status']}',
+                status: canonical, // 👈 pass canonical status
                 day: _dayLabel(dt),
                 time: _timeLabel(dt, b['scheduledTimeLabel']),
-                duration: _durationForService(serviceType) == null
-                    ? '⏱️ —'
-                    : '⏱️ ${_durationForService(serviceType)} min',
+                duration: (() {
+                  final d = _durationForService(serviceType);
+                  return d == null ? '⏱️ —' : '⏱️ $d min';
+                })(),
                 price: (b['price']?.toString()),
                 icon: Icon(
                   FontAwesomeIcons.carSide,

@@ -21,45 +21,13 @@ class _TroubleshootingState extends State<Troubleshooting> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [TroubleshootingTopBar(), TroubleshootingPage()],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [TroubleshootingTopBar(), TroubleshootingPage()],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -103,8 +71,8 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
     required String subtitle,
     required String number,
     required VoidCallback onPressed,
-    Color iconColor = AppColors.secondary,
   }) {
+    Color iconColor = Theme.of(context).colorScheme.primary;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15),
       child: Row(
@@ -140,7 +108,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: TextSizes.bodyText1,
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -149,7 +117,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
                   softWrap: true,
                   style: TextStyle(
                     fontSize: TextSizes.bodyText1,
-                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               ],
@@ -165,7 +133,6 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
     required String title,
     required String subtitle,
     required VoidCallback onPressed,
-    Color iconColor = AppColors.secondary,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 15),
@@ -185,14 +152,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(5),
-                gradient: LinearGradient(
-                  begin: Alignment.centerRight,
-                  end: Alignment.centerLeft,
-                  colors: const [
-                    Color(0xFF6D66F6), // Right (periwinkle blue-purple)
-                    Color(0xFFA558F2), // Left (light pink-purple)
-                  ],
-                ),
+                color: Theme.of(context).colorScheme.primary,
               ),
               child: CustomText(
                 text: title,
@@ -212,8 +172,8 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
     required IconData icon,
     required String title,
     required String subtitle,
-    Color iconColor = AppColors.secondary,
   }) {
+    Color iconColor = Theme.of(context).colorScheme.primary;
     return ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(
@@ -221,14 +181,14 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Icon(FontAwesomeIcons.chevronRight, size: IconSizes.small),
@@ -237,6 +197,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
 
   Widget _buildCard(String title, String subtitle, List<Widget> children) {
     return Card(
+      color: Theme.of(context).colorScheme.inversePrimary,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -252,7 +213,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
                 style: TextStyle(
                   fontSize: TextSizes.subtitle2,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -296,9 +257,10 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
     List<Widget> children,
   ) {
     return Card(
+      color: Theme.of(context).colorScheme.inversePrimary,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
@@ -319,7 +281,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
                     style: TextStyle(
                       fontSize: TextSizes.subtitle2,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -357,7 +319,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
                       const SizedBox(width: 5),
                       CustomText(
                         text: point,
-                        textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                        textColor: Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.bodyText1,
                       ),
                     ],
@@ -458,7 +420,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
             child: CustomText(
               text:
                   "If you couldn't find a solution above, our support team is here to help",
-              textColor: Theme.of(context).textTheme.bodyLarge?.color,
+              textColor: Theme.of(context).colorScheme.primary,
               textSize: TextSizes.bodyText1,
             ),
           ),
@@ -475,12 +437,9 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
               Expanded(
                 child: BookNowNoGradient(
                   backgroundColor: // Right (periwinkle blue-purple)
-                  Color.fromARGB(
-                    251,
-                    165,
-                    88,
-                    242,
-                  ),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primary,
                   margin: EdgeInsets.only(left: 10, right: 5, bottom: 10),
                   title: "Call Support",
                   onPressed: () {},
@@ -488,7 +447,7 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
               ),
               Expanded(
                 child: BookNowNoGradient(
-                  backgroundColor: Color(0xFF6D66F6),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   margin: EdgeInsets.only(left: 5, right: 10, bottom: 10),
                   title: "Email Us",
                   onPressed: () {},
@@ -511,13 +470,7 @@ class TroubleshootingTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -533,9 +486,7 @@ class TroubleshootingTopBar extends StatelessWidget {
                     children: [
                       CustomText(
                         text: 'Troubleshooting',
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.headlineLarge?.color,
+                        textColor: Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.heading2,
                         textWeight: FontWeight.w900,
                       ),
@@ -543,9 +494,7 @@ class TroubleshootingTopBar extends StatelessWidget {
                   ),
                   CustomText(
                     text: 'Common issues and solutions',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.bodyText1,
                   ),
                 ],
@@ -579,9 +528,10 @@ class _FaqScreenState extends State<FaqScreen> {
       margin: EdgeInsets.symmetric(horizontal: 15),
       child: ExpansionPanelList.radio(
         elevation: 0,
-        dividerColor: Theme.of(context).textTheme.bodyMedium?.color,
+        dividerColor: Theme.of(context).colorScheme.surface,
         children: widget.faqs.map<ExpansionPanelRadio>((faq) {
           return ExpansionPanelRadio(
+            backgroundColor: Theme.of(context).colorScheme.onSecondary,
             value: faq.question,
             headerBuilder: (context, isExpanded) {
               return ListTile(
@@ -590,7 +540,7 @@ class _FaqScreenState extends State<FaqScreen> {
                   style: TextStyle(
                     fontSize: TextSizes.bodyText1,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               );
@@ -601,7 +551,7 @@ class _FaqScreenState extends State<FaqScreen> {
                 faq.answer,
                 style: TextStyle(
                   fontSize: TextSizes.bodyText1,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
+                  color: Theme.of(context).colorScheme.surface,
                 ),
               ),
             ),

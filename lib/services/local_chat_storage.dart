@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
 import 'package:isar/isar.dart';
 import 'package:omeeowash/models/message.dart';
+import 'package:path_provider/path_provider.dart';
 
 class LocalChatStore {
   final Isar isar;
@@ -99,6 +103,41 @@ class LocalChatStore {
     if (newOnes.isEmpty) return;
     await isar.writeTxn(() async {
       await isar.messages.putAll(newOnes);
+    });
+  }
+
+  Future<Message?> messageIdEqualTo(String messageId) async {
+    final messages = await isar.messages.where().findAll();
+    try {
+      return messages.firstWhere((msg) => msg.docId == messageId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> downloadAndReplaceVideo(Message message) async {
+    final httpUrl = message.mediaUrl!;
+    final localDir = await getApplicationDocumentsDirectory();
+    final filePath = '${localDir.path}/${message.docId}.mp4';
+    final file = File(filePath);
+
+    // Download only if not already saved
+    if (!await file.exists()) {
+      final response = await http.get(Uri.parse(httpUrl));
+      await file.writeAsBytes(response.bodyBytes);
+    }
+
+    // Update only that message locally
+    await isar.writeTxn(() async {
+      final existing = await isar.messages
+          .filter()
+          .docIdEqualTo(message.docId)
+          .findFirst();
+
+      if (existing != null) {
+        existing.mediaUrl = file.path;
+        await isar.messages.put(existing); // 👈 This triggers stream update
+      }
     });
   }
 }

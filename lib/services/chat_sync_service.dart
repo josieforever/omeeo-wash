@@ -91,12 +91,12 @@ class ChatSyncService {
       }
 
       // Modified docs: overwrite or only-if-newer if you implemented it
-      if (modified.isNotEmpty) {
-        // If you implemented updatedAt logic:
-        // await local.upsertManyIfNewer(modified);
-        // Else just upsert (safe idempotent replace on docId index)
-        await local.upsertMany(modified);
-      }
+      // if (modified.isNotEmpty) {
+      //   // If you implemented updatedAt logic:
+      //   // await local.upsertManyIfNewer(modified);
+      //   // Else just upsert (safe idempotent replace on docId index)
+      //   await local.upsertMany(modified);
+      // }
     });
   }
 
@@ -109,6 +109,7 @@ class ChatSyncService {
     int pageSize = 50,
   }) async {
     final oldest = await local.oldestCreatedAt(chatId);
+
     final q = oldest == null
         ? _msgs(senderId)
               .where('deleted', isEqualTo: false)
@@ -122,10 +123,13 @@ class ChatSyncService {
 
     final older = await q.get();
     final olderMsgs = older.docs.map(_toMessage).toList();
+
+    // ✅ Instead of deleting, just insert if missing
     if (olderMsgs.isNotEmpty) {
-      await local.deleteAllByDocIds(olderMsgs.map((m) => m.docId).toList());
-      await local.upsertMany(olderMsgs);
+      await local.upsertManyIfMissing(olderMsgs);
+      // or use upsertManyIfNewer if you want to update newer timestamps only
     }
+
     return older.docs.length;
   }
 
@@ -203,13 +207,23 @@ class ChatSyncService {
   }
 
   /// Delete many by marking as deleted
+  Future<int> listenAndDeleteMany({required List<String> docIds}) async {
+    if (docIds.isEmpty) return 0;
+
+    await local.deleteAllByDocIds(docIds);
+
+    int total = 0;
+
+    return total;
+  }
+
   Future<int> deleteMany({
     required String senderId,
     required List<String> docIds,
   }) async {
     if (docIds.isEmpty) return 0;
 
-    await local.deleteAllByDocIds(docIds);
+    //await local.deleteAllByDocIds(docIds);
 
     const int kLimit = 500;
     int total = 0;
@@ -237,8 +251,6 @@ class ChatSyncService {
     required String senderId,
     required String docId,
   }) async {
-    await local.deleteByDocId(docId);
-
     await _msgs(senderId).doc(docId).update({
       'deleted': true,
       'deletedAt': FieldValue.serverTimestamp(),

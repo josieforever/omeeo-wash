@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:omeeowash/models/message.dart';
@@ -25,11 +26,18 @@ import 'methods.dart';
 class Chat extends StatefulWidget {
   final String? clientId;
   final String? clientName;
-  const Chat({super.key, required this.clientId, this.clientName});
+  final bool isAdmin;
+  const Chat({
+    super.key,
+    required this.clientId,
+    this.clientName,
+    this.isAdmin = false,
+  });
   const Chat.admin({
     super.key,
     required this.clientId,
     required this.clientName,
+    this.isAdmin = false,
   });
 
   @override
@@ -37,13 +45,11 @@ class Chat extends StatefulWidget {
 }
 
 class _ChatState extends State<Chat> {
-  final ScrollController _scrollController = ScrollController();
   final _newestKey = GlobalKey();
 
   final TextEditingController messageController = TextEditingController();
   final firestore = FirebaseFirestore.instance;
-  bool isAdmin = false;
-
+  bool get isAdmin => widget.isAdmin;
   String get userId =>
       isAdmin ? widget.clientId! : FirebaseAuth.instance.currentUser!.uid;
 
@@ -70,42 +76,117 @@ class _ChatState extends State<Chat> {
   bool isSending = false;
 
   Future<void> pickImage() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
+    // Reset previous selections first
     setState(() {
-      pickedImageFile = result?.files.single.path;
+      pickedImageFile = null;
       pickedVideoFile = null;
     });
-  }
 
-  Future<void> pickVideo() async {
-    pickedVideoFile = null;
+    // Pick an image file safely
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.video,
+      type: FileType.image,
+      withData: false, // prevents loading the whole image into memory
     );
 
     if (result != null && mounted) {
       final filePath = result.files.single.path;
       if (filePath == null) return;
 
+      final file = File(filePath);
+      final sizeInMB = file.lengthSync() / (1024 * 1024);
+
+      // ✅ Limit image size (e.g., 10 MB)
+      if (sizeInMB > 10) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image too large. Maximum allowed size is 10 MB.'),
+          ),
+        );
+        return;
+      }
+
+      // ✅ Save the selected file path
       setState(() {
-        pickedVideoFile = filePath;
-        pickedImageFile = null;
+        pickedImageFile = filePath;
       });
+
+      debugPrint(
+        '🖼️ Picked image: $filePath (${sizeInMB.toStringAsFixed(2)} MB)',
+      );
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.minScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+  Future<void> pickVideo() async {
+    // Reset previous selections
+    setState(() {
+      pickedVideoFile = null;
+      pickedImageFile = null;
     });
+
+    // Pick a video file safely
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      withData: false, // ensures file is not loaded into memory
+    );
+
+    if (result != null && mounted) {
+      final filePath = result.files.single.path;
+      if (filePath == null) return;
+
+      final file = File(filePath);
+      final sizeInMB = file.lengthSync() / (1024 * 1024);
+
+      // Limit video size (e.g. 50 MB)
+      if (sizeInMB > 50) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Video too large. Maximum allowed size is 50 MB.'),
+          ),
+        );
+        return;
+      }
+
+      // Save the path temporarily for upload
+      setState(() {
+        pickedVideoFile = filePath;
+      });
+
+      debugPrint(
+        '🎬 Picked video: $filePath (${sizeInMB.toStringAsFixed(2)} MB)',
+      );
+    }
+  }
+
+  final Set<String> _processedDeletions = {};
+
+  void listenForDeletedMessages() {
+    firestore
+        .collection('users')
+        .doc(userId)
+        .collection('help_messages')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .listen((snapshot) async {
+          final List<String> deletedIds = [];
+
+          for (var change in snapshot.docChanges) {
+            final data = change.doc.data();
+            if (data == null) continue;
+
+            final docId = change.doc.id;
+
+            if (data['deleted'] == true &&
+                !_processedDeletions.contains(docId)) {
+              _processedDeletions.add(docId);
+              deletedIds.add(docId);
+            }
+          }
+
+          if (deletedIds.isNotEmpty) {
+            await sync.listenAndDeleteMany(docIds: deletedIds);
+          }
+        });
   }
 
   @override
@@ -117,13 +198,12 @@ class _ChatState extends State<Chat> {
     sync = context.read<ChatSyncService>();
     sync.start(chatId, userId);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    listenForDeletedMessages();
   }
 
   @override
   void dispose() {
     _typingTimer?.cancel();
-    _scrollController.dispose();
     sync.stop();
     super.dispose();
   }
@@ -132,7 +212,6 @@ class _ChatState extends State<Chat> {
     final userSnapshot = await firestore.collection("users").doc(userId).get();
     final userData = userSnapshot.data();
     setState(() {
-      isAdmin = userData?["isAdmin"] ?? false;
       username = userData?["name"] ?? "User";
     });
   }
@@ -144,12 +223,13 @@ class _ChatState extends State<Chat> {
       return;
     }
 
+    messageController.clear();
+
     final String? rawMediaUrl = pickedImageFile ?? pickedVideoFile;
 
     setState(() {
       isSending = true;
     });
-    _scrollToBottom();
 
     String? mediaUrl;
     MessageType type = MessageType.text;
@@ -194,7 +274,7 @@ class _ChatState extends State<Chat> {
         type: type,
         rawMediaUrl: rawMediaUrl,
       );
-      messageController.clear();
+
       setState(() {
         isSending = false;
       });
@@ -381,7 +461,6 @@ class _ChatState extends State<Chat> {
           Expanded(
             child: MessageListView(
               chatId: chatId,
-              scrollController: _scrollController,
               newestKey: _newestKey,
               sender: sender,
               selection: selection,
@@ -390,7 +469,9 @@ class _ChatState extends State<Chat> {
               pickedImageFile: pickedImageFile,
               pickedVideoFile: pickedVideoFile,
               store: store,
-              onScrolledToBottom: _scrollToBottom,
+              onLoadOlderMessages: () {
+                return sync.loadOlder(userId, chatId);
+              },
             ),
           ),
           // typing indicator (unchanged)
@@ -403,7 +484,7 @@ class _ChatState extends State<Chat> {
               if (!snapshot.hasData) return const SizedBox.shrink();
               final data = snapshot.data!.data() as Map<String, dynamic>;
               final isTyping = data['isTyping'] ?? false;
-              return isTyping && isAdmin
+              return isTyping
                   ? Container(
                       padding: const EdgeInsets.only(left: 20),
                       alignment: Alignment.bottomLeft,
@@ -415,6 +496,7 @@ class _ChatState extends State<Chat> {
                   : const SizedBox.shrink();
             },
           ),
+
           // input
           MessageInput(
             controller: messageController,
@@ -442,23 +524,26 @@ class _ChatState extends State<Chat> {
   }
 }
 
+// keep your existing imports/types: Message, MessageBubble, SelectionController, LocalChatStore
+
 class MessageListView extends StatefulWidget {
   final String chatId;
-  final ScrollController scrollController;
   final GlobalKey newestKey;
   final String sender;
   final SelectionController selection;
   final String Function(DateTime) formatTimestamp;
   final bool isSending;
-  final String? pickedImageFile; // file path (String) like your original
+  final String? pickedImageFile; // file path (String)
   final String? pickedVideoFile; // file path (String)
   final LocalChatStore store;
-  final VoidCallback onScrolledToBottom;
+  final bool alwaysSnapToBottomOnNewMessage;
+
+  /// Callback that triggers when the user scrolls to the top (for loading older messages)
+  final Future<void> Function()? onLoadOlderMessages;
 
   const MessageListView({
     super.key,
     required this.chatId,
-    required this.scrollController,
     required this.newestKey,
     required this.sender,
     required this.selection,
@@ -467,7 +552,8 @@ class MessageListView extends StatefulWidget {
     required this.pickedImageFile,
     required this.pickedVideoFile,
     required this.store,
-    required this.onScrolledToBottom,
+    this.alwaysSnapToBottomOnNewMessage = true,
+    this.onLoadOlderMessages,
   });
 
   @override
@@ -475,108 +561,225 @@ class MessageListView extends StatefulWidget {
 }
 
 class _MessageListViewState extends State<MessageListView> {
-  int prevCount = 0;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _bottomSentinelKey = GlobalKey();
+
+  int _prevCount = 0;
+  String? _lastBottomMsgId;
+
+  bool _autoScrollLocked = false;
+  static const double _kAutoScrollThresholdPx = 120.0;
+  static const double _kTopTriggerThresholdPx = 80.0;
+
+  bool _isLoadingOlder = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(() {
+      // Detect user scrolling near bottom
+      if (!widget.alwaysSnapToBottomOnNewMessage &&
+          _scrollController.hasClients) {
+        final distanceFromBottom =
+            _scrollController.position.maxScrollExtent -
+            _scrollController.position.pixels;
+        _autoScrollLocked = distanceFromBottom > _kAutoScrollThresholdPx;
+      }
+
+      // Detect user scrolling near the top to load older messages
+      if (_scrollController.hasClients &&
+          _scrollController.position.pixels <= _kTopTriggerThresholdPx &&
+          !_isLoadingOlder &&
+          widget.onLoadOlderMessages != null) {
+        _triggerLoadOlder();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureBottomVisible());
+  }
+
+  Future<void> _triggerLoadOlder() async {
+    if (widget.onLoadOlderMessages == null) return;
+    setState(() => _isLoadingOlder = true);
+    try {
+      await widget.onLoadOlderMessages!();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingOlder = false);
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant MessageListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSending && !oldWidget.isSending) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _ensureBottomVisible(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _ensureBottomVisible() async {
+    if (!mounted) return;
+    if (!widget.alwaysSnapToBottomOnNewMessage && _autoScrollLocked) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+
+    final ctx = _bottomSentinelKey.currentContext;
+    if (ctx != null) {
+      try {
+        await Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          alignment: 1.0,
+        );
+        return;
+      } catch (_) {
+        // fallback
+      }
+    }
+
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Message>>(
-      stream: widget.store.watchLatest(widget.chatId, limit: 50),
-      builder: (context, snapshot) {
-        final msgs = snapshot.data ?? const <Message>[];
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (msgs.isEmpty) {
-          return const Center(child: Text('No messages yet.'));
-        }
-
-        // only scroll when count changes
-        if (msgs.length != prevCount) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => widget.onScrolledToBottom(),
-          );
-          prevCount = msgs.length;
-        }
-
-        return ListView.builder(
-          controller: widget.scrollController,
-          itemCount: msgs.length,
-          itemBuilder: (context, index) {
-            final message = msgs[index];
-            final msgId = message.docId;
-            final isMine = message.sender == widget.sender;
-            final ts = message.createdAt;
-
-            bool isSameSenderAsPrevious = false;
-            if (index > 0) {
-              final prevSender = msgs[index - 1];
-              isSameSenderAsPrevious = prevSender.sender == message.sender;
-            }
-
-            final isLast = index == msgs.length - 1;
-
-            if (message.type == MessageType.video &&
-                message.mediaUrl!.startsWith('http')) {
-              // _downloadAndReplaceVideo(message);
-
+    return Stack(
+      children: [
+        StreamBuilder<List<Message>>(
+          stream: widget.store.watchLatest(widget.chatId, limit: 50),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            return ValueListenableBuilder<bool>(
-              valueListenable: widget.selection.listen(msgId),
-              builder: (context, isSelected, _) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    MessageBubble(
-                      key: isLast ? widget.newestKey : ValueKey(msgId),
-                      message: message,
-                      timestamp: widget.formatTimestamp(ts),
-                      isPreviouseMessageMine: isMine,
-                      isFirstSequence: !isSameSenderAsPrevious,
-                      isSelected: isSelected,
-                      onLongPress: () => widget.selection.toggle(msgId),
-                      onTap: () {
-                        if (widget.selection.count.value > 0) {
-                          widget.selection.toggle(msgId);
-                        }
-                      },
-                    ),
-                    if (isLast &&
-                        widget.isSending &&
-                        (widget.pickedImageFile != null ||
-                            widget.pickedVideoFile != null))
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 18, top: 5),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(5),
-                            color: Colors.white,
-                          ),
-                          height: 100,
-                          width: 100,
-                          child: Stack(
-                            children: const [
-                              Center(
-                                child: Icon(
-                                  Icons.file_copy_sharp,
-                                  color: Colors.grey,
-                                  size: 70,
-                                ),
-                              ),
-                              Center(child: CircularProgressIndicator()),
-                            ],
-                          ),
+            final msgs = snapshot.data ?? const <Message>[];
+            if (msgs.isEmpty) {
+              return const Center(child: Text('No messages yet.'));
+            }
+
+            final currentBottomId = msgs.last.docId;
+            final countChanged = msgs.length != _prevCount;
+            final bottomChanged = currentBottomId != _lastBottomMsgId;
+
+            if (countChanged || bottomChanged) {
+              _prevCount = msgs.length;
+              _lastBottomMsgId = currentBottomId;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _ensureBottomVisible(),
+              );
+            }
+
+            return ListView.builder(
+              controller: _scrollController,
+              itemCount: msgs.length + 1,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemBuilder: (context, index) {
+                if (index == msgs.length) {
+                  return SizedBox(
+                    key: _bottomSentinelKey,
+                    height: 1,
+                    width: MediaQuery.of(context).size.width,
+                  );
+                }
+
+                final message = msgs[index];
+                final msgId = message.docId;
+                final isMine = message.sender == widget.sender;
+                final ts = message.createdAt;
+
+                bool isSameSenderAsPrevious = false;
+                if (index > 0) {
+                  final prevMessage = msgs[index - 1];
+                  isSameSenderAsPrevious = prevMessage.sender == message.sender;
+                }
+
+                final isLast = index == msgs.length - 1;
+
+                return ValueListenableBuilder<bool>(
+                  valueListenable: widget.selection.listen(msgId),
+                  builder: (context, isSelected, _) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MessageBubble(
+                          key: isLast ? widget.newestKey : ValueKey(msgId),
+                          message: message,
+                          timestamp: widget.formatTimestamp(ts),
+                          isPreviouseMessageMine: isMine,
+                          isFirstSequence: !isSameSenderAsPrevious,
+                          isSelected: isSelected,
+                          onLongPress: () => widget.selection.toggle(msgId),
+                          onTap: () {
+                            if (widget.selection.count.value > 0) {
+                              widget.selection.toggle(msgId);
+                            }
+                          },
+                          store: widget.store,
                         ),
-                      ),
-                  ],
+                        if (isLast &&
+                            widget.isSending &&
+                            (widget.pickedImageFile != null ||
+                                widget.pickedVideoFile != null))
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 18, top: 5),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(6),
+                                color: Colors.white,
+                              ),
+                              height: 100,
+                              width: 100,
+                              child: const Stack(
+                                children: [
+                                  Center(
+                                    child: Icon(
+                                      Icons.file_copy_sharp,
+                                      color: Colors.grey,
+                                      size: 70,
+                                    ),
+                                  ),
+                                  Center(child: CircularProgressIndicator()),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 );
               },
             );
           },
-        );
-      },
+        ),
+
+        // Small indicator on top while loading older messages
+        if (_isLoadingOlder)
+          const Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -827,6 +1030,7 @@ class _ImagePreviewState extends State<ImagePreview> {
 class VideoPreview extends StatefulWidget {
   final String filePath;
   final VoidCallback onRemove;
+  final VoidCallback? downloadVideo;
   final bool isSending;
   final bool forBubble;
 
@@ -836,6 +1040,7 @@ class VideoPreview extends StatefulWidget {
     required this.onRemove,
     this.isSending = false,
     this.forBubble = false,
+    this.downloadVideo,
   });
 
   @override
@@ -843,46 +1048,111 @@ class VideoPreview extends StatefulWidget {
 }
 
 class _VideoPreviewState extends State<VideoPreview> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+  bool isDownloading = false;
 
   @override
   void initState() {
     super.initState();
-
-    if (widget.filePath.startsWith("http")) {
-      _controller = VideoPlayerController.networkUrl(widget.filePath as Uri)
-        ..initialize().then((_) {
-          setState(() {});
-        });
-    } else {
-      _controller = VideoPlayerController.file(File(widget.filePath))
-        ..initialize().then((_) {
-          setState(() {});
-        });
+    // ❗️Skip initializing for HTTP URLs
+    if (!widget.filePath.startsWith('http')) {
+      _initController(widget.filePath);
     }
   }
 
   @override
+  void didUpdateWidget(VideoPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reinitialize if the filePath changes (e.g. after upload)
+
+    if (oldWidget.filePath != widget.filePath) {
+      _disposeController();
+      // ❗️Skip initializing for HTTP URLs
+      if (!widget.filePath.startsWith('http')) {
+        _initController(widget.filePath);
+      }
+    }
+  }
+
+  Future<void> _initController(String path) async {
+    try {
+      final isLocal = !path.startsWith('http');
+      final controller = isLocal
+          ? VideoPlayerController.file(File(path))
+          : VideoPlayerController.networkUrl(Uri.parse(path));
+
+      await controller.initialize();
+      setState(() {
+        _controller = controller;
+        _isInitialized = true;
+      });
+    } catch (e) {
+      debugPrint('🎥 Video init error: $e');
+    }
+  }
+
+  void _disposeController() {
+    _controller?.dispose();
+    _controller = null;
+    _isInitialized = false;
+  }
+
+  @override
   void dispose() {
-    _controller.dispose();
+    _disposeController();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isUrl = widget.filePath.startsWith("http");
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Stack(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: _controller.value.isInitialized
-                ? AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: VideoPlayer(_controller),
-                  )
-                : const Center(child: CircularProgressIndicator()),
-          ),
+          // 👇 For HTTP URLs, show a static "thumbnail" placeholder (no controller)
+          if (isUrl)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 180,
+                color: Colors.black12,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.videocam,
+                  size: 48,
+                  color: Colors.white70,
+                ),
+              ),
+            )
+          // Local file: show initialized player
+          else if (_isInitialized && _controller != null)
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: widget.forBubble
+                    ? 500
+                    : MediaQuery.of(context).size.height * 0.30,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: _controller!.value.aspectRatio,
+                  child: VideoPlayer(_controller!),
+                ),
+              ),
+            )
+          // Local file but not initialized yet
+          else
+            Container(
+              height: 180,
+              color: Colors.black12,
+              alignment: Alignment.center,
+              child: const CircularProgressIndicator(),
+            ),
+
+          // ❌ Remove button (top-right)
           if (!widget.forBubble)
             Positioned(
               top: 8,
@@ -896,11 +1166,16 @@ class _VideoPreviewState extends State<VideoPreview> {
                 ),
               ),
             ),
+
+          // ▶️ Play button (center) — unchanged; still blocked for HTTP URLs
           Positioned.fill(
             child: Center(
               child: GestureDetector(
                 onTap: () {
-                  // Navigate to full-screen player
+                  if (isUrl) {
+                    Fluttertoast.showToast(msg: 'Video not downloaded');
+                    return;
+                  }
                   if (!widget.isSending) {
                     Navigator.push(
                       context,
@@ -909,14 +1184,51 @@ class _VideoPreviewState extends State<VideoPreview> {
                             FullScreenVideoPlayer(filePath: widget.filePath),
                       ),
                     );
+                  } else {
+                    Fluttertoast.showToast(msg: 'Video still uploading...');
                   }
                 },
                 child: widget.isSending
-                    ? CircularProgressIndicator()
-                    : Icon(Icons.play_circle, color: Colors.white70, size: 50),
+                    ? const CircularProgressIndicator()
+                    : const Icon(
+                        Icons.play_circle,
+                        color: Colors.white70,
+                        size: 50,
+                      ),
               ),
             ),
           ),
+
+          // ⬇️ Download button for Firebase URL videos (overlay stays the same)
+          if (isUrl)
+            Positioned(
+              bottom: 8,
+              right: 10,
+              child: GestureDetector(
+                onTap: () {
+                  widget.downloadVideo?.call();
+                  setState(() => isDownloading = true);
+                },
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.black54,
+                  child: isDownloading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.download,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -1218,6 +1530,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 
 
 // // adb connect 192.168.43.1
+// // adb connect 192.168.100.40
 
 
 

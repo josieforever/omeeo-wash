@@ -20,48 +20,13 @@ class _ServicesAndPricingState extends State<ServicesAndPricing> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [ServicesAndPricingTopBar(), ServicesAndPricingPage()],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ServicesAndPricingTopBar(),
-                  ServicesAndPricingPage(),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -108,8 +73,8 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
     required List<String> includes,
     required VoidCallback onPressed,
     required bool mostPopular,
-    Color iconColor = AppColors.secondary,
   }) {
+    Color iconColor = Theme.of(context).colorScheme.primary;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 15),
       child: Column(
@@ -122,7 +87,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color.fromARGB(32, 137, 43, 226),
+                  color: Theme.of(context).colorScheme.secondary,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(child: Icon(icon, color: iconColor, size: 20)),
@@ -139,7 +104,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: TextSizes.bodyText1,
-                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
 
@@ -148,7 +113,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                       softWrap: true,
                       style: TextStyle(
                         fontSize: TextSizes.bodyText2,
-                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                        color: Theme.of(context).colorScheme.surface,
                       ),
                     ),
                   ],
@@ -165,7 +130,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                   ),
                   CustomText(
                     text: duration,
-                    textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.bodyText2,
                   ),
                 ],
@@ -177,7 +142,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
             children: [
               CustomText(
                 text: 'Includes:',
-                textColor: Theme.of(context).textTheme.bodyLarge?.color,
+                textColor: Theme.of(context).colorScheme.primary,
                 textSize: TextSizes.bodyText1,
                 textWeight: FontWeight.w700,
               ),
@@ -211,7 +176,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                 const SizedBox(width: 5),
                 CustomText(
                   text: service,
-                  textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                  textColor: Theme.of(context).colorScheme.surface,
                   textSize: TextSizes.bodyText3,
                 ),
               ],
@@ -228,7 +193,6 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
     required VoidCallback onPressed,
     required EdgeInsets margin,
     required Color backgroundColor,
-    Color iconColor = AppColors.secondary,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
@@ -284,14 +248,14 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Icon(FontAwesomeIcons.chevronRight, size: IconSizes.tiny),
@@ -300,6 +264,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
 
   Widget _buildCard(String title, String subtitle, List<Widget> children) {
     return Card(
+      color: Theme.of(context).colorScheme.inversePrimary,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -315,7 +280,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                 style: TextStyle(
                   fontSize: TextSizes.subtitle2,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -389,9 +354,9 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               Expanded(
                 child: BookNow(
                   backgroundColor: // Right (periwinkle blue-purple)
-                  Color(
-                    0xFFA558F2,
-                  ),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primary,
                   margin: EdgeInsets.only(left: 5, right: 2, bottom: 10),
                   icon: Icons.add,
                   title: "Air Freshner",
@@ -401,7 +366,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               ),
               Expanded(
                 child: BookNow(
-                  backgroundColor: Color(0xFF6D66F6),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   margin: EdgeInsets.only(left: 2, right: 5, bottom: 10),
                   icon: Icons.add,
                   title: "Undercarriage Wash",
@@ -416,9 +381,9 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               Expanded(
                 child: BookNow(
                   backgroundColor: // Right (periwinkle blue-purple)
-                  Color(
-                    0xFFA558F2,
-                  ),
+                  Theme.of(
+                    context,
+                  ).colorScheme.primary,
                   margin: EdgeInsets.only(left: 5, right: 2, bottom: 10),
                   icon: Icons.add,
                   title: "Engine Bay Cleaning",
@@ -428,7 +393,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               ),
               Expanded(
                 child: BookNow(
-                  backgroundColor: Color(0xFF6D66F6),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   margin: EdgeInsets.only(left: 2, right: 5, bottom: 10),
                   icon: Icons.add,
                   title: "Pet hair Removal",
@@ -447,7 +412,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
               children: [
                 CustomText(
                   text: 'Final price depends on several factors',
-                  textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                  textColor: Theme.of(context).colorScheme.surface,
                   textSize: TextSizes.bodyText3,
                 ),
                 const SizedBox(height: 10),
@@ -458,9 +423,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                       const SizedBox(width: 5),
                       CustomText(
                         text: point,
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color,
+                        textColor: Theme.of(context).colorScheme.surface,
                         textSize: TextSizes.bodyText3,
                       ),
                     ],
@@ -469,7 +432,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
-                    color: const Color.fromARGB(92, 158, 158, 158),
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   padding: EdgeInsets.all(8),
                   child: Row(
@@ -478,9 +441,7 @@ class _ServicesAndPricingPageState extends State<ServicesAndPricingPage> {
                         child: CustomText(
                           text:
                               'Note: All prices include mobile service. We come to your location at no extra charge!',
-                          textColor: Theme.of(
-                            context,
-                          ).textTheme.bodyLarge?.color,
+                          textColor: Theme.of(context).colorScheme.primary,
                           textSize: TextSizes.bodyText3,
                         ),
                       ),
@@ -505,13 +466,7 @@ class ServicesAndPricingTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -527,9 +482,7 @@ class ServicesAndPricingTopBar extends StatelessWidget {
                     children: [
                       CustomText(
                         text: 'Services & Pricing',
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.headlineLarge?.color,
+                        textColor: Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.heading2,
                         textWeight: FontWeight.w900,
                       ),
@@ -537,9 +490,7 @@ class ServicesAndPricingTopBar extends StatelessWidget {
                   ),
                   CustomText(
                     text: 'Information about our wash packages',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.bodyText1,
                   ),
                 ],

@@ -22,7 +22,6 @@ class HelpList extends StatelessWidget {
       return {
         'userId': data['userId'],
         'username': data['username'],
-        'photoUrl': data['photoUrl'],
         'last_message': data['last_message'],
       };
     }).toList();
@@ -134,6 +133,7 @@ class HelpList extends StatelessWidget {
                                 builder: (BuildContext context) => Chat.admin(
                                   clientId: client['userId'],
                                   clientName: client['username'] ?? 'User',
+                                  isAdmin: true,
                                 ),
                               ),
                             );

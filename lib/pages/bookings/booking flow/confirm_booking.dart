@@ -11,6 +11,8 @@ import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart'
     show LnProgressIndicator;
 import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart'
     show SelectDateScreen;
+import 'package:omeeowash/pages/bookings/bookings_screen.dart';
+import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -49,8 +51,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
   String serviceType = "none";
   String paymentMethodSelected = "none";
 
-  // Which saved method (card or momo) is selected
-  String? selectedPaymentDocId;
+  String? selectedPaymentDocId; // saved payment method doc id
   String? selectedPaymentType; // 'card' | 'momo'
 
   // Card form toggle + fields
@@ -86,12 +87,10 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
 
   bool get _canConfirm {
     if (paymentMethodSelected == 'Cash') return true;
-    if (paymentMethodSelected == 'card' && selectedPaymentDocId != null) {
+    if (paymentMethodSelected == 'card' && selectedPaymentDocId != null)
       return true;
-    }
-    if (paymentMethodSelected == 'momo' && selectedPaymentDocId != null) {
+    if (paymentMethodSelected == 'momo' && selectedPaymentDocId != null)
       return true;
-    }
     return false;
   }
 
@@ -100,10 +99,40 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       paymentMethodSelected = method; // 'card' | 'momo' | 'Cash'
       showAddCardForm = false;
       showAddMomoForm = false;
-      // clear any previously selected saved method when switching payment type
       selectedPaymentDocId = null;
       selectedPaymentType = null;
     });
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+  String _dateKey(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String _timeLabel12h(DateTime dt) {
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '$h:$m $ampm';
+  }
+
+  Map<String, dynamic> _initialWashStages() {
+    // All pending at creation; staff/app can update these later.
+    return {
+      'washStageOrder': ['pre_rinse', 'washing', 'rinsing', 'cleaning'],
+      'washStages': {
+        'pre_rinse': {'status': 'pending'},
+        'washing': {'status': 'pending'},
+        'rinsing': {'status': 'pending'},
+        'cleaning': {'status': 'pending'},
+      },
+      // Optional convenience fields if you want them:
+      'activeStage': null, // or 'pre_rinse' if you prefer
+      'stageProgress': 0, // 0..100 if you want a coarse progress
+    };
   }
 
   Future<void> _confirmAndCreateBooking() async {
@@ -114,42 +143,50 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       ).showSnackBar(const SnackBar(content: Text('Please sign in first.')));
       return;
     }
+    if (!_canConfirm) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Choose a payment method')));
+      return;
+    }
 
     try {
-      // Build booking payload
-      final dt = widget.scheduledTime; // required in your constructor
-      final dateKey =
-          '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final hh = dt.hour.toString().padLeft(2, '0');
-      final mm = dt.minute.toString().padLeft(2, '0');
-      final timeLabel = '$hh:$mm';
+      final dt = widget.scheduledTime; // required by your ConfirmBooking widget
+      final dateKey = _dateKey(dt);
+      final timeLabel = _timeLabel12h(dt);
 
       final locationTag =
           widget.serviceLocation; // 'washing_bay' | 'mobile' | 'valet'
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
       final slotId = '${dateKey}_${locationTag}_$hh$mm';
 
-      // decide payment payload
+      // Build payment payload + booking status
       Map<String, dynamic> payment;
+      String bookingStatus; // what goes into 'status' field
+
       if (paymentMethodSelected == 'Cash') {
         payment = {
           'method': 'cash',
           'savedMethodId': null,
-          'status': 'pending_cash', // or 'unpaid'
+          'status': 'pending_cash',
         };
-      } else if (paymentMethodSelected == 'card' &&
-          selectedPaymentDocId != null) {
+        // Let UI show "Awaiting Confirmation" flow
+        bookingStatus = 'pending';
+      } else if (paymentMethodSelected == 'card') {
         payment = {
           'method': 'card',
           'savedMethodId': selectedPaymentDocId,
-          'status': 'authorized_or_later', // placeholder until PSP hookup
+          'status': 'pending_authorization', // adjust when PSP integrated
         };
-      } else if (paymentMethodSelected == 'momo' &&
-          selectedPaymentDocId != null) {
+        bookingStatus = 'pending'; // staff can confirm → becomes 'confirmed'
+      } else if (paymentMethodSelected == 'momo') {
         payment = {
           'method': 'momo',
           'savedMethodId': selectedPaymentDocId,
-          'status': 'pending_momo', // placeholder
+          'status': 'pending_momo',
         };
+        bookingStatus = 'pending';
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Choose a payment method')),
@@ -158,6 +195,10 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       }
 
       final now = FieldValue.serverTimestamp();
+      final db = FirebaseFirestore.instance;
+
+      // Base booking payload
+      final stages = _initialWashStages();
       final bookingData = {
         'userId': user.uid,
         'serviceType': widget.serviceType ?? 'unknown',
@@ -168,18 +209,22 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         'longitude': widget.longitude,
         'scheduledTime': Timestamp.fromDate(dt),
         'scheduledDate': dateKey,
-        'scheduledTimeLabel': timeLabel,
+        'scheduledTimeLabel': timeLabel, // 12h label
         'price': widget.price,
-        'durationMinutes': widget.duration, // NEW
+        'durationMinutes': widget.duration, // keep minutes as number
         'payment': payment,
-        'status': 'confirmed', // or 'requested' if you want staff to accept
+        'status': bookingStatus, // pending / pending_cash / etc.
         'createdAt': now,
         'updatedAt': now,
+
+        // ── Wash stages (new) ──
+        'washStageOrder': stages['washStageOrder'],
+        'washStages': stages['washStages'],
+        'activeStage': stages['activeStage'],
+        'stageProgress': stages['stageProgress'],
       };
 
-      final db = FirebaseFirestore.instance;
-
-      // Atomically: ensure slot isn’t double-booked, create booking, lock slot
+      // Transaction: prevent double booking of slot
       await db.runTransaction((tx) async {
         final slotRef = db.collection('booked_times').doc(slotId);
         final slotSnap = await tx.get(slotRef);
@@ -195,7 +240,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         tx.set(slotRef, {
           'slotId': slotId,
           'date': dateKey,
-          'time': timeLabel,
+          'time': '$hh:$mm', // 24h raw if you want; label above is 12h
           'location': locationTag,
           'userId': user.uid,
           'bookingId': bookingRef.id,
@@ -205,11 +250,13 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking confirmed for $dateKey at $timeLabel')),
+        SnackBar(content: Text('Booking placed for $dateKey at $timeLabel')),
       );
-
-      // Navigate away or pop to a “success” page as you prefer:
-      Navigator.of(context).pop(); // or push a success screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => HomeScreenWithNav(view: 'booking'),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

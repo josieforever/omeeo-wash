@@ -819,7 +819,7 @@ class BookingsServiceButton extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 30),
                           // Right: time
                           Text(
                             time ?? '—',
@@ -856,8 +856,6 @@ class BookingsServiceButton extends StatelessWidget {
 
             // Show only the relevant status panel (no clutter)
             _statusPanel(statusLabel),
-
-            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -874,9 +872,159 @@ class BookingsServiceButton extends StatelessWidget {
     required String locationLabel,
     required String statusLabel,
   }) {
+    final cs = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    // — Status chip palette
+    Color chipBg, chipBorder, chipFg, panelBg, panelBorder, dot;
+    String chipText;
+    final s = statusLabel.toLowerCase();
+    if (s.contains('pending')) {
+      chipBg = const Color(0xFFFFF7DA);
+      chipBorder = const Color(0xFFFFE08A);
+      chipFg = const Color(0xFF946200);
+      panelBg = const Color(0xFFFFFBEB);
+      panelBorder = const Color(0xFFFFE08A);
+      dot = const Color(0xFFF7B500);
+      chipText = 'Awaiting Confirmation';
+    } else if (s.contains('confirmed')) {
+      chipBg = const Color(0xFFEFFFF3);
+      chipBorder = const Color(0xFFB7E5C6);
+      chipFg = const Color(0xFF146C43);
+      panelBg = const Color(0xFFF1FFF7);
+      panelBorder = const Color(0xFFB7E5C6);
+      dot = const Color(0xFF23A067);
+      chipText = 'Confirmed';
+    } else if (s.contains('progress')) {
+      chipBg = const Color(0xFFEEF6FF);
+      chipBorder = const Color(0xFFBFDFFF);
+      chipFg = const Color(0xFF0B63B6);
+      panelBg = const Color(0xFFF4F9FF);
+      panelBorder = const Color(0xFFBFDFFF);
+      dot = const Color(0xFF0B63B6);
+      chipText = 'In Progress';
+    } else if (s.contains('cancel')) {
+      chipBg = const Color(0xFFFFEEEE);
+      chipBorder = const Color(0xFFFFC3C3);
+      chipFg = const Color(0xFF8A1224);
+      panelBg = const Color(0xFFFFF5F5);
+      panelBorder = const Color(0xFFFFC3C3);
+      dot = const Color(0xFFD32F2F);
+      chipText = 'Cancelled';
+    } else {
+      // Blue theme (light)
+      chipBg = const Color(0xFFDBEAFE); // blue-100
+      chipBorder = const Color(0xFF93C5FD); // blue-300
+      chipFg = const Color(0xFF1D4ED8); // blue-600
+      panelBg = const Color(0xFFEFF6FF); // blue-50
+      panelBorder = const Color(0xFF93C5FD); // blue-300
+      dot = const Color(0xFF3B82F6); // blue-500
+      chipText = statusLabel;
+    }
+
+    // Small label + value tile (for grid items)
+    Widget infoTile(IconData icon, String label, String value) {
+      return Row(
+        children: [
+          Icon(icon, size: 25, color: Theme.of(context).colorScheme.surface),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: text.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.surface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Context help panel under the divider
+    Widget statusHelpPanel() {
+      String title;
+      String body;
+      if (s.contains('pending')) {
+        title = 'Awaiting Confirmation';
+        body =
+            "Your booking request is being reviewed and will be confirmed shortly. You'll receive a notification once it's approved.";
+      } else if (s.contains('confirmed')) {
+        title = 'Confirmed';
+        body = "You're all set. See you at the scheduled time!";
+      } else if (s.contains('progress')) {
+        title = 'In Progress';
+        body =
+            "Your car is being washed right now. We'll notify you when it's done.";
+      } else if (s.contains('cancel')) {
+        title = 'Cancelled';
+        body =
+            "This booking was cancelled. If this was a mistake, please book again.";
+      } else if (s.contains('complete')) {
+        title = 'Completed';
+        body = "This booking has been completed. Thanks for choosing us!";
+      } else {
+        title = statusLabel;
+        body = "Booking status: $statusLabel";
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: panelBg,
+          border: Border.all(color: panelBorder),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // dot
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(top: 6),
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 10),
+            // texts
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: text.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: chipFg,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    body,
+                    style: text.bodyMedium?.copyWith(
+                      color: text.bodyMedium?.color?.withOpacity(.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     showModalBottomSheet(
       context: context,
-      useSafeArea: true,
+
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       shape: const RoundedRectangleBorder(
@@ -886,95 +1034,147 @@ class BookingsServiceButton extends StatelessWidget {
         return DraggableScrollableSheet(
           expand: false,
           maxChildSize: 0.92,
-          initialChildSize: 0.72,
-          minChildSize: 0.42,
-          builder: (context, scrollController) {
+          initialChildSize: 0.75,
+          minChildSize: 0.45,
+          builder: (context, controller) {
             return SingleChildScrollView(
-              controller: scrollController,
+              controller: controller,
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title row
+                  // Title + Close
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(
-                        FontAwesomeIcons.clipboardList,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      // Service icon widget (monochrome-friendly)
+                      serviceLabel.contains('express')
+                          ? Icon(
+                              FontAwesomeIcons.shower,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 18,
+                            )
+                          : serviceLabel.contains('standard')
+                          ? Icon(
+                              Icons.alarm,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 18,
+                            )
+                          :
+                            // Premium → your SVG
+                            SvgPicture.asset(
+                              'assets/icons/cleaning.svg',
+                              height: 40,
+                              width: 40,
+                              colorFilter: ColorFilter.mode(
+                                Theme.of(context).colorScheme.primary,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+
                       const SizedBox(width: 8),
-                      const Text(
-                        "Booking Details",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                      Expanded(
+                        child: Text(
+                          serviceLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: Theme.of(context).colorScheme.surface,
+                          ),
                         ),
                       ),
-                      const Spacer(),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.close),
+                        splashRadius: 20,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Divider(
-                    color: Theme.of(context).dividerColor.withOpacity(.5),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Service + status
-                  _kvRow(context, 'Service', serviceLabel),
-                  _kvRow(context, 'Status', statusLabel),
-
-                  // Schedule
-                  const SizedBox(height: 8),
-                  _kvRow(context, 'Day', day ?? '—'),
-                  _kvRow(context, 'Time', time ?? '—'),
-                  _kvRow(context, 'Duration', duration ?? '—'),
 
                   // Location
-                  const SizedBox(height: 8),
-                  _kvRow(context, 'Location', locationLabel),
-                  if ((address ?? '').trim().isNotEmpty)
-                    _kvRow(context, 'Address', address!.trim()),
-                  if (latitude != null && longitude != null)
-                    _kvRow(
-                      context,
-                      'Coordinates',
-                      '${latitude!.toStringAsFixed(6)}, ${longitude!.toStringAsFixed(6)}',
-                    ),
-
-                  // Price
-                  const SizedBox(height: 8),
-                  _kvRow(context, 'Price', price == null ? '—' : '₵$price'),
-
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: onPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Theme.of(
-                          context,
-                        ).colorScheme.inversePrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 14,
-                          horizontal: 12,
+                  Row(
+                    children: [
+                      const Icon(Icons.location_pin, size: 16),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Tooltip(
+                          message: locationLabel,
+                          child: Text(
+                            locationLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodyMedium,
+                          ),
                         ),
                       ),
-                      icon: const Icon(Icons.open_in_new, size: 18),
-                      label: const Text(
-                        'Open booking',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Status chip
+                  Container(
+                    decoration: BoxDecoration(
+                      color: chipBg,
+                      border: Border.all(color: chipBorder),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: Text(
+                      chipText,
+                      style: TextStyle(
+                        color: chipFg,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // 2x2 details grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: infoTile(Icons.event, 'Date', day ?? '—'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: infoTile(
+                          Icons.access_time,
+                          'Duration',
+                          duration?.replaceFirst('⏱️ ', '') ?? '—',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: infoTile(Icons.schedule, 'Time', time ?? '—'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: infoTile(
+                          FontAwesomeIcons.car,
+                          'Price',
+                          price == null ? '—' : '₵$price',
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                  Divider(
+                    color: Theme.of(context).dividerColor.withOpacity(.6),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Context help panel
+                  statusHelpPanel(),
                 ],
               ),
             );
@@ -1017,13 +1217,15 @@ class BookingsServiceButton extends StatelessWidget {
   Widget _statusPanel(String statusLabel) {
     switch (statusLabel.toLowerCase()) {
       case 'pending':
-      case 'pending (cash)':
         return PendingPanel();
       case 'confirmed':
         return ConfirmedPanel();
-      case 'in progress':
-      case 'currently washing':
+      case 'in_progress':
         return CurrentlyWashingPanel();
+      case 'completed':
+        return CompletedPanel();
+      case 'cancelled':
+        return CancelledPanel();
       default:
         return const SizedBox.shrink();
     }
@@ -1062,19 +1264,15 @@ class BookingsServiceButton extends StatelessWidget {
     final s = (raw ?? '').trim().toLowerCase();
     switch (s) {
       case 'pending':
-      case 'pending_cash':
-      case 'awaiting_payment':
-        return 'Pending (Cash)';
+        return 'pending';
       case 'confirmed':
-        return 'Confirmed';
+        return 'confirmed';
       case 'in_progress':
-      case 'washing':
-        return 'In Progress';
+        return 'in_progress';
       case 'completed':
-        return 'Completed';
+        return 'completed';
       case 'cancelled':
-      case 'canceled':
-        return 'Cancelled';
+        return 'cancelled';
       default:
         return raw == null || raw.isEmpty ? '—' : raw;
     }
@@ -1218,7 +1416,7 @@ class SignOut extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: BorderRadius.circular(25),
           border: Border.all(color: const Color.fromARGB(154, 255, 145, 145)),
           color: Theme.of(context).colorScheme.inversePrimary,
           boxShadow: [
@@ -1240,8 +1438,8 @@ class SignOut extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Color.fromARGB(32, 137, 43, 226),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Color.fromARGB(31, 220, 22, 22),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Transform.scale(
                     scale: scale,
@@ -1730,11 +1928,6 @@ class PendingPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              CustomText(
-                text: 'Pending approval',
-                textSize: TextSizes.bodyText3,
-                textColor: Color.fromARGB(255, 192, 143, 36),
-              ),
             ],
           ),
           const SizedBox(width: 7),
@@ -1742,7 +1935,7 @@ class PendingPanel extends StatelessWidget {
             text:
                 'Your booking request is being reviewed and will be confirmed shortly.',
             textSize: TextSizes.bodyText2,
-            textColor: Color.fromARGB(255, 192, 143, 36),
+            textColor: Theme.of(context).colorScheme.surface,
           ),
         ],
       ),
@@ -1791,146 +1984,27 @@ class ConfirmedPanel extends StatelessWidget {
                   CustomText(
                     text: 'Booking Confirmed',
                     textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.normal,
+                    textWeight: FontWeight.bold,
                     textColor: Color.fromARGB(255, 0, 102, 10),
                   ),
                 ],
               ),
-              /* CustomText(
-                text: 'Ready to start',
-                textSize: TextSizes.bodyText2,
-                textColor: Color.fromARGB(255, 0, 158, 16),
-              ), */
+            ],
+          ),
+
+          const SizedBox(width: 7),
+          Row(
+            children: [
               CustomText(
-                text: '5 min away',
-                textSize: TextSizes.bodyText3,
-                textColor: Color.fromARGB(255, 0, 158, 16),
+                text: "You're all set. See you at the scheduled time!",
+                textSize: TextSizes.bodyText2,
+                textColor: Theme.of(context).colorScheme.surface,
               ),
             ],
           ),
-          const SizedBox(width: 7),
 
-          /* CustomText(
-            text:
-                'Your car wash is confirmed and will begin shortly at the schedules time.',
-            textSize: TextSizes.bodyText2,
-            textColor: Color.fromARGB(255, 0, 158, 16),
-          ),
-          Divider(color: Color.fromARGB(159, 51, 181, 64)), */
-          const SizedBox(height: 10),
+          /*  LiveLocationProgressBar(), */
           /* Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 236, 236, 236),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CustomText(
-                  text: 'Google Maps Integration',
-                  textSize: TextSizes.bodyText2,
-                ),
-                const SizedBox(height: 10),
-                CustomText(
-                  text: 'Add your Google Maps API key to enable live ',
-                  textSize: TextSizes.bodyText2,
-                ),
-                const SizedBox(height: 10),
-                CustomText(text: 'tracking', textSize: TextSizes.bodyText2),
-              ],
-            ),
-          ), */
-          LiveLocationProgressBar(),
-          const SizedBox(height: 10),
-          /* Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.inversePrimary,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 5, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFFDFF6E3),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: TextSizes.subtitle2,
-                      color: Color.fromARGB(255, 0, 102, 10),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomText(
-                      text: 'John Doe',
-                      textSize: TextSizes.bodyText2,
-                      textWeight: FontWeight.bold,
-                    ),
-                    CustomText(
-                      text: 'Professional Washer',
-                      textSize: TextSizes.caption,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CustomText(text: '4.9', textSize: TextSizes.caption),
-                        const SizedBox(width: 5),
-                        Icon(
-                          FontAwesomeIcons.solidStar,
-                          size: 10,
-                          color: Colors.amber,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                RegularIconButton(
-                  onPressed: () {},
-                  border: Border.all(color: Color(0xFF2ECC71)),
-                  icon: Icon(
-                    Icons.phone,
-                    color: Color(0xFF2ECC71),
-                    size: IconSizes.small,
-                  ),
-                  borderRadius: 5,
-                  textWidget: CustomText(
-                    text: 'Chat',
-                    textColor: Color.fromARGB(255, 0, 102, 10),
-                    textSize: TextSizes.bodyText1,
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                ),
-                RegularIconButton(
-                  onPressed: () {},
-                  border: Border.all(color: Color(0xFF2ECC71)),
-                  icon: Icon(
-                    Icons.chat,
-                    size: IconSizes.small,
-                    color: Color(0xFF2ECC71),
-                  ),
-                  borderRadius: 5,
-                  textWidget: CustomText(
-                    text: 'Chat',
-                    textColor: Color.fromARGB(255, 0, 102, 10),
-                    textSize: TextSizes.bodyText1,
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                ),
-              ],
-            ),
-          ), */
-          Container(
             width: double.infinity,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.inversePrimary,
@@ -1980,7 +2054,7 @@ class ConfirmedPanel extends StatelessWidget {
                 ),
               ],
             ),
-          ),
+          ), */
         ],
       ),
     );
@@ -2065,193 +2139,237 @@ class _LiveLocationProgressBarState extends State<LiveLocationProgressBar> {
   }
 }
 
-class CurrentlyWashingPanel extends StatefulWidget {
-  const CurrentlyWashingPanel({super.key});
-
-  @override
-  State<CurrentlyWashingPanel> createState() => _CurrentlyWashingPanelState();
+/// Optional tiny VM if you want to pass prebuilt stages.
+/// If you already have a WashStageVM elsewhere, remove this.
+class WashStageVM {
+  final String key; // pre_rinse, washing, rinsing, cleaning
+  final String label; // Pre-rinse, Washing, Rinsing, Cleaning
+  final String status; // pending | in_progress | done
+  const WashStageVM(this.key, this.label, this.status);
 }
 
-class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
+/// Dynamic wash progress panel
+class CurrentlyWashingPanel extends StatelessWidget {
+  /// EITHER pass raw Firestore fields:
+  final List<String>?
+  washStageOrder; // e.g. ["pre_rinse","washing","rinsing","cleaning"]
+  final Map<String, dynamic>?
+  washStages; // map of { stageKey: { status, startedAt?, completedAt? } }
+
+  /// OR pass already-built VMs:
+  final List<WashStageVM>? stages;
+
+  const CurrentlyWashingPanel({
+    super.key,
+    this.washStageOrder,
+    this.washStages,
+    this.stages,
+  });
+
+  // ----- palette (orange theme, like your mock) -----
+  static const Color _accent = Color(0xFFF97316); // orange
+  static const Color _accentSoft = Color.fromARGB(37, 237, 165, 114);
+  static const Color _accentBorder = Color.fromARGB(112, 211, 88, 0);
+  static const Color _trackGrey = Color.fromARGB(153, 179, 179, 181);
+  static const Color _labelGrey = Color(0xFF6B7280);
+
   @override
   Widget build(BuildContext context) {
+    // Build stage list
+    final items = stages ?? _buildStagesFromRaw(washStageOrder, washStages);
+
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Color.fromARGB(112, 211, 88, 0), width: 1.7),
+        border: Border.all(color: _accentBorder, width: 1.7),
         borderRadius: BorderRadius.circular(20),
-        color: Color.fromARGB(37, 237, 165, 114),
+        color: _accentSoft,
       ),
-      padding: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
       child: Column(
         children: [
+          // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: Color.fromARGB(255, 255, 112, 10),
-                    size: IconSizes.tiny,
-                  ),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: 'Wash Progress',
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                    textColor: Color.fromARGB(255, 211, 88, 0),
-                  ),
-                ],
-              ),
-
-              CustomText(
-                text: '25 min left',
-                textSize: TextSizes.bodyText3,
-                textWeight: FontWeight.w500,
-                textColor: Color.fromARGB(255, 211, 88, 0),
+            children: const [
+              Icon(Icons.circle, color: _accent, size: 8),
+              SizedBox(width: 6),
+              Text(
+                'Wash Progress',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: _accent,
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
+          // Segments + chips + labels
           Row(
-            children: [
-              Expanded(
+            children: List.generate(items.length, (i) {
+              final first = i == 0;
+              final last = i == items.length - 1;
+              final stage = items[i];
+
+              // bar color by status
+              final isDone = stage.status == 'done';
+              final isActive = stage.status == 'in_progress';
+              final barColor = (isDone || isActive) ? _accent : _trackGrey;
+
+              return Expanded(
                 child: Column(
                   children: [
+                    // segmented bar
                     Container(
                       height: 4,
-                      margin: EdgeInsets.only(left: 5),
+                      margin: EdgeInsets.only(
+                        left: first ? 5 : 0,
+                        right: last ? 5 : 0,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF97316),
+                        color: barColor,
                         borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(10),
-                          topLeft: Radius.circular(10),
+                          topLeft: Radius.circular(first ? 10 : 0),
+                          bottomLeft: Radius.circular(first ? 10 : 0),
+                          topRight: Radius.circular(last ? 10 : 0),
+                          bottomRight: Radius.circular(last ? 10 : 0),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Icon(
-                      Icons.check_circle,
-                      size: 24,
-                      color: const Color(0xFFF97316),
-                    ),
-                    const SizedBox(height: 5),
-                    CustomText(
-                      text: 'Pre-rinse',
-                      textColor: const Color(0xFFF97316),
-                      textSize: TextSizes.bodyText2,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      height: 4,
-                      decoration: BoxDecoration(color: const Color(0xFFF97316)),
-                    ),
-                    const SizedBox(height: 8),
-                    Icon(
-                      Icons.check_circle,
-                      size: 24,
-                      color: const Color(0xFFF97316),
-                    ),
-                    const SizedBox(height: 5),
-                    CustomText(
-                      text: 'Washing',
-                      textColor: const Color(0xFFF97316),
-                      textSize: TextSizes.bodyText2,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Color.fromARGB(153, 179, 179, 181),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FadingCircle(number: 3),
-                    const SizedBox(height: 5),
-                    CustomText(
-                      text: 'Rinsing',
-                      textColor: Color(0xFF6B7280),
-                      textSize: TextSizes.bodyText2,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(
-                      height: 4,
-                      margin: EdgeInsets.only(right: 5),
-                      decoration: BoxDecoration(
-                        color: Color.fromARGB(153, 179, 179, 181),
-                        borderRadius: BorderRadius.only(
-                          bottomRight: Radius.circular(10),
-                          topRight: Radius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 2),
 
-                    CircleAvatar(
-                      backgroundColor: Color.fromARGB(153, 179, 179, 181),
-                      radius: 12,
-                      child: CustomText(
-                        text: '4',
-                        textColor: Color(0xFF6B7280),
-                        textWeight: FontWeight.bold,
-                      ),
-                    ),
+                    // chip (done ✓ | active loader | pending number)
+                    _StageChip(index: i + 1, status: stage.status),
 
-                    const SizedBox(height: 5),
-                    CustomText(
-                      text: 'Cleaning',
-                      textColor: Color(0xFF6B7280),
-                      textSize: TextSizes.bodyText2,
+                    const SizedBox(height: 2),
+
+                    // label
+                    Text(
+                      stage.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.surface,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            }),
           ),
         ],
       ),
     );
   }
+
+  // Build from raw Firestore maps if VMs were not provided
+  List<WashStageVM> _buildStagesFromRaw(
+    List<String>? order,
+    Map<String, dynamic>? map,
+  ) {
+    final fallbackOrder = ['pre_rinse', 'washing', 'rinsing', 'cleaning'];
+    final o = (order?.isNotEmpty == true) ? order! : fallbackOrder;
+    final m = (map ?? const {}).map((k, v) => MapEntry(k, (v ?? {}) as Map));
+
+    String labelOf(String k) {
+      switch (k) {
+        case 'pre_rinse':
+          return 'Pre-rinse';
+        case 'washing':
+          return 'Washing';
+        case 'rinsing':
+          return 'Rinsing';
+        case 'cleaning':
+          return 'Cleaning';
+        default:
+          // Capitalize fallback
+          return k
+              .replaceAll('_', ' ')
+              .splitMapJoin(
+                RegExp(r'(^| )\w'),
+                onMatch: (m) => m.group(0)!.toUpperCase(),
+                onNonMatch: (s) => s,
+              );
+      }
+    }
+
+    String statusOf(String k) {
+      final raw = '${m[k]?['status'] ?? 'pending'}'.toLowerCase().trim();
+      if (raw == 'done' || raw == 'completed') return 'done';
+      if (raw == 'in_progress' || raw == 'active' || raw == 'processing') {
+        return 'in_progress';
+      }
+      return 'pending';
+    }
+
+    return o.map((k) => WashStageVM(k, labelOf(k), statusOf(k))).toList();
+  }
 }
 
-/* 
+/// The little chip under each segment.
+/// - done    → orange check
+/// - active  → pulsing/loader-style (uses your FadingCircle if present)
+/// - pending → grey numbered circle
+class _StageChip extends StatelessWidget {
+  final int index;
+  final String status; // done | in_progress | pending
 
-// Main Orange (progress bar, active step, "25 min left" text)
-const Color kOrange = Color(0xFFF97316);
+  const _StageChip({required this.index, required this.status});
 
-// Light Gray (progress bar background, step 4 background)
-const Color kLightGray = Color(0xFFE5E7EB);
+  static const Color _accent = Color(0xFFF97316);
+  static const Color _greyBg = Color.fromARGB(153, 179, 179, 181);
+  static const Color _greyFg = Color(0xFF6B7280);
 
-// Dark Gray (step 4 text)
-const Color kDarkGray = Color(0xFF6B7280);
+  @override
+  Widget build(BuildContext context) {
+    if (status == 'done') {
+      return const Icon(Icons.check_circle, size: 20, color: _accent);
+    }
 
-// Light Orange (step 3 background)
-const Color kLightOrange = Color(0xFFFCD9B6);
+    if (status == 'in_progress') {
+      // If you have your own loader: FadingCircle(number: index, size: 20)
+      // else fallback to a tiny progress indicator inside a soft circle
+      return SizedBox(
+        height: 20,
+        width: 20,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: _accent),
+            ),
+            Text(
+              '$index',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: _accent,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-// White (card background, checkmark inside circles)
-const Color kWhite = Color(0xFFFFFFFF);
-
-// Almost Black (section title "Wash Progress")
-const Color kAlmostBlack = Color(0xFF111827); 
-
-*/
+    // pending (numbered circle)
+    return CircleAvatar(
+      backgroundColor: _greyBg,
+      radius: 10,
+      child: Text(
+        '$index',
+        style: const TextStyle(
+          color: _greyFg,
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+}
 
 class FadingCircle extends StatefulWidget {
   final int number;
@@ -2305,7 +2423,7 @@ class _FadingCircleState extends State<FadingCircle>
           widget.number.toString(),
           style: TextStyle(
             color: Theme.of(context).colorScheme.inversePrimary,
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -2323,26 +2441,146 @@ class StatusBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
       decoration: BoxDecoration(
-        color: status == 'Pending'
+        color: status == 'pending'
             ? const Color.fromARGB(121, 255, 234, 113)
-            : status == 'Currently Washing'
+            : status == 'confirmed'
+            ? Color.fromARGB(121, 180, 255, 180)
+            : status == 'in_progress'
             ? Color.fromARGB(121, 255, 200, 120)
-            : Color.fromARGB(121, 180, 255, 180),
+            : status == 'completed'
+            ? Color.fromARGB(121, 120, 158, 255)
+            : Color.fromARGB(121, 255, 120, 120),
         borderRadius: BorderRadius.circular(50),
       ),
       child: CustomText(
-        text: status == 'Pending'
+        text: status == 'pending'
             ? 'Pending'
-            : status == 'Currently Washing'
+            : status == 'in_progress'
             ? 'Currently Washing'
-            : 'Waiting to Start',
+            : status == 'confirmed'
+            ? 'Confirmed'
+            : status == 'completed'
+            ? 'Completed'
+            : 'Cancelled',
         textSize: TextSizes.bodyText1,
         textWeight: FontWeight.bold,
-        textColor: status == 'Pending'
+        textColor: status == 'pending'
             ? Color.fromARGB(255, 187, 129, 4)
-            : status == 'Currently Washing'
+            : status == 'confirmed'
+            ? Color.fromARGB(255, 4, 129, 4)
+            : status == 'in_progress'
             ? Color.fromARGB(255, 187, 80, 4)
-            : Color.fromARGB(255, 4, 129, 4),
+            : status == 'completed'
+            ? Color.fromARGB(255, 4, 37, 129)
+            : Color.fromARGB(255, 129, 4, 4),
+      ),
+    );
+  }
+}
+
+class CompletedPanel extends StatelessWidget {
+  const CompletedPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(255, 232, 238, 251),
+        border: Border.all(
+          color: Color.fromARGB(255, 106, 148, 233),
+          width: 1.7,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 59, 104, 195),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Wash Completed',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 4, 47, 187),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          Row(
+            children: [
+              CustomText(
+                text: 'Your car wash has been completed successfully!',
+                textSize: TextSizes.bodyText2,
+                textColor: Theme.of(context).colorScheme.surface,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CancelledPanel extends StatelessWidget {
+  const CancelledPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(255, 251, 232, 232),
+        border: Border.all(
+          color: Color.fromARGB(255, 233, 106, 106),
+          width: 1.7,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 195, 59, 59),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Wash Cancelled',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 187, 4, 4),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          Row(
+            children: [
+              CustomText(
+                text: 'Your wash has been cancelled!',
+                textSize: TextSizes.bodyText2,
+                textColor: Theme.of(context).colorScheme.surface,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
