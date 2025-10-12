@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:omeeowash/models/message.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
+import 'package:omeeowash/services/local_chat_storage.dart';
 
 import 'chat.dart';
 import 'help_list.dart';
@@ -37,6 +37,7 @@ class MessageBubble extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onLongPress;
   final VoidCallback? onTap;
+  final LocalChatStore store;
 
   const MessageBubble({
     super.key,
@@ -47,6 +48,7 @@ class MessageBubble extends StatelessWidget {
     this.isSelected = false,
     this.onLongPress,
     this.onTap,
+    required this.store,
   });
 
   @override
@@ -150,29 +152,22 @@ class MessageBubble extends StatelessWidget {
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: () {
-                  if (message.mediaUrl != null) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            FullScreenVideoPlayer(filePath: message.mediaUrl!),
-                      ),
-                    );
-                  }
+              VideoPreview(
+                filePath: message.mediaUrl!,
+                onRemove: () {},
+                forBubble: true,
+                downloadVideo: () {
+                  store.downloadAndReplaceVideo(message);
                 },
-                child: VideoPreview(
-                  filePath: message.mediaUrl!,
-                  onRemove: () {},
-                  forBubble: true,
-                ),
               ),
               if ((message.text ?? '').isNotEmpty)
                 Text(
                   message.text ?? '',
                   style: TextStyle(
                     fontSize: 16,
-                    color: isMe ? Colors.white : Colors.black,
+                    color: isMe
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.secondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
