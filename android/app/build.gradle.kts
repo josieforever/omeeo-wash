@@ -1,4 +1,3 @@
-// android/app/build.gradle.kts  (module: app)
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
@@ -14,7 +13,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true // ✅ enable desugaring
     }
+
     kotlinOptions { jvmTarget = "17" }
 
     defaultConfig {
@@ -30,4 +31,11 @@ android {
     }
 }
 
-flutter { source = "../.." }
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    // ✅ use newer version (2.1.4 or higher)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}

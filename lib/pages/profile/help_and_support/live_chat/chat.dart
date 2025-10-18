@@ -1529,7 +1529,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 
 
 
-// // adb connect 192.168.43.1
 // // adb connect 192.168.100.40
 
 

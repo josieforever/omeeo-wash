@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
@@ -8,6 +9,8 @@ import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
 import 'package:omeeowash/l10n/app_localizations.dart';
 import 'package:omeeowash/models/message.dart';
+import 'package:omeeowash/notifications/local_notification_service.dart';
+import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
@@ -22,11 +25,99 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+//   // 🔑 Decide the start screen before runApp
+//   final prefs = await SharedPreferences.getInstance();
+//   final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
+//   final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+
+//   Widget startScreen;
+//   if (!hasSeenOnboarding) {
+//     startScreen = const OnboardingScreen();
+//   } else if (!isLoggedIn) {
+//     startScreen = const LoginScreen();
+//   } else {
+//     startScreen = const HomeScreenWithNav(view: 'home');
+//   }
+
+//    // Initialize local notifications
+//   await LocalNotificationService.initialize();
+
+//   // Set background message handler
+//   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+//   // Initialize FCM (your NotificationService)
+//   await NotificationService().initFCM();
+
+//   Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+//   await LocalNotificationService.show(message);
+// }
+
+//   Future<void> checkUserRole(String uid) async {
+//     final userSnapshot = await FirebaseFirestore.instance
+//         .collection("users")
+//         .doc(uid)
+//         .get();
+
+//     bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
+
+//     AppConfig().setAdmin(isAdmin);
+//   }
+
+//   FirebaseAuth.instance.authStateChanges().listen((user) async {
+//     if (user != null) {
+//       // When user logs in, check role
+//       await checkUserRole(user.uid);
+//     } else {
+//       AppConfig().setAdmin(false);
+//     }
+//   });
+
+//   final dir = await getApplicationDocumentsDirectory();
+//   final isar = await Isar.open([MessageSchema], directory: dir.path);
+
+//   runApp(
+//     MultiProvider(
+//       providers: [
+//         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+//         ChangeNotifierProvider(create: (_) => TopNavProvider()),
+//         ChangeNotifierProvider(create: (_) => UserProvider()),
+//         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+
+//         Provider<Isar>.value(value: isar),
+//         Provider<LocalChatStore>(create: (ctx) => LocalChatStore(isar)),
+//         Provider<ChatSyncService>(
+//           create: (ctx) => ChatSyncService(
+//             FirebaseFirestore.instance,
+//             ctx.read<LocalChatStore>(),
+//           ),
+//         ),
+//       ],
+//       child: MyApp(startScreen: startScreen),
+//     ),
+//   );
+// }
+
+/// 🔔 Background handler — must be top-level
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await LocalNotificationService.show(message);
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // 🔑 Decide the start screen before runApp
+  // ✅ Initialize local notifications (for background display)
+  await LocalNotificationService.initialize();
+
+  // ✅ Register background handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // 🧠 Load user prefs
   final prefs = await SharedPreferences.getInstance();
   final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
   final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
@@ -40,26 +131,25 @@ Future<void> main() async {
     startScreen = const HomeScreenWithNav(view: 'home');
   }
 
+  // 🔍 Determine user role
   Future<void> checkUserRole(String uid) async {
     final userSnapshot = await FirebaseFirestore.instance
         .collection("users")
         .doc(uid)
         .get();
-
     bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
-
     AppConfig().setAdmin(isAdmin);
   }
 
   FirebaseAuth.instance.authStateChanges().listen((user) async {
     if (user != null) {
-      // When user logs in, check role
       await checkUserRole(user.uid);
     } else {
       AppConfig().setAdmin(false);
     }
   });
 
+  // 🗃️ Initialize local DB (Isar)
   final dir = await getApplicationDocumentsDirectory();
   final isar = await Isar.open([MessageSchema], directory: dir.path);
 
@@ -70,7 +160,6 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => TopNavProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
-
         Provider<Isar>.value(value: isar),
         Provider<LocalChatStore>(create: (ctx) => LocalChatStore(isar)),
         Provider<ChatSyncService>(
@@ -85,9 +174,26 @@ Future<void> main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final Widget startScreen;
   const MyApp({super.key, required this.startScreen});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        notificationService.initFCM();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +217,7 @@ class MyApp extends StatelessWidget {
       themeMode: themeProvider.themeMode,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
-      home: startScreen, // ✅ Boots directly into correct screen
+      home: widget.startScreen, // ✅ Boots directly into correct screen
     );
   }
 }
@@ -124,26 +230,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  /*bool _hasPermission = false;
-
-   @override
-  void initState() {
-    super.initState();
-    requestPermissions();
-  }
-
-  Future<void> requestPermissions() async {
-    final status = await Permission.location.request();
-    if (status.isGranted) {
-      setState(() {
-        _hasPermission = true;
-      });
-    } else {
-      // You could show a dialog or message
-      print('Location permission denied');
-    }
-  } */
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,56 +254,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-/* class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  SplashScreenState createState() => SplashScreenState();
-}
-
-class SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _navigate();
-  }
-
-  Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 3));
-
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
-    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-    Widget nextScreen;
-    if (!hasSeenOnboarding) {
-      nextScreen = const OnboardingScreen();
-    } else if (!isLoggedIn) {
-      nextScreen = const LoginScreen();
-    } else {
-      nextScreen = const HomeScreenWithNav(view: 'home'); // ✅ Now goes to home
-    }
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => nextScreen),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.of(context).colorScheme.inversePrimary,
-      body: Center(
-        child: Lottie.asset(
-          'assets/animations/omeeo_wash_black_stripes.json',
-          width: 250,
-          height: 250,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-} */
