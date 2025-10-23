@@ -375,14 +375,47 @@ class _ChatState extends State<Chat> {
                             fontSize: 16,
                           ),
                         ),
-                        const Text(
-                          'Online',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.success,
-                          ),
-                        ),
+                        !isAdmin
+                            ? const Text(
+                                'Online',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.success,
+                                ),
+                              )
+                            : StreamBuilder<DocumentSnapshot>(
+                                stream: firestore
+                                    .collection('users')
+                                    .doc(widget.clientId)
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData) {
+                                    return SizedBox.shrink();
+                                  }
+                                  final data =
+                                      snapshot.data!.data()
+                                          as Map<String, dynamic>;
+                                  final isOnlin = data['isOnline'] ?? false;
+                                  return isOnlin
+                                      ? const Text(
+                                          'Online',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.success,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'Offline',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey,
+                                          ),
+                                        );
+                                },
+                              ),
                       ],
                     ),
                   ],
@@ -1529,12 +1562,5 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 
 
 
-// // adb connect 192.168.43.1
 // // adb connect 192.168.100.40
-
-
-
-
-
-
-
+// // adb connect 192.168.43.1

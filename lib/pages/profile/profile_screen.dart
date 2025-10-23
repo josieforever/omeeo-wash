@@ -6,6 +6,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/app_settings.dart';
 import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
@@ -374,8 +375,9 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 color: Theme.of(context).colorScheme.error,
               ),
               scale: 1.2,
-              onPressed: () {
-                FirebaseService().signOut(context);
+              onPressed: () async {
+                await NotificationService().removeToken();
+                await FirebaseService().signOut(context);
               },
             ),
             const SizedBox(height: 75),

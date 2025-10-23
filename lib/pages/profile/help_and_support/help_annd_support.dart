@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
@@ -49,26 +50,13 @@ class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
   late UserModel user;
 
   bool isAdmin = AppConfig().isAdmin;
+  final firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
     userProvider = Provider.of<UserProvider>(context, listen: false);
     user = userProvider.user!;
-  }
-
-  Future<void> _updateNotificationSetting(String key, bool value) async {
-    final updatedUser = user.copyWith(
-      notificationSettings: {...user.notificationSettings, key: value},
-    );
-
-    await userProvider.setUser(updatedUser);
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(updatedUser.uid)
-        .update({'notificationSettings': updatedUser.notificationSettings});
-
-    setState(() => user = updatedUser);
   }
 
   Widget _buildActionTab({
