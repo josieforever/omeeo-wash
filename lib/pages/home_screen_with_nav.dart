@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
@@ -43,52 +44,130 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
     setState(() => _selectedIndex = index);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: Stack(
-        children: [
-          // Gradient background behind BottomNavigationBar
-          Container(
-            height: 60,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 122, 51, 194),
-                  Color.fromARGB(255, 72, 66, 196),
-                ],
+  bool _shouldExit = false;
+
+  Future<void> _showExitDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: IntrinsicHeight(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Exit App',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ),
-          // Actual BottomNavigationBar (with transparent background)
-          BottomNavigationBar(
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            elevation: 0,
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-            selectedItemColor: Theme.of(context).colorScheme.inversePrimary,
-            unselectedItemColor: Theme.of(context).colorScheme.tertiary,
-            showUnselectedLabels: true,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.house),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidCalendar),
-                label: 'Bookings',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidUser),
-                label: 'Profile',
+              SizedBox(height: 10),
+              Text(
+                "Are you sure you want to close the app?",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              "No",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              "Yes",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              // fontSize: FontSizes.ml,
+              // color: lightPurple,
+            ),
+          ),
         ],
+      ),
+    );
+
+    setState(() {
+      _shouldExit = result ?? false;
+    });
+
+    if (_shouldExit) {
+      SystemNavigator.pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, result) {
+        if (!didPop) {
+          _showExitDialog();
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: _pages[_selectedIndex],
+        bottomNavigationBar: Stack(
+          children: [
+            // Gradient background behind BottomNavigationBar
+            Container(
+              height: 60,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color.fromARGB(255, 122, 51, 194),
+                    Color.fromARGB(255, 72, 66, 196),
+                  ],
+                ),
+              ),
+            ),
+            // Actual BottomNavigationBar (with transparent background)
+            BottomNavigationBar(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              elevation: 0,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              selectedItemColor: Theme.of(context).colorScheme.inversePrimary,
+              unselectedItemColor: Theme.of(context).colorScheme.tertiary,
+              showUnselectedLabels: true,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.house),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.solidCalendar),
+                  label: 'Bookings',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(FontAwesomeIcons.solidUser),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

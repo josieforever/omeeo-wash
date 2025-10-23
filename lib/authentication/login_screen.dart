@@ -6,6 +6,7 @@ import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/forgot_password.dart';
 import 'package:omeeowash/authentication/signup_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
+import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
@@ -860,6 +861,9 @@ class FirebaseService {
     try {
       final auth = FirebaseAuth.instance;
       final googleSignIn = GoogleSignIn();
+
+      // 🧹 Remove FCM token before signing out
+      await NotificationService().removeToken();
 
       // Sign out from Firebase Authentication
       await auth.signOut();
