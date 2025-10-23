@@ -41,6 +41,14 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<key>NSLocationWhenInUseUsageDescription</key>
+<string>We use your location to navigate to and from customers.</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>We need background location so customers can track the valet in real-time.</string>
+<key>UIBackgroundModes</key>
+<array>
+  <string>location</string>
+</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
+import 'package:omeeowash/pages/manage_bookings/manage_bookings.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
 
 class HomeScreenWithNav extends StatefulWidget {
@@ -19,7 +20,8 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   final List<Widget> _pages = [
     HomeScreen(), // Index 0
     BookingScreen(), // Index 1
-    ProfileScreen(), // Index 2
+    ManageBookingsScreen(), // Index 2
+    ProfileScreen(), // Index 3
   ];
 
   @override
@@ -30,8 +32,11 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
       case 'booking':
         _selectedIndex = 1;
         break;
-      case 'profile':
+      case 'manageBooking':
         _selectedIndex = 2;
+        break;
+      case 'profile':
+        _selectedIndex = 3;
         break;
       case 'home':
       default:
@@ -48,22 +53,7 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
     return Scaffold(
       extendBody: true,
       body: _pages[_selectedIndex],
-      bottomNavigationBar: Stack(
-        children: [
-          // Gradient background behind BottomNavigationBar
-          Container(
-            height: 60,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 122, 51, 194),
-                  Color.fromARGB(255, 72, 66, 196),
-                ],
-              ),
-            ),
-          ),
+      bottomNavigationBar:
           // Actual BottomNavigationBar (with transparent background)
           BottomNavigationBar(
             backgroundColor: Theme.of(context).colorScheme.surface,
@@ -75,21 +65,23 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
             showUnselectedLabels: true,
             items: const [
               BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.house),
+                icon: Icon(Icons.cabin_outlined),
                 label: 'Home',
               ),
               BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidCalendar),
+                icon: Icon(Icons.calendar_month_outlined),
                 label: 'Bookings',
               ),
               BottomNavigationBarItem(
-                icon: Icon(FontAwesomeIcons.solidUser),
+                icon: Icon(Icons.manage_history),
+                label: 'Manage',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.emoji_people_rounded),
                 label: 'Profile',
               ),
             ],
           ),
-        ],
-      ),
     );
   }
 }

@@ -203,7 +203,8 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         'userId': user.uid,
         'serviceType': widget.serviceType ?? 'unknown',
         'vehicleType': widget.vehicleType,
-        'serviceLocation': widget.serviceLocation,
+        'serviceLocation': widget
+            .serviceLocation, // "washing_bay" | "mobile_service" | "valet_service"
         'address': widget.address,
         'latitude': widget.latitude,
         'longitude': widget.longitude,
@@ -212,16 +213,39 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         'scheduledTimeLabel': timeLabel, // 12h label
         'price': widget.price,
         'durationMinutes': widget.duration, // keep minutes as number
-        'payment': payment,
+        'payment': payment, // e.g. { method: 'cash', status: 'pending_cash' }
         'status': bookingStatus, // pending / pending_cash / etc.
         'createdAt': now,
         'updatedAt': now,
 
-        // ── Wash stages (new) ──
+        // ── Wash stages (existing) ──
         'washStageOrder': stages['washStageOrder'],
         'washStages': stages['washStages'],
         'activeStage': stages['activeStage'],
         'stageProgress': stages['stageProgress'],
+
+        // ── NEW: admin/driver + decisions + tracking ──
+        'valetDriverId':
+            null, // uid of the person driving/washing; admin can be this
+
+        'decision': {
+          // set when admin accepts/declines
+          'type': null, // "confirm" | "decline"
+          'byUid': null,
+          'byName': null,
+          'at': null, // serverTimestamp at decision time
+          'reason': null, // only for decline
+        },
+
+        'tracking': {
+          // controls if the owner can see live location
+          'enabledOwner': false, // admin/driver toggles this
+          'enabledBy': null,
+          'enabledAt': null,
+          'disabledAt': null,
+        },
+
+        'adminNotes': null, // optional internal notes
       };
 
       // Transaction: prevent double booking of slot

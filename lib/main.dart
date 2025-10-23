@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:geolocator/geolocator.dart' show GeolocatorPlatform;
 import 'package:isar/isar.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
@@ -25,6 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  GeolocatorPlatform.instance;
 
   // 🔑 Decide the start screen before runApp
   final prefs = await SharedPreferences.getInstance();
@@ -148,76 +150,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: const [
-                  Color(0xFF6D66F6), // Right (periwinkle blue-purple)
-                  Color(0xFFA558F2), // Left (light pink-purple)
-                ],
-              ),
-            ),
-          ),
-          SafeArea(top: true, bottom: true, child: HomeScreen()),
-        ],
-      ),
+      body: SafeArea(top: true, bottom: true, child: HomeScreen()),
     );
   }
 }
-
-/* class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  SplashScreenState createState() => SplashScreenState();
-}
-
-class SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _navigate();
-  }
-
-  Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 3));
-
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
-    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-    Widget nextScreen;
-    if (!hasSeenOnboarding) {
-      nextScreen = const OnboardingScreen();
-    } else if (!isLoggedIn) {
-      nextScreen = const LoginScreen();
-    } else {
-      nextScreen = const HomeScreenWithNav(view: 'home'); // ✅ Now goes to home
-    }
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => nextScreen),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.of(context).colorScheme.inversePrimary,
-      body: Center(
-        child: Lottie.asset(
-          'assets/animations/omeeo_wash_black_stripes.json',
-          width: 250,
-          height: 250,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
-} */

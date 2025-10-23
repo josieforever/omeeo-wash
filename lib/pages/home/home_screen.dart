@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -706,8 +708,28 @@ class HomeScreenMiddleSection extends StatelessWidget {
                 title: 'First Wash Free!',
                 badgeText: 'New Customers',
                 subtitle: 'First standard wash on us',
-                onPressed: () {
-                  // navigate to offer, open sheet, etc.
+                onPressed: () async {
+                  // 1) start a stage
+                  // Make PRE-RINSE the only active stage (earlier=done, later=pending)
+                  await adminSetActiveWashStageStrict(
+                    bookingId: 'vNUu5adYrTlADdwzaoC1',
+                    activeStageKey:
+                        'cleaning', // hyphen/space/underscore all OK
+                    adminId: 'admin_123',
+                  );
+
+                  /*  // Move to WASHING (pre-rinse becomes done, others pending)
+                  await adminSetActiveWashStage(
+                    bookingId: 'Qp9iq8FgsABY0vn79qCH',
+                    activeStageKey: 'washing',
+                    adminId: 'admin_123',
+                  );
+
+                  // Jump directly to RINSING (pre-rinse & washing become done)
+                  await adminSetActiveWashStage(
+                    bookingId: 'Qp9iq8FgsABY0vn79qCH',
+                    activeStageKey: 'rinsing',
+                  ); */
                 },
               ),
               const SizedBox(height: 10),
@@ -1301,109 +1323,114 @@ class PromoBannerCard extends StatelessWidget {
     ).colorScheme.inversePrimary.withOpacity(.12);
     final Color btnFg = Colors.black87;
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [dark1, dark2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [dark1, dark2],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.surface,
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.surface,
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      padding: padding,
-      child: Row(
-        children: [
-          // Left: circular icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: pillBg,
-              borderRadius: BorderRadius.circular(17),
+        padding: padding,
+        child: Row(
+          children: [
+            // Left: circular icon
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: pillBg,
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Icon(
+                leadingIcon,
+                color: Theme.of(context).colorScheme.inversePrimary,
+                size: IconSizes.medium,
+              ),
             ),
-            child: Icon(
-              leadingIcon,
-              color: Theme.of(context).colorScheme.inversePrimary,
-              size: IconSizes.medium,
-            ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // Middle: title (+ optional badge) and subtitle
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title + Badge row
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.inversePrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                          height: 1.1,
+            // Middle: title (+ optional badge) and subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title + Badge row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            height: 1.1,
+                          ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Right: CTA button
+            TextButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.chevron_right_rounded, size: 16),
+              label: Text(
+                buttonText,
+                style: TextStyle(
+                  color: btnFg,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.secondary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12.5,
+              ),
+              style: ButtonStyle(
+                backgroundColor: WidgetStatePropertyAll(
+                  Theme.of(context).colorScheme.inversePrimary,
+                ),
+                foregroundColor: WidgetStatePropertyAll(btnFg),
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Right: CTA button
-          TextButton.icon(
-            onPressed: onPressed,
-            icon: const Icon(Icons.chevron_right_rounded, size: 16),
-            label: Text(
-              buttonText,
-              style: TextStyle(
-                color: btnFg,
-                fontWeight: FontWeight.w700,
-                fontSize: 12.5,
+                overlayColor: WidgetStatePropertyAll(Colors.black12),
               ),
             ),
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(
-                Theme.of(context).colorScheme.inversePrimary,
-              ),
-              foregroundColor: WidgetStatePropertyAll(btnFg),
-              padding: const WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              overlayColor: WidgetStatePropertyAll(Colors.black12),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1643,5 +1670,163 @@ class StationCard extends StatelessWidget {
     if (phone == null || phone!.trim().isEmpty) return;
     final tel = Uri(scheme: 'tel', path: phone!.trim());
     await launchUrl(tel);
+  }
+}
+
+/// Make `activeStageKey` the ONLY active stage:
+/// - all stages BEFORE it → `done` (+completedAt)
+/// - that stage → `in_progress` (+startedAt, completedAt=null)
+/// - all stages AFTER it → `pending` (startedAt/completedAt=null)
+///
+/// If `washStageOrder` is missing, we derive an order from washStages keys or
+/// fall back to the default order.
+
+Future<void> adminSetActiveWashStageStrict({
+  required String bookingId,
+  required String activeStageKey, // e.g. "pre-rinse", "washing"
+  String? adminId, // optional for audit
+  List<String> defaultOrder = const [
+    'pre_rinse',
+    'washing',
+    'rinsing',
+    'cleaning',
+  ],
+  bool createIfMissing =
+      false, // set true only if you WANT to seed missing keys
+}) async {
+  final db = FirebaseFirestore.instance;
+  final ref = db.collection('bookings').doc(bookingId);
+
+  String norm(String k) =>
+      k.trim().toLowerCase().replaceAll(RegExp(r'[\s\-]+'), '_');
+
+  await db.runTransaction((tx) async {
+    final snap = await tx.get(ref);
+    if (!snap.exists) throw Exception('Booking not found: $bookingId');
+
+    final data = Map<String, dynamic>.from(snap.data() ?? {});
+
+    // Existing map of stages (normalized keys)
+    final rawStages =
+        (data['washStages'] as Map?)?.cast<String, dynamic>() ?? {};
+    final hasSchema = rawStages.isNotEmpty;
+
+    if (!hasSchema && !createIfMissing) {
+      // abort: nothing to update without creating fields
+      throw Exception(
+        'washStages schema not present on booking; not creating new fields.',
+      );
+    }
+
+    final stages = <String, Map<String, dynamic>>{};
+    rawStages.forEach(
+      (k, v) => stages[norm(k)] = Map<String, dynamic>.from(v ?? {}),
+    );
+
+    // Use existing order if present; otherwise fall back (but only write it if createIfMissing)
+    final rawOrder =
+        (data['washStageOrder'] as List?)
+            ?.map((e) => norm(e.toString()))
+            .toList() ??
+        defaultOrder;
+
+    // If we are not creating, restrict the order to keys that already exist
+    List<String> order = createIfMissing
+        ? List<String>.from(rawOrder)
+        : rawOrder.where((k) => stages.containsKey(k)).toList();
+
+    final active = norm(activeStageKey);
+
+    if (!order.contains(active)) {
+      if (createIfMissing) {
+        order.add(active); // allowed to seed
+      } else {
+        throw Exception(
+          "Stage '$activeStageKey' doesn't exist in washStages; strict mode won't create it.",
+        );
+      }
+    }
+    if (!createIfMissing && !stages.containsKey(active)) {
+      throw Exception(
+        "Stage '$activeStageKey' missing in washStages; strict mode won't create it.",
+      );
+    }
+
+    final activeIdx = order.indexOf(active);
+    bool anyActive = false;
+    bool allDone = true;
+
+    final updates = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    // Only write washStageOrder if it already exists OR we're allowed to create
+    if (data.containsKey('washStageOrder') || createIfMissing) {
+      updates['washStageOrder'] = order;
+    }
+
+    // Update only existing keys unless we allow creation
+    for (int i = 0; i < order.length; i++) {
+      final key = order[i];
+      final exists = stages.containsKey(key);
+
+      if (!createIfMissing && !exists) continue; // skip non-existent keys
+
+      final prev = Map<String, dynamic>.from(stages[key] ?? const {});
+      final isBefore = i < activeIdx;
+      final isActive = i == activeIdx;
+
+      if (isBefore) {
+        updates['washStages.$key.status'] = 'done';
+        updates['washStages.$key.startedAt'] =
+            prev['startedAt'] ?? FieldValue.serverTimestamp();
+        updates['washStages.$key.completedAt'] =
+            prev['completedAt'] ?? FieldValue.serverTimestamp();
+      } else if (isActive) {
+        anyActive = true;
+        allDone = false;
+        updates['washStages.$key.status'] = 'in_progress';
+        updates['washStages.$key.startedAt'] =
+            prev['startedAt'] ?? FieldValue.serverTimestamp();
+        updates['washStages.$key.completedAt'] = null;
+      } else {
+        allDone = false;
+        updates['washStages.$key.status'] = 'pending';
+        updates['washStages.$key.startedAt'] = null;
+        updates['washStages.$key.completedAt'] = null;
+      }
+    }
+
+    // Overall booking.status
+    final currentOverall = '${data['status'] ?? ''}'.toLowerCase();
+    String nextOverall;
+    if (allDone) {
+      nextOverall = 'completed';
+      updates['completedAt'] = FieldValue.serverTimestamp();
+    } else if (anyActive) {
+      nextOverall = 'in_progress';
+    } else {
+      nextOverall = currentOverall.isEmpty ? 'confirmed' : currentOverall;
+    }
+    if (nextOverall != currentOverall) updates['status'] = nextOverall;
+
+    tx.update(ref, updates);
+  });
+
+  // Best-effort audit trail (doesn't create structural fields)
+  try {
+    await ref.update({
+      'washHistory': FieldValue.arrayUnion([
+        {
+          'action': 'set_active_stage',
+          'stage': activeStageKey,
+          'to': 'in_progress',
+          'at': Timestamp.now(),
+          if (adminId != null) 'by': adminId,
+        },
+      ]),
+    });
+  } catch (_) {
+    /* ignore */
   }
 }
