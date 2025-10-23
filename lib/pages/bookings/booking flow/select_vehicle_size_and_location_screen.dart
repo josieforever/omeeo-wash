@@ -144,6 +144,7 @@ class _SelectVehicleAndLocationScreenState
   @override
   Widget build(BuildContext context) {
     const List<double> progressIndicatorValues = [0.25, 0.5, 0.75, 1.0];
+    debugPrint('service type  ======>>>>>>>>> ${widget.serviceType}');
 
     return Scaffold(
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -218,23 +219,26 @@ class _SelectVehicleAndLocationScreenState
             const SizedBox(height: 10),
 
             // 1) On-site (Washing bay)
-            GestureDetector(
-              onTap: () => _handleSelectPlace('onSite'),
-              child: _PlaceTile(
-                selected: placeSelected == 'onSite',
-                borderColor: placeSelected == 'onSite'
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.inversePrimary,
-                fillColor: placeSelected == 'onSite'
-                    ? Theme.of(context).colorScheme.secondary
-                    : Theme.of(context).colorScheme.inversePrimary,
-                iconBgSelected: placeSelected == "onSite",
-                iconAsset: 'assets/icons/emoji_transportation.svg',
-                title: 'Visit Our Washing Bay',
-                // ✅ show the fixed on-site address
-                subtitle: onSiteAddress ?? 'Omeeo Car Wash • Sowutuom, Accra',
-              ),
-            ),
+            widget.serviceType == 'express' || widget.serviceType == 'standard'
+                ? SizedBox()
+                : GestureDetector(
+                    onTap: () => _handleSelectPlace('onSite'),
+                    child: _PlaceTile(
+                      selected: placeSelected == 'onSite',
+                      borderColor: placeSelected == 'onSite'
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.inversePrimary,
+                      fillColor: placeSelected == 'onSite'
+                          ? Theme.of(context).colorScheme.secondary
+                          : Theme.of(context).colorScheme.inversePrimary,
+                      iconBgSelected: placeSelected == "onSite",
+                      iconAsset: 'assets/icons/emoji_transportation.svg',
+                      title: 'Visit Our Washing Bay',
+                      // ✅ show the fixed on-site address
+                      subtitle:
+                          onSiteAddress ?? 'Omeeo Car Wash • Sowutuom, Accra',
+                    ),
+                  ),
 
             const SizedBox(height: 10),
 
@@ -279,6 +283,9 @@ class _SelectVehicleAndLocationScreenState
             ),
 
             const SizedBox(height: 15),
+            widget.serviceType == 'express' || widget.serviceType == 'standard'
+                ? const SizedBox(height: 40)
+                : SizedBox(),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

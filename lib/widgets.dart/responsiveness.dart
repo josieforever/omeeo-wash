@@ -29,6 +29,7 @@ class TextSizes {
 
 class IconSizes {
   static const double tiny = 12.0;
+  static const double minute = 14.0;
   static const double small = 16.0;
   static const double midSmall = 20.0;
   static const double medium = 24.0;

@@ -155,8 +155,8 @@ class _CustomTopNavState extends State<CustomTopNav> {
             children: [
               Expanded(
                 child: TopNavBarTab(
-                  onPressed: () => topNavProvider.selectTab('Booking Status'),
-                  textWidget: 'Booking Status',
+                  onPressed: () => topNavProvider.selectTab('Active'),
+                  textWidget: 'Active',
                   numberWidget: activeCount.toString(),
                   borderRadius: 15,
                 ),
@@ -209,7 +209,7 @@ class _NoGlowScroll extends ScrollBehavior {
 class StatusTabScreen extends StatelessWidget {
   const StatusTabScreen({super.key});
 
-  // Map DB strings to a small canonical set
+  // Normalize DB status → small set we use in UI
   String _canonicalStatus(dynamic s) {
     final v = '${s ?? ''}'.trim().toLowerCase();
     if (v == 'pending' ||
@@ -219,29 +219,21 @@ class StatusTabScreen extends StatelessWidget {
       return 'pending';
     }
     if (v == 'in_progress' ||
-        v == 'inprogress' ||
+        v == 'in_progress' ||
         v == 'in-progress' ||
         v == 'processing') {
       return 'in_progress';
     }
-    if (v == 'confirmed' || v == 'booked') {
-      return 'confirmed';
-    }
-    if (v == 'completed' || v == 'done' || v == 'finished') {
-      return 'completed';
-    }
-    if (v == 'cancelled' || v == 'canceled') {
-      return 'cancelled';
-    }
-    return v; // fallback
+    if (v == 'confirmed' || v == 'booked') return 'confirmed';
+    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
+    if (v == 'cancelled' || v == 'canceled') return 'cancelled';
+    return v;
   }
 
   DateTime? _extractDate(dynamic tsOrIso) {
     if (tsOrIso == null) return null;
     try {
-      // Firestore Timestamp
       if (tsOrIso is Timestamp) return tsOrIso.toDate();
-      // ISO string
       if (tsOrIso is String) return DateTime.tryParse(tsOrIso);
     } catch (_) {}
     return null;
@@ -259,22 +251,20 @@ class StatusTabScreen extends StatelessWidget {
     }
   }
 
-  // import 'package:intl/intl.dart';
+  // Day: "Today", "Tomorrow", or "dec 10"
   String _dayLabel(DateTime? dt) {
     if (dt == null) return '—';
     final now = DateUtils.dateOnly(DateTime.now());
     final day = DateUtils.dateOnly(dt);
     if (day == now) return 'Today';
     if (day == now.add(const Duration(days: 1))) return 'Tomorrow';
-    return DateFormat('MMM d').format(day).toLowerCase(); // e.g., "dec 10"
+    return DateFormat('MMM d').format(day).toLowerCase();
   }
 
+  // Time: always 12-hour
   String _timeLabel(DateTime? dt, dynamic labelFromDb) {
-    // Try to normalize a DB-provided label first.
     final fromDb = _convertDbLabelTo12h(labelFromDb?.toString());
     if (fromDb != null) return fromDb;
-
-    // Fallback to DateTime
     if (dt == null) return '—';
     return _format12h(dt.hour, dt.minute);
   }
@@ -283,8 +273,6 @@ class StatusTabScreen extends StatelessWidget {
     if (raw == null) return null;
     final s = raw.trim();
     if (s.isEmpty) return null;
-
-    // Matches: "14:05", "2:05", "2:05pm", "02:05 PM", etc.
     final re = RegExp(r'^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$');
     final m = re.firstMatch(s);
     if (m == null) return null;
@@ -294,15 +282,12 @@ class StatusTabScreen extends StatelessWidget {
     final ampmRaw = m.group(3);
 
     if (ampmRaw != null) {
-      // Has AM/PM → normalize case and convert to 24h first
       final ampm = ampmRaw.toUpperCase();
       if (ampm == 'PM' && h != 12) h += 12;
       if (ampm == 'AM' && h == 12) h = 0;
     } else {
-      // No AM/PM → assume 24h input (e.g., "14:30")
       h = h.clamp(0, 23);
     }
-
     return _format12h(h, min);
   }
 
@@ -327,7 +312,6 @@ class StatusTabScreen extends StatelessWidget {
   }
 
   String _locationLabel(Map<String, dynamic> b) {
-    // Prefer address string, fallback to location name if you have one.
     final addr =
         '${b['address'] ?? b['location'] ?? b['serviceLocation'] ?? ''}'.trim();
     if (addr.isEmpty) return '—';
@@ -339,7 +323,7 @@ class StatusTabScreen extends StatelessWidget {
     if (uid == null) return const Stream.empty();
     return FirebaseFirestore.instance
         .collection('bookings')
-        .where('userId', isEqualTo: uid) // ✅ single-filter stream
+        .where('userId', isEqualTo: uid)
         .snapshots()
         .map((s) => s.docs.map((d) => d.data()).toList());
   }
@@ -364,7 +348,6 @@ class StatusTabScreen extends StatelessWidget {
             return s == 'pending' || s == 'in_progress' || s == 'confirmed';
           }).toList();
 
-          // sort by scheduledTime asc (client-side)
           items.sort((a, b) {
             final at = _extractDate(a['scheduledTime']) ?? DateTime(2100);
             final bt = _extractDate(b['scheduledTime']) ?? DateTime(2100);
@@ -390,10 +373,20 @@ class StatusTabScreen extends StatelessWidget {
               final serviceType = '${b['serviceType'] ?? ''}';
               final canonical = _canonicalStatus(b['status']);
 
+              // ✅ read from the standardized schema
+              final List<String> stageOrder =
+                  (b['washStageOrder'] as List?)
+                      ?.map((e) => e.toString())
+                      .toList() ??
+                  const [];
+              final Map<String, dynamic> stages =
+                  (b['washStages'] as Map?)?.cast<String, dynamic>() ??
+                  const {};
+
               return BookingsServiceButton(
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
-                status: canonical, // 👈 pass canonical status
+                status: canonical,
                 day: _dayLabel(dt),
                 time: _timeLabel(dt, b['scheduledTimeLabel']),
                 duration: (() {
@@ -401,6 +394,17 @@ class StatusTabScreen extends StatelessWidget {
                   return d == null ? '⏱️ —' : '⏱️ $d min';
                 })(),
                 price: (b['price']?.toString()),
+
+                // details for sheet
+                address: b['address'] as String?,
+                latitude: (b['latitude'] as num?)?.toDouble(),
+                longitude: (b['longitude'] as num?)?.toDouble(),
+
+                // ✅ pass wash progress to in-progress UI
+                washStageOrder: stageOrder,
+                washStages: stages,
+
+                // visuals
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,

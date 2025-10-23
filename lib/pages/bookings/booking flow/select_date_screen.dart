@@ -88,10 +88,48 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
     );
   }
 
+  // ---------- NEW: helpers to block past times ----------
+  DateTime _dateTimeFromHhmm(DateTime date, String hhmm) {
+    final h = int.parse(hhmm.substring(0, 2));
+    final m = int.parse(hhmm.substring(2, 4));
+    return DateTime(date.year, date.month, date.day, h, m);
+  }
+
+  bool _isPastSlot(DateTime date, String hhmm) {
+    final now = DateTime.now();
+    final slotTime = _dateTimeFromHhmm(date, hhmm);
+    return slotTime.isBefore(now);
+  }
+
+  List<String> _generateHhmmKeysForDate(DateTime forDate) {
+    final keys = <String>[];
+    for (int m = _startMin; m <= _endMin; m += _stepMin) {
+      final h = (m ~/ 60).toString().padLeft(2, '0');
+      final mm = (m % 60).toString().padLeft(2, '0');
+      final k = '$h$mm'; // e.g., "0830"
+      // If the selected day is today, hide any time earlier than now.
+      if (DateUtils.isSameDay(forDate, DateTime.now()) &&
+          _isPastSlot(forDate, k)) {
+        continue;
+      }
+      keys.add(k);
+    }
+    return keys;
+  }
+  // ------------------------------------------------------
+
   void _goNext() {
     if (!canContinue) return;
     final scheduled = _composeScheduledDateTime();
     if (scheduled == null) return;
+
+    // Extra guard: never allow a past selection
+    if (scheduled.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a future time.')),
+      );
+      return;
+    }
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -107,17 +145,6 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
   }
 
   // --- Availability: Firestore integration ---
-
-  // Generate list of hhmm keys between start/end by step
-  List<String> _generateHhmmKeys() {
-    final keys = <String>[];
-    for (int m = _startMin; m <= _endMin; m += _stepMin) {
-      final h = (m ~/ 60).toString().padLeft(2, '0');
-      final mm = (m % 60).toString().padLeft(2, '0');
-      keys.add('$h$mm'); // e.g., "0830"
-    }
-    return keys;
-  }
 
   String _toLabel(String hhmm) {
     final h = int.parse(hhmm.substring(0, 2));
@@ -156,7 +183,7 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
             .where((s) => s.isNotEmpty)
             .toSet();
 
-        final keys = _generateHhmmKeys();
+        final keys = _generateHhmmKeysForDate(date);
         final slots = keys
             .map(
               (k) => _SlotVM(
@@ -168,13 +195,14 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
             .toList();
 
         setState(() {
-          _slots = slots; // if booked.isEmpty → all available
+          _slots =
+              slots; // if booked.isEmpty → all available (filtered for past)
           _loadingSlots = false;
         });
       },
       onError: (_) {
-        // 👇 Fallback: show all times as available so the UI still works
-        final keys = _generateHhmmKeys();
+        // 👇 Fallback: show all *future* times as available so the UI still works
+        final keys = _generateHhmmKeysForDate(date);
         setState(() {
           _slots = keys
               .map((k) => _SlotVM(hhmm: k, label: _toLabel(k), isBooked: false))
@@ -436,6 +464,13 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                                         child: GestureDetector(
                                           onTap: () {
                                             if (slot.isBooked) return;
+                                            if (pickedDate != null &&
+                                                _isPastSlot(
+                                                  pickedDate!,
+                                                  slot.hhmm,
+                                                )) {
+                                              return; // safety: block past slots
+                                            }
                                             setState(() {
                                               _selectedHhmm = slot.hhmm;
                                               selectedTimeLabel = slot.label;
