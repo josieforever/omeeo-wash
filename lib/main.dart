@@ -1,10 +1,10 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:geolocator/geolocator.dart' show GeolocatorPlatform;
 import 'package:isar/isar.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/firebase_options.dart';
@@ -35,7 +35,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  GeolocatorPlatform.instance;
 
   // ✅ Initialize local notifications (for background display)
   await LocalNotificationService.initialize();
@@ -180,44 +179,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       themeMode: themeProvider.themeMode,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
-      home: startScreen, // ✅ Boots directly into correct screen
-    );
-  }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  /*bool _hasPermission = false;
-
-   @override
-  void initState() {
-    super.initState();
-    requestPermissions();
-  }
-
-  Future<void> requestPermissions() async {
-    final status = await Permission.location.request();
-    if (status.isGranted) {
-      setState(() {
-        _hasPermission = true;
-      });
-    } else {
-      // You could show a dialog or message
-      print('Location permission denied');
-    }
-  } */
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: SafeArea(top: true, bottom: true, child: HomeScreen()),
+      home: widget.startScreen,
     );
   }
 }
