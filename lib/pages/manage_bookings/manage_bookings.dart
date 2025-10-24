@@ -199,109 +199,66 @@ class _CustomTopNavState extends State<CustomTopNav> {
 class NewBookingsScreen extends StatelessWidget {
   const NewBookingsScreen({super.key});
 
-  // ---------- Booking + Profile combined stream (current user) ----------
-  Stream<Map<String, dynamic>> _userProfileAndBookings() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  /// Stream ALL pending bookings (no user filter). No orderBy → sort client-side.
+  Stream<List<Map<String, dynamic>>> _pendingBookingsStream() {
+    final q = FirebaseFirestore.instance
+        .collection('bookings')
+        .where('status', isEqualTo: 'pending');
 
-    if (uid == null) {
-      return Stream.value(<String, dynamic>{
-        'profile': null,
-        'bookings': <Map<String, dynamic>>[],
+    return q.snapshots().map((s) {
+      final list = s.docs.map((d) {
+        final data = d.data();
+        // Put doc id after spread so a field named "id" can't overwrite it
+        final map = <String, dynamic>{...data, '__docId': d.id};
+        debugPrint(
+          "[NewBookings] fetched __docId=${map['__docId']} "
+          "status=${map['status']} userId=${map['userId']}",
+        );
+        return map;
+      }).toList();
+
+      // ---- sort by order asc, then createdAt desc, then scheduledTime asc ----
+      int? orderNo(Map<String, dynamic> m) {
+        final v = m['order'] ?? m['orderNo'] ?? m['order_number'];
+        if (v is num) return v.toInt();
+        if (v is String) return int.tryParse(v);
+        return null;
+      }
+
+      DateTime createdAt(Map<String, dynamic> m) {
+        final v = m['createdAt'];
+        if (v is Timestamp) return v.toDate();
+        if (v is String)
+          return DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return DateTime.fromMillisecondsSinceEpoch(0);
+      }
+
+      DateTime scheduled(Map<String, dynamic> m) {
+        final v = m['scheduledTime'];
+        if (v is Timestamp) return v.toDate();
+        if (v is String) return DateTime.tryParse(v) ?? DateTime(2100);
+        return DateTime(2100);
+      }
+
+      list.sort((a, b) {
+        final oa = orderNo(a), ob = orderNo(b);
+        if (oa != null && ob != null && oa != ob) return oa.compareTo(ob);
+
+        final createdCmp = createdAt(b).compareTo(createdAt(a)); // newest first
+        if (createdCmp != 0) return createdCmp;
+
+        return scheduled(a).compareTo(scheduled(b)); // soonest first
       });
-    }
 
-    final usersRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    final bookingsRef = FirebaseFirestore.instance.collection('bookings');
-
-    final profileStream = usersRef.snapshots().map<Map<String, dynamic>?>(
-      (doc) => doc.data(),
-    );
-
-    // No orderBy → avoid composite index; sort client-side
-    final bookingsStream = bookingsRef
-        .where('userId', isEqualTo: uid)
-        .snapshots()
-        .map<List<Map<String, dynamic>>>((s) {
-          final list = s.docs.map((d) {
-            final data = d.data();
-            // 🔒 Put the doc id AFTER the spread so it can't be overwritten by a field named "id"
-            final map = <String, dynamic>{...data, '__docId': d.id};
-            // debug
-            debugPrint(
-              "[NewBookings] fetched __docId=${map['__docId']} status=${map['status']}",
-            );
-            return map;
-          }).toList();
-
-          // newest first
-          list.sort((a, b) {
-            final at =
-                (a['scheduledTime'] as Timestamp?)?.toDate() ??
-                DateTime.fromMillisecondsSinceEpoch(0);
-            final bt =
-                (b['scheduledTime'] as Timestamp?)?.toDate() ??
-                DateTime.fromMillisecondsSinceEpoch(0);
-            return bt.compareTo(at);
-          });
-          return list;
-        });
-
-    final controller = StreamController<Map<String, dynamic>>.broadcast();
-
-    Map<String, dynamic>? latestProfile;
-    List<Map<String, dynamic>> latestBookings = const [];
-
-    late final StreamSubscription profileSub;
-    late final StreamSubscription bookingsSub;
-
-    void emit() {
-      controller.add({'profile': latestProfile, 'bookings': latestBookings});
-    }
-
-    controller.onListen = () {
-      emit();
-      profileSub = profileStream.listen((p) {
-        latestProfile = p;
-        emit();
-      }, onError: controller.addError);
-
-      bookingsSub = bookingsStream.listen((b) {
-        latestBookings = b;
-        emit();
-      }, onError: controller.addError);
-    };
-
-    controller.onCancel = () async {
-      await profileSub.cancel();
-      await bookingsSub.cancel();
-    };
-
-    return controller.stream;
+      return list;
+    });
   }
 
-  // ------------------ Helpers ------------------
-  String _canonicalStatus(dynamic s) {
-    final v = '${s ?? ''}'.trim().toLowerCase();
-    if (v == 'pending' ||
-        v == 'pending_cash' ||
-        v == 'pending-card' ||
-        v == 'awaiting_payment') {
-      return 'pending';
-    }
-    if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
-      return 'in_progress';
-    if (v == 'confirmed' || v == 'booked') return 'confirmed';
-    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
-    if (v == 'cancelled' || v == 'canceled') return 'cancelled';
-    return v;
-  }
-
+  // ---------- helpers ----------
   DateTime? _extractDate(dynamic tsOrIso) {
     if (tsOrIso == null) return null;
-    try {
-      if (tsOrIso is Timestamp) return tsOrIso.toDate();
-      if (tsOrIso is String) return DateTime.tryParse(tsOrIso);
-    } catch (_) {}
+    if (tsOrIso is Timestamp) return tsOrIso.toDate();
+    if (tsOrIso is String) return DateTime.tryParse(tsOrIso);
     return null;
   }
 
@@ -326,40 +283,18 @@ class NewBookingsScreen extends StatelessWidget {
     return DateFormat('MMM d').format(day).toLowerCase();
   }
 
-  String _timeLabel(DateTime? dt, dynamic labelFromDb) {
-    final fromDb = _convertDbLabelTo12h(labelFromDb?.toString());
-    if (fromDb != null) return fromDb;
-    if (dt == null) return '—';
-    return _format12h(dt.hour, dt.minute);
-  }
-
-  String? _convertDbLabelTo12h(String? raw) {
-    if (raw == null) return null;
-    final s = raw.trim();
-    if (s.isEmpty) return null;
-    final re = RegExp(r'^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$');
-    final m = re.firstMatch(s);
-    if (m == null) return null;
-
-    var h = int.tryParse(m.group(1)!) ?? 0;
-    final min = int.tryParse(m.group(2)!) ?? 0;
-    final ampmRaw = m.group(3);
-
-    if (ampmRaw != null) {
-      final ampm = ampmRaw.toUpperCase();
-      if (ampm == 'PM' && h != 12) h += 12;
-      if (ampm == 'AM' && h == 12) h = 0;
-    } else {
-      h = h.clamp(0, 23);
-    }
-    return _format12h(h, min);
-  }
-
   String _format12h(int hour24, int minute) {
     final h12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
     final mm = minute.toString().padLeft(2, '0');
     final ampm = hour24 >= 12 ? 'PM' : 'AM';
     return '$h12:$mm $ampm';
+  }
+
+  String _timeLabel(DateTime? dt, dynamic labelFromDb) {
+    final s = labelFromDb?.toString();
+    if (s != null && s.trim().isNotEmpty) return s; // already like "08:30 AM"
+    if (dt == null) return '—';
+    return _format12h(dt.hour, dt.minute);
   }
 
   int? _durationForService(String raw) {
@@ -378,75 +313,15 @@ class NewBookingsScreen extends StatelessWidget {
   String _locationLabel(Map<String, dynamic> b) {
     final addr =
         '${b['address'] ?? b['location'] ?? b['serviceLocation'] ?? ''}'.trim();
-    if (addr.isEmpty) return '—';
-    return '📍 $addr';
+    return addr.isEmpty ? '—' : '📍 $addr';
   }
 
-  // Pull best name/phone from profile/auth with fallbacks
-  String? _readStr(Map<String, dynamic>? map, String path) {
-    if (map == null) return null;
-    dynamic cur = map;
-    for (final seg in path.split('.')) {
-      if (cur is Map && cur.containsKey(seg)) {
-        cur = cur[seg];
-      } else {
-        return null;
-      }
-    }
-    final s = cur?.toString().trim();
-    return (s == null || s.isEmpty) ? null : s;
-  }
-
-  String? _firstNonEmpty(Iterable<String?> vals) {
-    for (final v in vals) {
-      if (v != null && v.trim().isNotEmpty) return v.trim();
-    }
-    return null;
-  }
-
-  String? _bestProfileName(Map<String, dynamic>? p, User? auth) {
-    final first = _firstNonEmpty([
-      _readStr(p, 'firstName'),
-      _readStr(p, 'profile.firstName'),
-    ]);
-    final last = _firstNonEmpty([
-      _readStr(p, 'lastName'),
-      _readStr(p, 'profile.lastName'),
-    ]);
-    final full = _firstNonEmpty([
-      if (first != null || last != null)
-        [first, last].whereType<String>().join(' '),
-    ]);
-    return _firstNonEmpty([
-      _readStr(p, 'displayName'),
-      _readStr(p, 'name'),
-      _readStr(p, 'fullName'),
-      _readStr(p, 'profile.displayName'),
-      full,
-      auth?.displayName,
-    ]);
-  }
-
-  String? _bestProfilePhone(Map<String, dynamic>? p, User? auth) {
-    return _firstNonEmpty([
-      _readStr(p, 'phone'),
-      _readStr(p, 'phoneNumber'),
-      _readStr(p, 'mobile'),
-      _readStr(p, 'contact.phone'),
-      _readStr(p, 'profile.phone'),
-      _readStr(p, 'phones.primary'),
-      _readStr(p, 'tel'),
-      auth?.phoneNumber,
-    ]);
-  }
-
-  // ------------------ UI ------------------
   @override
   Widget build(BuildContext context) {
     return ScrollConfiguration(
       behavior: const _NoGlowScroll(),
-      child: StreamBuilder<Map<String, dynamic>>(
-        stream: _userProfileAndBookings(),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _pendingBookingsStream(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const _ListLoading();
@@ -455,24 +330,7 @@ class NewBookingsScreen extends StatelessWidget {
             return const _ErrorState(message: 'Could not load bookings.');
           }
 
-          final combined =
-              snap.data ??
-              const {'profile': null, 'bookings': <Map<String, dynamic>>[]};
-          final profile = combined['profile'] as Map<String, dynamic>?;
-          final raw = (combined['bookings'] as List)
-              .cast<Map<String, dynamic>>();
-
-          // 🔒 Only keep PENDING
-          final items = raw
-              .where((b) => _canonicalStatus(b['status']) == 'pending')
-              .toList();
-
-          // Show soonest first
-          items.sort((a, b) {
-            final at = _extractDate(a['scheduledTime']) ?? DateTime(2100);
-            final bt = _extractDate(b['scheduledTime']) ?? DateTime(2100);
-            return at.compareTo(bt);
-          });
+          final items = snap.data ?? const [];
 
           if (items.isEmpty) {
             return const _EmptyState(
@@ -482,9 +340,8 @@ class NewBookingsScreen extends StatelessWidget {
             );
           }
 
-          final auth = FirebaseAuth.instance.currentUser;
-          final profileName = _bestProfileName(profile, auth);
-          final profilePhone = _bestProfilePhone(profile, auth);
+          // Optional: log how many
+          debugPrint("[NewBookings] showing ${items.length} pending bookings");
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 24),
@@ -505,7 +362,7 @@ class NewBookingsScreen extends StatelessWidget {
                   (b['bookingId'] as String?);
               debugPrint("[NewBookings] build[$i] bookingId=$bookingId");
 
-              // Optional wash progress fields
+              // wash progress (if any, harmless here)
               final List<String> stageOrder =
                   (b['washStageOrder'] as List?)
                       ?.map((e) => e.toString())
@@ -516,12 +373,10 @@ class NewBookingsScreen extends StatelessWidget {
                   const {};
 
               return ManageBookingsButton(
-                // 🔑 pass id to enable Accept/Decline & any updates
-                bookingId: bookingId,
-
+                bookingId: bookingId, // 🔑 needed for accept/decline
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
-                status: 'pending', // we know it is pending
+                status: 'pending',
                 day: _dayLabel(dt),
                 time: _timeLabel(dt, b['scheduledTimeLabel']),
                 duration: (() {
@@ -530,24 +385,17 @@ class NewBookingsScreen extends StatelessWidget {
                 })(),
                 price: (b['price']?.toString()),
                 vehicleType: vehicleType,
-
-                // details for sheet
                 address: b['address'] as String?,
                 latitude: (b['latitude'] as num?)?.toDouble(),
                 longitude: (b['longitude'] as num?)?.toDouble(),
-
-                // wash progress
                 washStageOrder: stageOrder,
                 washStages: stages,
-
-                // profile info
-                customerName: profileName ?? (b['customerName'] as String?),
+                // Use values from the booking doc (no profile mixing here)
+                customerName:
+                    (b['customerName'] as String?) ??
+                    (b['userName'] as String?),
                 customerPhone:
-                    profilePhone ??
-                    (b['phone'] as String?) ??
-                    (b['phoneNumber'] as String?),
-
-                // visuals
+                    (b['phone'] as String?) ?? (b['phoneNumber'] as String?),
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,
@@ -1880,6 +1728,32 @@ class ManageBookingsButton extends StatelessWidget {
     return active == 'cleaning';
   }
 
+  Future<void> _confirmBookingNoDialog(BuildContext context) async {
+    final id = bookingId;
+    if (id == null || id.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing booking id')));
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance.collection('bookings').doc(id).update({
+        'status': 'confirmed',
+        'confirmedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Booking confirmed.')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not confirm: $e')));
+    }
+  }
+
   // ---------- COMPLETE booking when cleaning is active ----------
   Future<void> _completeCurrentWash(BuildContext context) async {
     if (bookingId == null) return;
@@ -1937,7 +1811,11 @@ class ManageBookingsButton extends StatelessWidget {
     }
   }
 
-  Future<void> _onAccept(BuildContext context) async {
+  Future<void> _onAccept(
+    BuildContext context, {
+    bool assignSelf = true,
+    bool enableTracking = false,
+  }) async {
     if (bookingId == null) {
       ScaffoldMessenger.of(
         context,
@@ -1949,63 +1827,15 @@ class ManageBookingsButton extends StatelessWidget {
     final uid = user?.uid;
     final byName = user?.displayName;
 
-    // Simple dialog to pick options
-    final result = await showDialog<_AcceptOptions>(
-      context: context,
-      builder: (ctx) {
-        bool assignSelf = true;
-        bool enableTracking = false;
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            return AlertDialog(
-              title: const Text('Confirm booking'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Assign myself as driver'),
-                    value: assignSelf,
-                    onChanged: (v) => setState(() => assignSelf = v ?? false),
-                  ),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Enable live tracking for customer'),
-                    value: enableTracking,
-                    onChanged: (v) =>
-                        setState(() => enableTracking = v ?? false),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, null),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(
-                    ctx,
-                    _AcceptOptions(
-                      assignSelf: assignSelf,
-                      enableTracking: enableTracking,
-                    ),
-                  ),
-                  child: const Text('Confirm'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+    debugPrint(
+      'ACCEPT bookingId=$bookingId assignSelf=$assignSelf enableTracking=$enableTracking',
     );
-
-    if (result == null) return; // cancelled
 
     final db = FirebaseFirestore.instance;
     final ref = db.collection('bookings').doc(bookingId);
     final now = FieldValue.serverTimestamp();
 
-    // Extended update (may be blocked by your current rules)
+    // Full update (may be blocked by strict rules; see catch)
     final extended = <String, dynamic>{
       'status': 'confirmed',
       'updatedAt': now,
@@ -2016,8 +1846,8 @@ class ManageBookingsButton extends StatelessWidget {
         'at': now,
         'reason': null,
       },
-      if (result.assignSelf) 'valetDriverId': uid,
-      if (result.enableTracking) ...{
+      if (assignSelf) 'valetDriverId': uid,
+      if (enableTracking) ...{
         'tracking.enabledOwner': true,
         'tracking.enabledBy': uid,
         'tracking.enabledAt': now,
@@ -2028,17 +1858,16 @@ class ManageBookingsButton extends StatelessWidget {
     try {
       await ref.set(extended, SetOptions(merge: true));
 
-      // If tracking was enabled, seed /runtime/live (ONLY when enabledOwner == true)
-      if (result.enableTracking) {
-        final liveRef = ref.collection('runtime').doc('live');
-        await liveRef.set({
+      // If tracking was enabled, seed /runtime/live once.
+      if (enableTracking) {
+        await ref.collection('runtime').doc('live').set({
           'driverId': uid,
           'updatedAt': FieldValue.serverTimestamp(),
-          // lat/lng/speed/heading/accuracy will be filled by your location loop
+          // lat/lng/speed/heading/accuracy come from your location loop later
         }, SetOptions(merge: true));
       }
 
-      // Best-effort audit
+      // Best-effort audit trail
       await ref.update({
         'washHistory': FieldValue.arrayUnion([
           {
@@ -2049,8 +1878,12 @@ class ManageBookingsButton extends StatelessWidget {
           },
         ]),
       });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Booking confirmed')));
     } on FirebaseException catch (e) {
-      // Fallback for strict rules: only fields allowed by your stageUpdateOnly()
+      // Fallback: only fields allowed by your stricter rules
       try {
         await ref.update({
           'status': 'confirmed',
@@ -2064,6 +1897,7 @@ class ManageBookingsButton extends StatelessWidget {
             },
           ]),
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Confirmed (limited write due to rules: ${e.code})'),
@@ -2178,6 +2012,46 @@ class ManageBookingsButton extends StatelessWidget {
           SnackBar(content: Text('Could not decline: ${e.message ?? e.code}')),
         );
       }
+    }
+  }
+
+  Future<void> _markInProgress(BuildContext context) async {
+    if (bookingId == null || bookingId!.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing bookingId')));
+      return;
+    }
+
+    try {
+      final ref = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId);
+      await ref.update({
+        'status': 'in_progress',
+        'updatedAt': FieldValue.serverTimestamp(),
+        // Optional audit trail (best effort)
+        'washHistory': FieldValue.arrayUnion([
+          {
+            'action': 'start_wash',
+            'to': 'in_progress',
+            'at': Timestamp.now(),
+            'by': FirebaseAuth.instance.currentUser?.uid,
+          },
+        ]),
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Wash started')));
+    } on FirebaseException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not start wash: ${e.message ?? e.code}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not start wash: $e')));
     }
   }
 
@@ -2404,6 +2278,7 @@ class ManageBookingsButton extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     day == null ? '—' : '🗓️ $day',
@@ -2413,7 +2288,7 @@ class ManageBookingsButton extends StatelessWidget {
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(width: 15),
+
                   Text(
                     time == null ? '—' : '⌚ $time',
                     style: TextStyle(
@@ -2422,32 +2297,47 @@ class ManageBookingsButton extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Tooltip(
-                      message: _serviceLocationLabel(serviceLocation),
-                      child: Text(
-                        duration ?? '—',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Theme.of(context).textTheme.bodyLarge?.color,
-                          fontWeight: FontWeight.w600,
-                        ),
+
+                  Tooltip(
+                    message: _serviceLocationLabel(serviceLocation),
+                    child: Text(
+                      duration ?? '—',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
+
+                  statusLabel == 'Confirmed'
+                      ? GestureDetector(
+                          onTap: () {
+                            _markInProgress(context);
+                          },
+                          child: StatusBar(status: 'start'),
+                        )
+                      : SizedBox(width: 20),
                 ],
               ),
             ),
-            const SizedBox(height: 5),
+            if (statusLabel == 'Pending' || statusLabel == 'In Progress')
+              const SizedBox(height: 5),
 
             // Actions / live panel
             if (statusLabel == 'Pending')
               AcceptDeclineBar(
                 onDecline: () async => _onDecline(context),
-                onAccept: () async => _onAccept(context),
+                onAccept: () async {
+                  await _onAccept(
+                    context,
+                    assignSelf: true, // set false if you don’t want auto-assign
+                    enableTracking:
+                        false, // set true if you want to turn on tracking
+                  );
+                },
               ),
 
             if (statusLabel == 'In Progress') ...[
@@ -2953,6 +2843,9 @@ class StatusBar extends StatelessWidget {
     } else if (s == 'declined') {
       bg = const Color.fromARGB(121, 255, 120, 120);
       fg = const Color.fromARGB(255, 129, 4, 4);
+    } else if (s == 'start') {
+      bg = const Color.fromARGB(121, 216, 180, 254);
+      fg = const Color.fromARGB(255, 88, 28, 135);
     } else {
       bg = const Color.fromARGB(121, 255, 120, 120);
       fg = const Color.fromARGB(255, 129, 4, 4);
@@ -2975,8 +2868,14 @@ class StatusBar extends StatelessWidget {
             ? 'Completed'
             : s == 'declined'
             ? 'Declined'
+            : s == 'start'
+            ? ' Start '
             : 'Cancelled',
-        style: TextStyle(fontWeight: FontWeight.bold, color: fg, fontSize: 12),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: fg,
+          fontSize: s == 'start' ? 15 : 12,
+        ),
       ),
     );
   }
