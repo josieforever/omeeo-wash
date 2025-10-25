@@ -1153,14 +1153,14 @@ class GoBack extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.all(10),
         child: CircleAvatar(
-          backgroundColor: bgColor ?? const Color.fromARGB(78, 255, 255, 255),
+          backgroundColor: bgColor ?? Theme.of(context).colorScheme.surface,
           // backgroundColor: Colors.red,
           child: Center(
             child: Transform.scale(
               scale: 1.2,
               child: Icon(
                 Icons.arrow_back_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.inversePrimary,
               ),
             ),
           ),

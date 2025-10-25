@@ -2,16 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'
-    show FontAwesomeIcons;
 import 'package:omeeowash/helpers/miscellaneous.dart'
     show progressIndicatorValues;
 import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart'
     show LnProgressIndicator;
-import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart'
-    show SelectDateScreen;
-import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -136,22 +130,43 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
   }
 
   Future<void> _confirmAndCreateBooking() async {
+    // Cache messenger before any await (avoids deactivated context issues)
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please sign in first.')));
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Please sign in first.')),
+      );
       return;
     }
     if (!_canConfirm) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Choose a payment method')));
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Choose a payment method')),
+      );
       return;
     }
 
+    // ---- helpers (local) ----
+    String? _firstNonEmpty(Iterable<String?> vals) {
+      for (final v in vals) {
+        if (v != null && v.trim().isNotEmpty) return v.trim();
+      }
+      return null;
+    }
+
+    // If you want a super-light GH E.164 normalization, keep this; otherwise remove.
+    String? _normalizePhone(String? raw) {
+      if (raw == null) return null;
+      final s = raw.trim();
+      if (s.isEmpty) return null;
+      if (s.startsWith('+')) return s;
+      if (s.startsWith('0')) return '+233${s.substring(1)}';
+      return s;
+    }
+
     try {
-      final dt = widget.scheduledTime; // required by your ConfirmBooking widget
+      final dt = widget.scheduledTime;
       final dateKey = _dateKey(dt);
       final timeLabel = _timeLabel12h(dt);
 
@@ -161,9 +176,48 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       final mm = dt.minute.toString().padLeft(2, '0');
       final slotId = '${dateKey}_${locationTag}_$hh$mm';
 
-      // Build payment payload + booking status
+      // 1) Load profile (best-effort) and pick name/email/phone with fallbacks to Auth
+      Map<String, dynamic>? profile;
+      try {
+        final profSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        profile = profSnap.data();
+      } catch (_) {
+        profile = null; // ignore profile read errors; we’ll fall back
+      }
+
+      final pickedName = _firstNonEmpty([
+        profile?['name']?.toString(),
+        [profile?['firstName']?.toString(), profile?['lastName']?.toString()]
+            .whereType<String>()
+            .where((s) => s.trim().isNotEmpty)
+            .join(' ')
+            .trim(),
+        profile?['profile']?['displayName']?.toString(),
+        user.displayName,
+      ]);
+
+      final pickedEmail = _firstNonEmpty([
+        profile?['email']?.toString(),
+        profile?['emailAddress']?.toString(),
+        user.email,
+      ]);
+
+      final pickedPhone = _normalizePhone(
+        _firstNonEmpty([
+          profile?['phone']?.toString(),
+          profile?['phoneNumber']?.toString(),
+          profile?['mobile']?.toString(),
+          profile?['contact']?['phone']?.toString(),
+          user.phoneNumber,
+        ]),
+      );
+
+      // 2) Build payment payload + booking status
       Map<String, dynamic> payment;
-      String bookingStatus; // what goes into 'status' field
+      String bookingStatus = 'pending';
 
       if (paymentMethodSelected == 'Cash') {
         payment = {
@@ -171,24 +225,20 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
           'savedMethodId': null,
           'status': 'pending_cash',
         };
-        // Let UI show "Awaiting Confirmation" flow
-        bookingStatus = 'pending';
       } else if (paymentMethodSelected == 'card') {
         payment = {
           'method': 'card',
           'savedMethodId': selectedPaymentDocId,
-          'status': 'pending_authorization', // adjust when PSP integrated
+          'status': 'pending_authorization',
         };
-        bookingStatus = 'pending'; // staff can confirm → becomes 'confirmed'
       } else if (paymentMethodSelected == 'momo') {
         payment = {
           'method': 'momo',
           'savedMethodId': selectedPaymentDocId,
           'status': 'pending_momo',
         };
-        bookingStatus = 'pending';
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           const SnackBar(content: Text('Choose a payment method')),
         );
         return;
@@ -197,58 +247,75 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       final now = FieldValue.serverTimestamp();
       final db = FirebaseFirestore.instance;
 
-      // Base booking payload
+      // 3) Base booking payload (include user identity fields)
       final stages = _initialWashStages();
       final bookingData = {
         'userId': user.uid,
+
+        // 👉 add user identity directly on the booking
+        'customerName': pickedName,
+        'customerEmail': pickedEmail,
+        'customerPhone': pickedPhone,
+
+        // optional extra aliases if your UI reads these (keeps old code happy)
+        'userName': pickedName,
+        'email': pickedEmail,
+        'phone': pickedPhone,
+        'phoneNumber': pickedPhone,
+
         'serviceType': widget.serviceType ?? 'unknown',
         'vehicleType': widget.vehicleType,
-        'serviceLocation': widget
-            .serviceLocation, // "washing_bay" | "mobile_service" | "valet_service"
+        'serviceLocation': widget.serviceLocation,
         'address': widget.address,
         'latitude': widget.latitude,
         'longitude': widget.longitude,
+
         'scheduledTime': Timestamp.fromDate(dt),
         'scheduledDate': dateKey,
-        'scheduledTimeLabel': timeLabel, // 12h label
+        'scheduledTimeLabel': timeLabel,
+
         'price': widget.price,
-        'durationMinutes': widget.duration, // keep minutes as number
-        'payment': payment, // e.g. { method: 'cash', status: 'pending_cash' }
-        'status': bookingStatus, // pending / pending_cash / etc.
+        'durationMinutes': widget.duration,
+        'payment': payment,
+        'status': bookingStatus,
+
         'createdAt': now,
         'updatedAt': now,
 
-        // ── Wash stages (existing) ──
+        // Wash stages
         'washStageOrder': stages['washStageOrder'],
         'washStages': stages['washStages'],
         'activeStage': stages['activeStage'],
         'stageProgress': stages['stageProgress'],
 
-        // ── NEW: admin/driver + decisions + tracking ──
-        'valetDriverId':
-            null, // uid of the person driving/washing; admin can be this
+        // Auditing convenience
+        'createdBy': {
+          'uid': user.uid,
+          'name': pickedName,
+          'email': pickedEmail,
+          'phone': pickedPhone,
+          'at': now,
+        },
 
+        // Admin/driver fields
+        'valetDriverId': null,
         'decision': {
-          // set when admin accepts/declines
           'type': null, // "confirm" | "decline"
           'byUid': null,
           'byName': null,
-          'at': null, // serverTimestamp at decision time
-          'reason': null, // only for decline
+          'at': null,
+          'reason': null,
         },
-
         'tracking': {
-          // controls if the owner can see live location
-          'enabledOwner': false, // admin/driver toggles this
+          'enabledOwner': false,
           'enabledBy': null,
           'enabledAt': null,
           'disabledAt': null,
         },
-
-        'adminNotes': null, // optional internal notes
+        'adminNotes': null,
       };
 
-      // Transaction: prevent double booking of slot
+      // 4) Transaction: prevent double-booking of slot
       await db.runTransaction((tx) async {
         final slotRef = db.collection('booked_times').doc(slotId);
         final slotSnap = await tx.get(slotRef);
@@ -264,7 +331,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         tx.set(slotRef, {
           'slotId': slotId,
           'date': dateKey,
-          'time': '$hh:$mm', // 24h raw if you want; label above is 12h
+          'time': '$hh:$mm',
           'location': locationTag,
           'userId': user.uid,
           'bookingId': bookingRef.id,
@@ -272,20 +339,18 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         });
       });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         SnackBar(content: Text('Booking placed for $dateKey at $timeLabel')),
       );
+
+      if (!mounted) return;
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => HomeScreenWithNav(view: 'booking'),
-        ),
+        MaterialPageRoute(builder: (_) => HomeScreenWithNav(view: 'booking')),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not confirm booking: $e')));
+      messenger?.showSnackBar(
+        SnackBar(content: Text('Could not confirm booking: $e')),
+      );
     }
   }
 
