@@ -38,38 +38,49 @@ class NotificationService {
     });
   }
 
+  // 🔍 Determine user role
+  Future<void> checkUserRole(String uid) async {
+    final userSnapshot = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(uid)
+        .get();
+    bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
+    AppConfig().setAdmin(isAdmin);
+  }
+
   Future<void> _getAndSaveToken() async {
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
-      if (user == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        String? cachedToken = prefs.getString('fcmToken');
-        final newToken = await _messaging.getToken();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? cachedToken = prefs.getString('fcmToken');
+      final newToken = await _messaging.getToken();
 
-        if (newToken == null) {
-          print('⚠️ No FCM token received.');
-          return;
-        }
+      await checkUserRole(user.uid);
 
-        if (cachedToken != newToken) {
-          print('🔄 Updating FCM token...');
-          await _saveTokenIfNew(newToken);
-          await prefs.setString('fcmToken', newToken);
-        } else {
-          print('✅ FCM token already cached and up-to-date.');
-        }
-
-        // Automatically handle token refresh events
-        _messaging.onTokenRefresh.listen((refreshedToken) async {
-          print('♻️ Token refreshed: $refreshedToken');
-          await _saveTokenIfNew(refreshedToken);
-          await prefs.setString('fcmToken', refreshedToken);
-        });
-      } catch (e) {
-        print('❌ Error retrieving or saving FCM token: $e');
+      if (newToken == null) {
+        print('⚠️ No FCM token received.');
+        return;
       }
-    });
+
+      if (cachedToken != newToken) {
+        print('🔄 Updating FCM token...');
+        await _saveTokenIfNew(newToken);
+        await prefs.setString('fcmToken', newToken);
+      } else {
+        print('✅ FCM token already cached and up-to-date.');
+      }
+
+      // Automatically handle token refresh events
+      _messaging.onTokenRefresh.listen((refreshedToken) async {
+        print('♻️ Token refreshed: $refreshedToken');
+        await _saveTokenIfNew(refreshedToken);
+        await prefs.setString('fcmToken', refreshedToken);
+      });
+    } catch (e) {
+      print('❌ Error retrieving or saving FCM token: $e');
+    }
   }
 
   /// Save the token in Firestore (for both admin & user)
@@ -81,7 +92,7 @@ class NotificationService {
     }
 
     final isAdmin = AppConfig().isAdmin;
-
+    print("isAdmin:''''''''''''''''''''''''''''''''''  $isAdmin");
     final ref = isAdmin
         ? FirebaseFirestore.instance.collection('admin').doc('idforadminv1')
         : FirebaseFirestore.instance.collection('users').doc(user.uid);
