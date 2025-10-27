@@ -1957,10 +1957,10 @@ class ManageBookingsButton extends StatelessWidget {
     bool assignSelf = true,
     bool enableTracking = false,
   }) async {
-    // 👇 Cache the messenger BEFORE awaiting anything.
     final messenger = ScaffoldMessenger.maybeOf(context);
 
-    if (bookingId == null) {
+    final id = bookingId?.trim();
+    if (id == null || id.isEmpty) {
       messenger?.showSnackBar(
         const SnackBar(content: Text('Missing bookingId')),
       );
@@ -1968,17 +1968,19 @@ class ManageBookingsButton extends StatelessWidget {
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid;
-    final byName = user?.displayName;
+    if (user == null) {
+      messenger?.showSnackBar(const SnackBar(content: Text('Not signed in')));
+      return;
+    }
 
-    debugPrint(
-      'ACCEPT bookingId=$bookingId assignSelf=$assignSelf enableTracking=$enableTracking',
-    );
+    final uid = user.uid;
+    final byName = user.displayName;
 
     final db = FirebaseFirestore.instance;
-    final ref = db.collection('bookings').doc(bookingId);
+    final ref = db.collection('bookings').doc(id);
     final now = FieldValue.serverTimestamp();
 
+    // IMPORTANT: use nested maps (no dotted keys) so rules can validate shape.
     final extended = <String, dynamic>{
       'status': 'confirmed',
       'updatedAt': now,
@@ -1990,17 +1992,20 @@ class ManageBookingsButton extends StatelessWidget {
         'reason': null,
       },
       if (assignSelf) 'valetDriverId': uid,
-      if (enableTracking) ...{
-        'tracking.enabledOwner': true,
-        'tracking.enabledBy': uid,
-        'tracking.enabledAt': now,
-        'tracking.disabledAt': null,
-      },
+      if (enableTracking)
+        'tracking': {
+          'enabledOwner': true,
+          'enabledBy': uid,
+          'enabledAt': now,
+          'disabledAt': null,
+        },
     };
 
     try {
+      // Merge so we only add/replace the provided top-level keys.
       await ref.set(extended, SetOptions(merge: true));
 
+      // Optional live doc seed when tracking is enabled.
       if (enableTracking) {
         await ref.collection('runtime').doc('live').set({
           'driverId': uid,
@@ -2008,13 +2013,14 @@ class ManageBookingsButton extends StatelessWidget {
         }, SetOptions(merge: true));
       }
 
+      // Best-effort audit trail.
       await ref.update({
         'washHistory': FieldValue.arrayUnion([
           {
             'action': 'confirm',
             'to': 'confirmed',
             'at': Timestamp.now(),
-            if (uid != null) 'by': uid,
+            'by': uid,
           },
         ]),
       });
@@ -2023,6 +2029,7 @@ class ManageBookingsButton extends StatelessWidget {
         const SnackBar(content: Text('Booking confirmed')),
       );
     } on FirebaseException catch (e) {
+      // Fallback for stricter environments: only fields allowed everywhere.
       try {
         await ref.update({
           'status': 'confirmed',
@@ -2032,14 +2039,13 @@ class ManageBookingsButton extends StatelessWidget {
               'action': 'confirm',
               'to': 'confirmed',
               'at': Timestamp.now(),
-              if (uid != null) 'by': uid,
+              'by': uid,
             },
           ]),
         });
+
         messenger?.showSnackBar(
-          SnackBar(
-            content: Text('Confirmed (limited write due to rules: ${e.code})'),
-          ),
+          SnackBar(content: Text('Confirmed (limited: ${e.code})')),
         );
       } catch (_) {
         messenger?.showSnackBar(
