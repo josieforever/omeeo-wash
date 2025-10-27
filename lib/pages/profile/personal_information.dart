@@ -6,7 +6,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
@@ -22,65 +21,45 @@ class PersonalInformation extends StatefulWidget {
 }
 
 class _PersonalInformationState extends State<PersonalInformation> {
-  UserModel? user;
+  @override
+  void initState() {
+    super.initState();
+    // Load the user ONCE after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        context.read<UserProvider>().loadUser(uid: uid);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
-    final user = userProvider.user;
+    // Only rebuild when user object changes
+    final user = context.select<UserProvider, UserModel?>((p) => p.user);
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          // Background gradient + animation (outside scroll)
-          Positioned.fill(
-            child: Stack(
-              children: [
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-                    ),
-                  ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const PersonalInformationTopBar(),
+              if (user == null) ...[
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 24),
+              ] else ...[
+                ProfilePhotoCard(
+                  user: user,
+                  onUploadTap: () => handleUploadPhoto(context, user),
                 ),
-                Positioned.fill(
-                  child: Lottie.asset(
-                    'assets/animations/background_animation_light.json',
-                    fit: BoxFit.cover,
-                    frameRate: FrameRate(30), // Optimized frame rate
-                  ),
-                ),
-                Positioned.fill(
-                  child: Container(
-                    color: const Color.fromARGB(140, 255, 255, 255),
-                  ),
-                ),
+                UpdateBasicInformation(user: user),
+                const SizedBox(height: 30),
               ],
-            ),
+            ],
           ),
-
-          // Scrollable content
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const PersonalInformationTopBar(),
-                  ProfilePhotoCard(
-                    user: user!,
-                    onUploadTap: () => handleUploadPhoto(context, user),
-                  ),
-                  UpdateBasicInformation(user: user),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -93,13 +72,7 @@ class PersonalInformationTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -111,15 +84,13 @@ class PersonalInformationTopBar extends StatelessWidget {
                 children: [
                   CustomText(
                     text: 'Personal Information',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.primary,
                     textSize: TextSizes.heading2,
                     textWeight: FontWeight.w900,
                   ),
                   CustomText(
                     text: 'Update your details',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.subtitle2,
                   ),
                 ],
@@ -157,8 +128,8 @@ class ProfilePhotoCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Theme.of(context).textTheme.headlineLarge?.color,
-        borderRadius: BorderRadius.circular(7),
+        color: Theme.of(context).colorScheme.inversePrimary,
+        borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).colorScheme.shadow,
@@ -218,16 +189,20 @@ class ProfilePhotoCard extends StatelessWidget {
             children: [
               Text(
                 'Profile Photo',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: TextSizes.subtitle1,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 5),
               Text(
                 'Update your profile picture\nMax file size: 5MB',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.surface,
+                  fontSize: TextSizes.bodyText2,
+                  fontWeight: FontWeight.normal,
+                ),
               ),
             ],
           ),
@@ -714,14 +689,7 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                           }
                         },
                         borderRadius: 7,
-                        gradient: const LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [
-                            Color.fromARGB(255, 73, 64, 241),
-                            Color.fromARGB(255, 149, 60, 237),
-                          ],
-                        ),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(
                           vertical: 10,
                           horizontal: 20,
@@ -740,9 +708,7 @@ class _UpdateBasicInformationState extends State<UpdateBasicInformation> {
                     Navigator.of(context).pop();
                   },
                   borderRadius: 7,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).textTheme.headlineMedium?.color,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
                   padding: const EdgeInsets.symmetric(
                     /* Theme.of(
                     context,
@@ -783,9 +749,9 @@ Future<void> saveChanges({
   try {
     final uid = oldUser.uid;
     final updatedUser = UserModel(
-      uid: uid,
-      name: oldUser.name,
-      email: oldUser.email,
+      uid: oldUser.uid,
+      name: name, // <- use the new value
+      email: oldUser.email, // keep auth email if that's your intention
       emailAddress: emailAddress,
       phoneNumber: phoneNumber,
       address: address,
@@ -796,7 +762,7 @@ Future<void> saveChanges({
       rating: oldUser.rating,
       loyaltyPoints: oldUser.loyaltyPoints,
       photoUrl: oldUser.photoUrl,
-      locations: [],
+      locations: oldUser.locations, // keep existing if available
     );
 
     await FirebaseFirestore.instance

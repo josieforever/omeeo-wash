@@ -199,13 +199,19 @@ class _CustomTopNavState extends State<CustomTopNav> {
 class NewBookingsScreen extends StatelessWidget {
   const NewBookingsScreen({super.key});
 
-  /// Stream ALL pending bookings (no user filter). No orderBy → sort client-side.
-  Stream<List<Map<String, dynamic>>> _pendingBookingsStream() {
+  /// Stream ALL pending bookings (no user filter).
+  /// Emits: { items: List<Map<String,dynamic>>, _hydrated: bool }
+  Stream<Map<String, dynamic>> _pendingBookingsStream() {
     final q = FirebaseFirestore.instance
         .collection('bookings')
         .where('status', isEqualTo: 'pending');
 
-    return q.snapshots().map((s) {
+    final controller = StreamController<Map<String, dynamic>>.broadcast();
+
+    // initial (not hydrated yet → loader shows)
+    controller.add({'items': <Map<String, dynamic>>[], '_hydrated': false});
+
+    final sub = q.snapshots().listen((s) {
       final list = s.docs.map((d) {
         final data = d.data();
         // Put doc id after spread so a field named "id" can't overwrite it
@@ -228,8 +234,9 @@ class NewBookingsScreen extends StatelessWidget {
       DateTime createdAt(Map<String, dynamic> m) {
         final v = m['createdAt'];
         if (v is Timestamp) return v.toDate();
-        if (v is String)
+        if (v is String) {
           return DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        }
         return DateTime.fromMillisecondsSinceEpoch(0);
       }
 
@@ -250,8 +257,15 @@ class NewBookingsScreen extends StatelessWidget {
         return scheduled(a).compareTo(scheduled(b)); // soonest first
       });
 
-      return list;
-    });
+      controller.add({'items': list, '_hydrated': true});
+    }, onError: controller.addError);
+
+    controller.onCancel = () async {
+      await sub.cancel();
+      await controller.close();
+    };
+
+    return controller.stream;
   }
 
   // ---------- helpers ----------
@@ -292,7 +306,7 @@ class NewBookingsScreen extends StatelessWidget {
 
   String _timeLabel(DateTime? dt, dynamic labelFromDb) {
     final s = labelFromDb?.toString();
-    if (s != null && s.trim().isNotEmpty) return s; // already like "08:30 AM"
+    if (s != null && s.trim().isNotEmpty) return s; // already "08:30 AM"
     if (dt == null) return '—';
     return _format12h(dt.hour, dt.minute);
   }
@@ -316,11 +330,104 @@ class NewBookingsScreen extends StatelessWidget {
     return addr.isEmpty ? '—' : '📍 $addr';
   }
 
+  // ---- Robust name/phone from booking (no extra reads) ----
+  String? _bestNameFromBooking(Map<String, dynamic> b) {
+    String? _s(String k) => (b[k] as String?)?.trim();
+
+    String? _nested(List<String> path) {
+      dynamic cur = b;
+      for (final seg in path) {
+        if (cur is Map && cur.containsKey(seg)) {
+          cur = cur[seg];
+        } else {
+          return null;
+        }
+      }
+      return (cur is String) ? cur.trim() : null;
+    }
+
+    final first =
+        _s('firstName') ??
+        _nested(['customer', 'firstName']) ??
+        _nested(['user', 'firstName']) ??
+        _nested(['profile', 'firstName']);
+    final last =
+        _s('lastName') ??
+        _nested(['customer', 'lastName']) ??
+        _nested(['user', 'lastName']) ??
+        _nested(['profile', 'lastName']);
+    final fromParts = (first != null || last != null)
+        ? [first, last].whereType<String>().where((e) => e.isNotEmpty).join(' ')
+        : null;
+
+    final candidates = <String?>[
+      _s('customerName'),
+      _s('userName'),
+      _s('name'),
+      _s('fullName'),
+      _s('displayName'),
+      _nested(['customer', 'name']),
+      _nested(['customer', 'fullName']),
+      _nested(['user', 'displayName']),
+      _nested(['profile', 'displayName']),
+      fromParts,
+    ];
+
+    for (final c in candidates) {
+      if (c != null && c.isNotEmpty) return c;
+    }
+    return null;
+  }
+
+  String? _bestPhoneFromBooking(Map<String, dynamic> b) {
+    String? _s(String k) => (b[k] as String?)?.trim();
+
+    String? _nested(List<String> path) {
+      dynamic cur = b;
+      for (final seg in path) {
+        if (cur is Map && cur.containsKey(seg)) {
+          cur = cur[seg];
+        } else {
+          return null;
+        }
+      }
+      return (cur is String) ? cur.trim() : null;
+    }
+
+    final candidates = <String?>[
+      _s('phone'),
+      _s('phoneNumber'),
+      _s('tel'),
+      _s('mobile'),
+      _nested(['contact', 'phone']),
+      _nested(['customer', 'phone']),
+      _nested(['customer', 'phoneNumber']),
+      _nested(['user', 'phone']),
+      _nested(['user', 'phoneNumber']),
+      _nested(['profile', 'phone']),
+    ];
+
+    String? raw;
+    for (final c in candidates) {
+      if (c != null && c.isNotEmpty) {
+        raw = c;
+        break;
+      }
+    }
+    if (raw == null) return null;
+
+    // GH formatting: "0xxxxxxxxx" → "+233xxxxxxxxx"
+    final s = raw.trim();
+    if (s.startsWith('+')) return s;
+    if (s.startsWith('0') && s.length >= 10) return '+233${s.substring(1)}';
+    return s;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScrollConfiguration(
       behavior: const _NoGlowScroll(),
-      child: StreamBuilder<List<Map<String, dynamic>>>(
+      child: StreamBuilder<Map<String, dynamic>>(
         stream: _pendingBookingsStream(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
@@ -330,7 +437,18 @@ class NewBookingsScreen extends StatelessWidget {
             return const _ErrorState(message: 'Could not load bookings.');
           }
 
-          final items = snap.data ?? const [];
+          final combined =
+              snap.data ??
+              const {'items': <Map<String, dynamic>>[], '_hydrated': false};
+          final hydrated = (combined['_hydrated'] as bool?) ?? false;
+
+          // Avoid the “empty flash” until the first snapshot lands.
+          if (!hydrated) {
+            return const _ListLoading();
+          }
+
+          final items = (combined['items'] as List)
+              .cast<Map<String, dynamic>>();
 
           if (items.isEmpty) {
             return const _EmptyState(
@@ -340,7 +458,6 @@ class NewBookingsScreen extends StatelessWidget {
             );
           }
 
-          // Optional: log how many
           debugPrint("[NewBookings] showing ${items.length} pending bookings");
 
           return ListView.separated(
@@ -372,6 +489,9 @@ class NewBookingsScreen extends StatelessWidget {
                   (b['washStages'] as Map?)?.cast<String, dynamic>() ??
                   const {};
 
+              final name = _bestNameFromBooking(b) ?? '-';
+              final phone = _bestPhoneFromBooking(b) ?? '-';
+
               return ManageBookingsButton(
                 bookingId: bookingId, // 🔑 needed for accept/decline
                 service: _serviceLabel(serviceType),
@@ -390,12 +510,9 @@ class NewBookingsScreen extends StatelessWidget {
                 longitude: (b['longitude'] as num?)?.toDouble(),
                 washStageOrder: stageOrder,
                 washStages: stages,
-                // Use values from the booking doc (no profile mixing here)
-                customerName:
-                    (b['customerName'] as String?) ??
-                    (b['userName'] as String?),
-                customerPhone:
-                    (b['phone'] as String?) ?? (b['phoneNumber'] as String?),
+                // ✅ Robust name & phone pulled directly from booking doc
+                customerName: name,
+                customerPhone: phone,
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,
@@ -422,9 +539,11 @@ class DoneBookingsScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid == null) {
+      // Signed-out: emit empty but already hydrated so we don't spin forever
       return Stream.value(<String, dynamic>{
         'profile': null,
         'bookings': <Map<String, dynamic>>[],
+        '_hydrated': true,
       });
     }
 
@@ -440,7 +559,13 @@ class DoneBookingsScreen extends StatelessWidget {
         .where('userId', isEqualTo: uid)
         .snapshots()
         .map<List<Map<String, dynamic>>>((s) {
-          final list = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+          final list = s.docs.map((d) {
+            final data = d.data();
+            // put the doc id AFTER the spread so it can't be overwritten by a field named "id"
+            final map = <String, dynamic>{...data, '__docId': d.id};
+            return map;
+          }).toList();
+
           // newest first by scheduledTime
           list.sort((a, b) {
             final at =
@@ -462,19 +587,26 @@ class DoneBookingsScreen extends StatelessWidget {
     late final StreamSubscription profileSub;
     late final StreamSubscription bookingsSub;
 
+    var bookingsReady = false;
+
     void emit() {
-      controller.add({'profile': latestProfile, 'bookings': latestBookings});
+      controller.add({
+        'profile': latestProfile,
+        'bookings': latestBookings,
+        '_hydrated': bookingsReady,
+      });
     }
 
     controller.onListen = () {
-      emit();
+      // IMPORTANT: don't emit yet; wait for first bookings snapshot
       profileSub = profileStream.listen((p) {
         latestProfile = p;
-        emit();
+        if (bookingsReady) emit();
       }, onError: controller.addError);
 
       bookingsSub = bookingsStream.listen((b) {
         latestBookings = b;
+        bookingsReady = true;
         emit();
       }, onError: controller.addError);
     };
@@ -482,6 +614,7 @@ class DoneBookingsScreen extends StatelessWidget {
     controller.onCancel = () async {
       await profileSub.cancel();
       await bookingsSub.cancel();
+      await controller.close();
     };
 
     return controller.stream;
@@ -491,20 +624,16 @@ class DoneBookingsScreen extends StatelessWidget {
 
   String _canonicalStatus(dynamic s) {
     final v = '${s ?? ''}'.trim().toLowerCase();
-    if (v == 'pending' ||
-        v == 'pending_cash' ||
-        v == 'pending-card' ||
-        v == 'awaiting_payment')
-      return 'pending';
+    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
     if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
       return 'in_progress';
     if (v == 'confirmed' || v == 'booked') return 'confirmed';
-    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
     if (v == 'cancelled' ||
         v == 'canceled' ||
         v == 'declined' ||
         v == 'rejected')
       return 'declined';
+    if (v == 'pending') return 'pending';
     return v;
   }
 
@@ -649,6 +778,13 @@ class DoneBookingsScreen extends StatelessWidget {
           final combined =
               snap.data ??
               const {'profile': null, 'bookings': <Map<String, dynamic>>[]};
+          final hydrated = (combined['_hydrated'] as bool?) ?? false;
+
+          // Wait until the first bookings snapshot arrives (avoid empty flash)
+          if (!hydrated) {
+            return const _ListLoading();
+          }
+
           final profile = combined['profile'] as Map<String, dynamic>?;
           final raw = (combined['bookings'] as List)
               .cast<Map<String, dynamic>>();
@@ -659,7 +795,7 @@ class DoneBookingsScreen extends StatelessWidget {
             return s == 'completed';
           }).toList();
 
-          // Sort by most recent scheduled time first
+          // Most recent scheduled time first
           items.sort((a, b) {
             final at = _extractDate(a['scheduledTime']) ?? DateTime(0);
             final bt = _extractDate(b['scheduledTime']) ?? DateTime(0);
@@ -689,6 +825,13 @@ class DoneBookingsScreen extends StatelessWidget {
               final serviceType = '${b['serviceType'] ?? ''}'.trim();
 
               return ManageBookingsButton(
+                // include id for consistency
+                bookingId:
+                    (b['__docId'] as String?) ??
+                    (b['docId'] as String?) ??
+                    (b['id'] as String?) ??
+                    (b['bookingId'] as String?),
+
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
                 status: 'completed',
@@ -716,7 +859,7 @@ class DoneBookingsScreen extends StatelessWidget {
                     (b['washStages'] as Map?)?.cast<String, dynamic>() ??
                     const {},
 
-                // 👇 profile info like NewBookingsScreen
+                // profile info like other screens
                 customerName: profileName ?? (b['customerName'] as String?),
                 customerPhone:
                     profilePhone ??
@@ -750,9 +893,11 @@ class DeclinedBookingScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid == null) {
+      // Signed-out: emit empty but already hydrated so we don't show a spinner forever
       return Stream.value(<String, dynamic>{
         'profile': null,
         'bookings': <Map<String, dynamic>>[],
+        '_hydrated': true,
       });
     }
 
@@ -768,7 +913,13 @@ class DeclinedBookingScreen extends StatelessWidget {
         .where('userId', isEqualTo: uid)
         .snapshots()
         .map<List<Map<String, dynamic>>>((s) {
-          final list = s.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+          final list = s.docs.map((d) {
+            final data = d.data();
+            // Put doc id AFTER spread to avoid being overwritten by a field named "id"
+            final map = <String, dynamic>{...data, '__docId': d.id};
+            return map;
+          }).toList();
+
           // newest first by scheduledTime
           list.sort((a, b) {
             final at =
@@ -790,19 +941,26 @@ class DeclinedBookingScreen extends StatelessWidget {
     late final StreamSubscription profileSub;
     late final StreamSubscription bookingsSub;
 
+    var bookingsReady = false;
+
     void emit() {
-      controller.add({'profile': latestProfile, 'bookings': latestBookings});
+      controller.add({
+        'profile': latestProfile,
+        'bookings': latestBookings,
+        '_hydrated': bookingsReady,
+      });
     }
 
     controller.onListen = () {
-      emit();
+      // Wait for first bookings snapshot to avoid "empty flash"
       profileSub = profileStream.listen((p) {
         latestProfile = p;
-        emit();
+        if (bookingsReady) emit();
       }, onError: controller.addError);
 
       bookingsSub = bookingsStream.listen((b) {
         latestBookings = b;
+        bookingsReady = true;
         emit();
       }, onError: controller.addError);
     };
@@ -810,6 +968,7 @@ class DeclinedBookingScreen extends StatelessWidget {
     controller.onCancel = () async {
       await profileSub.cancel();
       await bookingsSub.cancel();
+      await controller.close();
     };
 
     return controller.stream;
@@ -819,22 +978,17 @@ class DeclinedBookingScreen extends StatelessWidget {
 
   String _canonicalStatus(dynamic s) {
     final v = '${s ?? ''}'.trim().toLowerCase();
-    if (v == 'pending' ||
-        v == 'pending_cash' ||
-        v == 'pending-card' ||
-        v == 'awaiting_payment') {
-      return 'pending';
-    }
-    if (v == 'in_progress' || v == 'in-progress' || v == 'processing') {
-      return 'in_progress';
-    }
-    if (v == 'confirmed' || v == 'booked') return 'confirmed';
-    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
     if (v == 'cancelled' ||
         v == 'canceled' ||
         v == 'declined' ||
-        v == 'rejected')
+        v == 'rejected') {
       return 'declined';
+    }
+    if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
+    if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
+      return 'in_progress';
+    if (v == 'confirmed' || v == 'booked') return 'confirmed';
+    if (v == 'pending') return 'pending';
     return v;
   }
 
@@ -979,6 +1133,13 @@ class DeclinedBookingScreen extends StatelessWidget {
           final combined =
               snap.data ??
               const {'profile': null, 'bookings': <Map<String, dynamic>>[]};
+          final hydrated = (combined['_hydrated'] as bool?) ?? false;
+
+          // Avoid “empty flash” until the first bookings snapshot arrives
+          if (!hydrated) {
+            return const _ListLoading();
+          }
+
           final profile = combined['profile'] as Map<String, dynamic>?;
           final raw = (combined['bookings'] as List)
               .cast<Map<String, dynamic>>();
@@ -1019,6 +1180,13 @@ class DeclinedBookingScreen extends StatelessWidget {
               final serviceType = '${b['serviceType'] ?? ''}'.trim();
 
               return ManageBookingsButton(
+                // include id for consistency (even if actions are limited for declined)
+                bookingId:
+                    (b['__docId'] as String?) ??
+                    (b['docId'] as String?) ??
+                    (b['id'] as String?) ??
+                    (b['bookingId'] as String?),
+
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
                 status: 'declined', // normalized
@@ -1036,7 +1204,7 @@ class DeclinedBookingScreen extends StatelessWidget {
                 latitude: (b['latitude'] as num?)?.toDouble(),
                 longitude: (b['longitude'] as num?)?.toDouble(),
 
-                // wash progress (optional, probably empty for declined)
+                // wash progress (often empty for declined; harmless)
                 washStageOrder:
                     (b['washStageOrder'] as List?)
                         ?.map((e) => e.toString())
@@ -1046,7 +1214,7 @@ class DeclinedBookingScreen extends StatelessWidget {
                     (b['washStages'] as Map?)?.cast<String, dynamic>() ??
                     const {},
 
-                // 👇 profile info (like NewBookingsScreen)
+                // profile info
                 customerName: profileName ?? (b['customerName'] as String?),
                 customerPhone:
                     profilePhone ??
@@ -1117,9 +1285,11 @@ class ActiveBookingScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid == null) {
+      // Signed-out: emit an empty, already-hydrated payload (no spinner)
       return Stream.value(<String, dynamic>{
         'profile': null,
         'bookings': <Map<String, dynamic>>[],
+        '_hydrated': true,
       });
     }
 
@@ -1137,16 +1307,15 @@ class ActiveBookingScreen extends StatelessWidget {
         .map<List<Map<String, dynamic>>>((s) {
           final list = s.docs.map((d) {
             final data = d.data();
-            // ⚠️ put the doc id AFTER the spread so it cannot be overwritten by a field named "id"
+            // doc id AFTER spread so a field named "id" can't overwrite it
             final map = <String, dynamic>{...data, '__docId': d.id};
-            // debug: verify we carry the id
             debugPrint(
               "active (map) -> __docId=${map['__docId']} status=${map['status']}",
             );
             return map;
           }).toList();
 
-          // newest first
+          // newest first (by scheduled time)
           list.sort((a, b) {
             final at =
                 (a['scheduledTime'] as Timestamp?)?.toDate() ??
@@ -1167,47 +1336,50 @@ class ActiveBookingScreen extends StatelessWidget {
     late final StreamSubscription profileSub;
     late final StreamSubscription bookingsSub;
 
+    var bookingsReady = false; // <-- gate first render on this
+
     void emit() {
-      controller.add({'profile': latestProfile, 'bookings': latestBookings});
+      controller.add({
+        'profile': latestProfile,
+        'bookings': latestBookings,
+        '_hydrated': bookingsReady, // UI shows loader until this is true
+      });
     }
 
     controller.onListen = () {
-      emit();
+      // IMPORTANT: no initial emit() here — wait for first bookings snapshot
       profileSub = profileStream.listen((p) {
         latestProfile = p;
-        emit();
+        // Only emit if bookings have arrived at least once
+        if (bookingsReady) emit();
       }, onError: controller.addError);
 
       bookingsSub = bookingsStream.listen((b) {
         latestBookings = b;
-        emit();
+        bookingsReady = true;
+        emit(); // now safe to paint (even if empty)
       }, onError: controller.addError);
     };
 
     controller.onCancel = () async {
       await profileSub.cancel();
       await bookingsSub.cancel();
+      await controller.close();
     };
 
     return controller.stream;
   }
 
   // ------------------ Helpers (same as NewBookingsScreen) ------------------
-
   String _canonicalStatus(dynamic s) {
     final v = '${s ?? ''}'.trim().toLowerCase();
-    if (v == 'pending' ||
-        v == 'pending_cash' ||
-        v == 'pending-card' ||
-        v == 'awaiting_payment') {
-      return 'pending';
-    }
     if (v == 'in_progress' || v == 'in-progress' || v == 'processing') {
       return 'in_progress';
     }
     if (v == 'confirmed' || v == 'booked') return 'confirmed';
     if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
     if (v == 'cancelled' || v == 'canceled') return 'cancelled';
+    if (v == 'pending') return 'pending';
     return v;
   }
 
@@ -1274,7 +1446,7 @@ class ActiveBookingScreen extends StatelessWidget {
     return addr.isEmpty ? '—' : '📍 $addr';
   }
 
-  // --- robust name/phone pickers (profile first, with fallbacks) ---
+  // --- profile fallbacks ---
   String? _readStr(Map<String, dynamic>? map, String path) {
     if (map == null) return null;
     dynamic cur = map;
@@ -1340,6 +1512,7 @@ class ActiveBookingScreen extends StatelessWidget {
       child: StreamBuilder<Map<String, dynamic>>(
         stream: _userProfileAndBookings(),
         builder: (context, snap) {
+          // still waiting for first event → show loader
           if (snap.connectionState == ConnectionState.waiting) {
             return const _ListLoading();
           }
@@ -1352,17 +1525,24 @@ class ActiveBookingScreen extends StatelessWidget {
           final combined =
               snap.data ??
               const {'profile': null, 'bookings': <Map<String, dynamic>>[]};
+          final hydrated = (combined['_hydrated'] as bool?) ?? false;
+
+          // if not hydrated yet (e.g., profile arrived but bookings not yet)
+          if (!hydrated) {
+            return const _ListLoading();
+          }
+
           final profile = combined['profile'] as Map<String, dynamic>?;
           final raw = (combined['bookings'] as List)
               .cast<Map<String, dynamic>>();
 
-          // ✅ only CONFIRMED or IN_PROGRESS
+          // only CONFIRMED or IN_PROGRESS
           final items = raw.where((b) {
             final s = _canonicalStatus(b['status']);
             return s == 'confirmed' || s == 'in_progress';
           }).toList();
 
-          // Sort: in_progress first, then confirmed; each group by soonest time
+          // in_progress first, then confirmed; each group by soonest time
           int rank(String s) => s == 'in_progress' ? 0 : 1;
           items.sort((a, b) {
             final sa = _canonicalStatus(a['status']);
@@ -1395,24 +1575,19 @@ class ActiveBookingScreen extends StatelessWidget {
               final dt = _extractDate(b['scheduledTime']);
               final serviceType = '${b['serviceType'] ?? ''}'.trim();
 
-              // DEBUG: ensure the id is present here
               debugPrint(
                 "builder (active) -> bookingId=${b['__docId']} status=${b['status']}",
               );
 
               return ManageBookingsButton(
-                // 🔑 pass the Firestore document id so stage taps can persist
                 bookingId:
                     (b['__docId'] as String?) ??
                     (b['docId'] as String?) ??
                     (b['id'] as String?) ??
                     (b['bookingId'] as String?),
-
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
-                status: _canonicalStatus(
-                  b['status'],
-                ), // confirmed | in_progress
+                status: _canonicalStatus(b['status']),
                 day: _dayLabel(dt),
                 time: _timeLabel(dt, b['scheduledTimeLabel']),
                 duration: (() {
@@ -1421,13 +1596,9 @@ class ActiveBookingScreen extends StatelessWidget {
                 })(),
                 price: (b['price']?.toString()),
                 vehicleType: '${b['vehicleType'] ?? ''}',
-
-                // details for sheet
                 address: b['address'] as String?,
                 latitude: (b['latitude'] as num?)?.toDouble(),
                 longitude: (b['longitude'] as num?)?.toDouble(),
-
-                // wash progress (optional)
                 washStageOrder:
                     (b['washStageOrder'] as List?)
                         ?.map((e) => e.toString())
@@ -1436,15 +1607,11 @@ class ActiveBookingScreen extends StatelessWidget {
                 washStages:
                     (b['washStages'] as Map?)?.cast<String, dynamic>() ??
                     const {},
-
-                // profile info (with fallbacks)
                 customerName: profileName ?? (b['customerName'] as String?),
                 customerPhone:
                     profilePhone ??
                     (b['phone'] as String?) ??
                     (b['phoneNumber'] as String?),
-
-                // visuals
                 icon: Icon(
                   FontAwesomeIcons.carSide,
                   size: TextSizes.bodyText1,
@@ -1728,32 +1895,6 @@ class ManageBookingsButton extends StatelessWidget {
     return active == 'cleaning';
   }
 
-  Future<void> _confirmBookingNoDialog(BuildContext context) async {
-    final id = bookingId;
-    if (id == null || id.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Missing booking id')));
-      return;
-    }
-
-    try {
-      await FirebaseFirestore.instance.collection('bookings').doc(id).update({
-        'status': 'confirmed',
-        'confirmedAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Booking confirmed.')));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not confirm: $e')));
-    }
-  }
-
   // ---------- COMPLETE booking when cleaning is active ----------
   Future<void> _completeCurrentWash(BuildContext context) async {
     if (bookingId == null) return;
@@ -1816,26 +1957,30 @@ class ManageBookingsButton extends StatelessWidget {
     bool assignSelf = true,
     bool enableTracking = false,
   }) async {
-    if (bookingId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Missing bookingId')));
+    final messenger = ScaffoldMessenger.maybeOf(context);
+
+    final id = bookingId?.trim();
+    if (id == null || id.isEmpty) {
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Missing bookingId')),
+      );
       return;
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid;
-    final byName = user?.displayName;
+    if (user == null) {
+      messenger?.showSnackBar(const SnackBar(content: Text('Not signed in')));
+      return;
+    }
 
-    debugPrint(
-      'ACCEPT bookingId=$bookingId assignSelf=$assignSelf enableTracking=$enableTracking',
-    );
+    final uid = user.uid;
+    final byName = user.displayName;
 
     final db = FirebaseFirestore.instance;
-    final ref = db.collection('bookings').doc(bookingId);
+    final ref = db.collection('bookings').doc(id);
     final now = FieldValue.serverTimestamp();
 
-    // Full update (may be blocked by strict rules; see catch)
+    // IMPORTANT: use nested maps (no dotted keys) so rules can validate shape.
     final extended = <String, dynamic>{
       'status': 'confirmed',
       'updatedAt': now,
@@ -1847,43 +1992,44 @@ class ManageBookingsButton extends StatelessWidget {
         'reason': null,
       },
       if (assignSelf) 'valetDriverId': uid,
-      if (enableTracking) ...{
-        'tracking.enabledOwner': true,
-        'tracking.enabledBy': uid,
-        'tracking.enabledAt': now,
-        'tracking.disabledAt': null,
-      },
+      if (enableTracking)
+        'tracking': {
+          'enabledOwner': true,
+          'enabledBy': uid,
+          'enabledAt': now,
+          'disabledAt': null,
+        },
     };
 
     try {
+      // Merge so we only add/replace the provided top-level keys.
       await ref.set(extended, SetOptions(merge: true));
 
-      // If tracking was enabled, seed /runtime/live once.
+      // Optional live doc seed when tracking is enabled.
       if (enableTracking) {
         await ref.collection('runtime').doc('live').set({
           'driverId': uid,
           'updatedAt': FieldValue.serverTimestamp(),
-          // lat/lng/speed/heading/accuracy come from your location loop later
         }, SetOptions(merge: true));
       }
 
-      // Best-effort audit trail
+      // Best-effort audit trail.
       await ref.update({
         'washHistory': FieldValue.arrayUnion([
           {
             'action': 'confirm',
             'to': 'confirmed',
             'at': Timestamp.now(),
-            if (uid != null) 'by': uid,
+            'by': uid,
           },
         ]),
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Booking confirmed')));
+      messenger?.showSnackBar(
+        const SnackBar(content: Text('Booking confirmed')),
+      );
     } on FirebaseException catch (e) {
-      // Fallback: only fields allowed by your stricter rules
+      // Fallback for stricter environments: only fields allowed everywhere.
       try {
         await ref.update({
           'status': 'confirmed',
@@ -1893,18 +2039,16 @@ class ManageBookingsButton extends StatelessWidget {
               'action': 'confirm',
               'to': 'confirmed',
               'at': Timestamp.now(),
-              if (uid != null) 'by': uid,
+              'by': uid,
             },
           ]),
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Confirmed (limited write due to rules: ${e.code})'),
-          ),
+        messenger?.showSnackBar(
+          SnackBar(content: Text('Confirmed (limited: ${e.code})')),
         );
       } catch (_) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger?.showSnackBar(
           SnackBar(content: Text('Could not confirm: ${e.message ?? e.code}')),
         );
       }
@@ -2312,14 +2456,21 @@ class ManageBookingsButton extends StatelessWidget {
                     ),
                   ),
 
-                  statusLabel == 'Confirmed'
-                      ? GestureDetector(
-                          onTap: () {
-                            _markInProgress(context);
-                          },
-                          child: StatusBar(status: 'start'),
-                        )
-                      : SizedBox(width: 20),
+                  if (statusLabel == 'Confirmed')
+                    GestureDetector(
+                      onTap: () {
+                        _markInProgress(context);
+                      },
+                      child: StatusBar(status: 'start'),
+                    ),
+
+                  if (cleaningActive)
+                    GestureDetector(
+                      onTap: bookingId == null
+                          ? null
+                          : () => _completeCurrentWash(context),
+                      child: StatusBar(status: 'done'),
+                    ),
                 ],
               ),
             ),
@@ -2350,27 +2501,6 @@ class ManageBookingsButton extends StatelessWidget {
                     : _vmFromFirestoreList(listStages), // legacy fallback
               ),
               const SizedBox(height: 8),
-
-              // ✅ Show "Done" button ONLY when active stage is CLEANING
-              if (cleaningActive)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: bookingId == null
-                        ? null
-                        : () => _completeCurrentWash(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('Done'),
-                  ),
-                ),
-              const SizedBox(height: 5),
             ],
           ],
         ),
@@ -2399,7 +2529,7 @@ class CurrentlyWashingPanel extends StatefulWidget {
   // Live mode: pass bookingId to stream changes from Firestore
   final String? bookingId;
 
-  // Static fallback data (used if bookingId is null, or for first paint)
+  // Static fallback data (used if bookingId is null, or as first paint)
   final List<String>?
   washStageOrder; // ["pre_rinse","washing","rinsing","cleaning"]
   final Map<String, dynamic>?
@@ -2414,7 +2544,7 @@ class CurrentlyWashingPanel extends StatefulWidget {
     this.stages,
   });
 
-  // --- look & feel (same colors) ---
+  // Look & feel
   static const Color _accent = Color(0xFFF97316);
   static const Color _accentSoft = Color.fromARGB(37, 237, 165, 114);
   static const Color _accentBorder = Color.fromARGB(112, 211, 88, 0);
@@ -2432,41 +2562,105 @@ class CurrentlyWashingPanel extends StatefulWidget {
 }
 
 class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
-  /// Local override to show instant feedback on tap (optimistic UI).
-  /// When a Firestore snapshot arrives, we display that instead.
+  /// Optimistic, local override (instant feedback on tap).
   List<WashStageVM>? _localItems;
+
+  /// Last good list built from Firestore; used to avoid flicker during waits.
+  List<WashStageVM>? _lastItems;
+
+  /// Stable stream tied to the current bookingId.
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _liveStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _bindStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant CurrentlyWashingPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bookingId != widget.bookingId) {
+      _bindStream();
+      // keep _lastItems so UI stays populated while new stream connects
+    }
+  }
+
+  void _bindStream() {
+    if (widget.bookingId != null) {
+      _liveStream = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(widget.bookingId)
+          .snapshots();
+    } else {
+      _liveStream = null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // LIVE: stream the booking doc
-    if (widget.bookingId != null) {
-      final docRef = FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(widget.bookingId);
-      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: docRef.snapshots(),
-        builder: (context, snap) {
-          final child = _innerFromSnap(context, snap);
-          return _shell(child: child);
-        },
-      );
-    }
+    final Widget inner = (_liveStream == null)
+        ? _panel(
+            context,
+            _localItems ??
+                widget.stages ??
+                _buildFromRaw(
+                  widget.washStageOrder,
+                  widget.washStages,
+                  bookingStatus: null,
+                ),
+          )
+        : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: _liveStream,
+            builder: (context, snap) {
+              // Always have something to show:
+              final fallback =
+                  _localItems ??
+                  _lastItems ??
+                  widget.stages ??
+                  _buildFromRaw(
+                    widget.washStageOrder,
+                    widget.washStages,
+                    bookingStatus: null,
+                  );
 
-    // STATIC: build from props
-    final items =
-        _localItems ??
-        widget.stages ??
-        _buildFromRaw(
-          widget.washStageOrder,
-          widget.washStages,
-          bookingStatus: null,
-        );
-    return _shell(child: _panel(context, items));
+              if (snap.hasData && snap.data!.exists) {
+                final data = snap.data!.data() ?? <String, dynamic>{};
+
+                // Prefer flat schema; fall back to legacy `washProgress.order`.
+                final order =
+                    (data['washStageOrder'] as List?)?.cast<String>() ??
+                    (data['washProgress']?['order'] as List?)?.cast<String>();
+
+                final stagesMap = (data['washStages'] as Map?)
+                    ?.cast<String, dynamic>();
+                final bookingStatus = '${data['status'] ?? ''}';
+
+                final live = _buildFromRaw(
+                  order,
+                  stagesMap,
+                  bookingStatus: bookingStatus,
+                );
+
+                // Cache for any intermediate waiting frames
+                _lastItems = live;
+
+                return _panel(context, live);
+              }
+
+              // While connecting / re-connecting / no doc yet → keep UI stable.
+              return _panel(context, fallback);
+            },
+          );
+
+    return _shell(child: inner);
   }
 
-  // ----- container frame (unchanged design) -----
+  // ----- container frame (with min height & animation to reduce jank) -----
   Widget _shell({required Widget child}) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         border: Border.all(
           color: CurrentlyWashingPanel._accentBorder,
@@ -2475,46 +2669,10 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
         borderRadius: BorderRadius.circular(20),
         color: CurrentlyWashingPanel._accentSoft,
       ),
+      constraints: const BoxConstraints(minHeight: 68),
       padding: const EdgeInsets.all(10),
       child: child,
     );
-  }
-
-  // ----- live snapshot → items → panel -----
-  Widget _innerFromSnap(
-    BuildContext context,
-    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snap,
-  ) {
-    if (snap.connectionState == ConnectionState.waiting) {
-      return const SizedBox(height: 46);
-    }
-    if (!snap.hasData || !snap.data!.exists) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text(
-          'No wash data yet',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-      );
-    }
-
-    final data = snap.data!.data() ?? <String, dynamic>{};
-
-    // Prefer flat schema; fall back to legacy `washProgress.order`
-    final order =
-        (data['washStageOrder'] as List?)?.cast<String>() ??
-        (data['washProgress']?['order'] as List?)?.cast<String>();
-
-    final stagesMap = (data['washStages'] as Map?)?.cast<String, dynamic>();
-    final bookingStatus = '${data['status'] ?? ''}';
-
-    // If we have an optimistic local override, prefer it until the first snapshot
-    // that contains the new active stage; then _localItems can be overridden naturally.
-    final items =
-        _localItems ??
-        _buildFromRaw(order, stagesMap, bookingStatus: bookingStatus);
-
-    return _panel(context, items);
   }
 
   // ----- build list of stage VMs from order/map (infers missing pieces) -----
@@ -2527,13 +2685,13 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
         ? CurrentlyWashingPanel._defaultOrder
         : order;
 
-    // clone map
+    // clone normalized map
     final m = <String, Map<String, dynamic>>{};
     for (final entry in (map ?? const <String, dynamic>{}).entries) {
       m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
     }
 
-    String _norm(dynamic s) {
+    String _normStatus(dynamic s) {
       final v = '${s ?? ''}'.trim().toLowerCase();
       if (v == 'done' || v == 'completed') return 'done';
       if (v == 'in_progress' ||
@@ -2548,7 +2706,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
     int activeIndex = -1;
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      if (_norm(m[key]?['status']) == 'in_progress') {
+      if (_normStatus(m[key]?['status']) == 'in_progress') {
         activeIndex = i;
         break;
       }
@@ -2557,7 +2715,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
     final List<WashStageVM> list = [];
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      String status = _norm(m[key]?['status']);
+      String status = _normStatus(m[key]?['status']);
 
       if (activeIndex >= 0) {
         // Fill missing statuses around the known active one
@@ -2619,7 +2777,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
                   children: [
                     // segmented bar piece
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
+                      duration: const Duration(milliseconds: 220),
                       curve: Curves.easeOutCubic,
                       height: 4,
                       margin: EdgeInsets.only(
@@ -2640,7 +2798,9 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
 
                     // ✓ / pulsing / grey number
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
                       child: _StageChip(
                         key: ValueKey('${stage.key}_${stage.status}'),
                         index: i + 1,
@@ -2691,13 +2851,11 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
           bookingId: widget.bookingId!,
           activeStageKey: activeKey,
           adminId: adminId,
-          // createIfMissing: false, // keep strict; flip to true if you want seeding
         );
-        // When Firestore snapshot arrives, it will replace _localItems naturally.
+        // Snapshot will arrive and override _localItems → smooth update
       } catch (e) {
-        // Revert on failure and inform user
         if (mounted) {
-          setState(() => _localItems = current);
+          setState(() => _localItems = current); // revert
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Could not update stage: $e')));
@@ -2725,6 +2883,8 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
   }
 }
 
+/* ---------- chips (unchanged) ---------- */
+
 class FadingCircle extends StatefulWidget {
   final int number;
   final double size;
@@ -2743,7 +2903,6 @@ class _FadingCircleState extends State<FadingCircle>
   @override
   void initState() {
     super.initState();
-
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -2770,7 +2929,7 @@ class _FadingCircleState extends State<FadingCircle>
         height: widget.size,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: Color.fromARGB(255, 247, 163, 104), // Orange color
+          color: Color.fromARGB(255, 247, 163, 104),
         ),
         alignment: Alignment.center,
         child: Text(
@@ -2818,8 +2977,6 @@ class _StageChip extends StatelessWidget {
   }
 }
 
-// ====== STATUS CHIPS / PANELS ======
-
 class StatusBar extends StatelessWidget {
   final String status;
   const StatusBar({super.key, required this.status});
@@ -2844,8 +3001,11 @@ class StatusBar extends StatelessWidget {
       bg = const Color.fromARGB(121, 255, 120, 120);
       fg = const Color.fromARGB(255, 129, 4, 4);
     } else if (s == 'start') {
-      bg = const Color.fromARGB(121, 216, 180, 254);
-      fg = const Color.fromARGB(255, 88, 28, 135);
+      bg = const Color.fromARGB(121, 180, 255, 180);
+      fg = const Color.fromARGB(255, 4, 129, 4);
+    } else if (s == 'done') {
+      bg = const Color.fromARGB(121, 255, 200, 120);
+      fg = const Color.fromARGB(255, 187, 80, 4);
     } else {
       bg = const Color.fromARGB(121, 255, 120, 120);
       fg = const Color.fromARGB(255, 129, 4, 4);
@@ -2870,11 +3030,13 @@ class StatusBar extends StatelessWidget {
             ? 'Declined'
             : s == 'start'
             ? ' Start '
+            : s == 'done'
+            ? ' Done '
             : 'Cancelled',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           color: fg,
-          fontSize: s == 'start' ? 15 : 12,
+          fontSize: s == 'start' || s == 'done' ? 15 : 12,
         ),
       ),
     );

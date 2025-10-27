@@ -1153,14 +1153,14 @@ class GoBack extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.all(10),
         child: CircleAvatar(
-          backgroundColor: bgColor ?? const Color.fromARGB(78, 255, 255, 255),
+          backgroundColor: bgColor ?? Theme.of(context).colorScheme.surface,
           // backgroundColor: Colors.red,
           child: Center(
             child: Transform.scale(
               scale: 1.2,
               child: Icon(
                 Icons.arrow_back_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.inversePrimary,
               ),
             ),
           ),
@@ -2038,8 +2038,14 @@ class BookingsServiceButton extends StatelessWidget {
   final String? bookingId; // enable live stream in panel
   final List<String>? washStageOrder; // e.g. ["pre_rinse","washing",...]
   final Map<String, dynamic>? washStages; // { pre_rinse: {status,...}, ... }
-  final List<dynamic>?
-  washProgressStages; // optional legacy list (stages array)
+  final List<dynamic>? washProgressStages; // optional legacy list
+
+  // NEW — decision block (pass-through)
+  final String? decisionType; // "confirm" | "decline" | ...
+  final String? decisionByUid;
+  final String? decisionByName;
+  final String? decisionReason; // may be null
+  final DateTime? decisionAt; // convert from Timestamp on the caller
 
   // Visuals / action
   final String? animation;
@@ -2071,12 +2077,22 @@ class BookingsServiceButton extends StatelessWidget {
     this.washStageOrder,
     this.washStages,
     this.washProgressStages,
+
+    // NEW
+    this.decisionType,
+    this.decisionByUid,
+    this.decisionByName,
+    this.decisionReason,
+    this.decisionAt,
   });
+
   @override
   Widget build(BuildContext context) {
     final serviceLabel = _serviceLabel(service);
     final locationLabel = _serviceLocationLabel(serviceLocation);
     final statusLabel = _statusLabel(status);
+
+    debugPrint('iurgo8wegowhgliwe7 ===============>>>>>>>>>> $bookingId');
 
     return GestureDetector(
       onTap: () => _openDetailsSheet(
@@ -2084,6 +2100,12 @@ class BookingsServiceButton extends StatelessWidget {
         serviceLabel: serviceLabel,
         locationLabel: locationLabel,
         statusLabel: statusLabel,
+        // NEW — forward decision props //
+        decisionType: decisionType,
+        decisionByUid: decisionByUid,
+        decisionByName: decisionByName,
+        decisionReason: decisionReason,
+        decisionAt: decisionAt,
       ),
       child: Container(
         width: MediaQuery.of(context).size.width,
@@ -2188,6 +2210,28 @@ class BookingsServiceButton extends StatelessWidget {
                           ),
                         ],
                       ),
+                      // NEW — tiny decision note (if present)
+                      /* if (shortDecision.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.verified, size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                shortDecision,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.surface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ], */
                     ],
                   ),
                 ),
@@ -2204,12 +2248,113 @@ class BookingsServiceButton extends StatelessWidget {
               order: washStageOrder,
               stagesMap: washStages,
               listStages: washProgressStages,
+              decisionType: decisionType,
+              decisionByUid: decisionByUid,
+              decisionByName: decisionByName,
+              decisionReason: decisionReason,
+              decisionAt: decisionAt,
             ),
           ],
         ),
       ),
     );
   }
+
+  String _decisionSummaryShort() {
+    final t = (decisionType ?? '').trim().toLowerCase();
+    if (t.isEmpty) return '';
+    final who = (decisionByName?.trim().isNotEmpty ?? false)
+        ? decisionByName!.trim()
+        : (decisionByUid?.trim().isNotEmpty ?? false)
+        ? 'Driver ${decisionByUid!.substring(0, 6)}'
+        : 'Assigned driver';
+
+    final when = (decisionAt != null)
+        ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt!)}'
+        : '';
+    if (t == 'confirm') return 'Confirmed by $who$when';
+    if (t == 'decline') return 'Declined by $who$when';
+    return '${t[0].toUpperCase()}${t.substring(1)} by $who$when';
+  }
+
+  // ───────── decision helpers ─────────
+  String _formatDecisionAt(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('MMM d, yyyy • h:mm a').format(dt);
+  }
+
+  String _who() {
+    final n = (decisionByName ?? '').trim();
+    final u = (decisionByUid ?? '').trim();
+    if (n.isNotEmpty) return n;
+    if (u.isNotEmpty) return u;
+    return '';
+  }
+
+  // Short, single-line for the tile
+  /* String _decisionSummaryShort() {
+    final t = (decisionType ?? '').trim().toLowerCase();
+    final who = _who();
+    if (t.isEmpty) return '';
+    if (t == 'confirm') {
+      return who.isEmpty ? 'Confirmed' : 'Confirmed by $who';
+    }
+    if (t == 'decline') {
+      return who.isEmpty ? 'Declined' : 'Declined by $who';
+    }
+    return who.isEmpty ? _cap(t) : '${_cap(t)} by $who';
+  } */
+
+  // Full, multi-line for the sheet
+  List<Widget> _decisionSection(BuildContext context) {
+    final t = (decisionType ?? '').trim().toLowerCase();
+    if (t.isEmpty) return const [];
+    final who = _who();
+    final when = _formatDecisionAt(decisionAt);
+    final reason = (decisionReason ?? '').trim();
+
+    final color = Theme.of(context).colorScheme.surface;
+
+    String header;
+    IconData icon;
+    if (t == 'confirm') {
+      header = 'Confirmed';
+      icon = Icons.verified;
+    } else if (t == 'decline') {
+      header = 'Declined';
+      icon = Icons.cancel_rounded;
+    } else {
+      header = _cap(t);
+      icon = Icons.info_outline;
+    }
+
+    return [
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            header,
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      if (who.isNotEmpty)
+        Text('By: $who', style: TextStyle(color: color, fontSize: 13)),
+      if (when.isNotEmpty)
+        Text('At: $when', style: TextStyle(color: color, fontSize: 13)),
+      if (reason.isNotEmpty)
+        Text('Reason: $reason', style: TextStyle(color: color, fontSize: 13)),
+    ];
+  }
+
+  String _cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   // ───────────── Status panel routing ─────────────
   Widget _statusPanel(
@@ -2219,26 +2364,38 @@ class BookingsServiceButton extends StatelessWidget {
     List<String>? order,
     Map<String, dynamic>? stagesMap,
     List<dynamic>? listStages,
+
+    // ↓ decision fields (already normalized to the right types)
+    String? decisionType,
+    String? decisionByUid,
+    String? decisionByName,
+    String? decisionReason,
+    DateTime? decisionAt,
   }) {
     final s = statusLabel.toLowerCase();
 
     if (s == 'in progress' ||
         s == 'in_progress' ||
         s.contains('currently washing')) {
-      // Only use the legacy list if we have NO schema and NO live bookingId
       final hasSchema =
           (bookingId != null) ||
           ((order?.isNotEmpty ?? false) || (stagesMap?.isNotEmpty ?? false));
 
       return CurrentlyWashingPanel(
-        bookingId: bookingId, // live stream (preferred)
-        washStageOrder: order, // schema order
-        washStages: stagesMap, // schema map
-        stages: hasSchema
-            ? null
-            : _vmFromFirestoreList(listStages), // fallback ONLY
+        bookingId: bookingId,
+        washStageOrder: order,
+        washStages: stagesMap,
+        stages: hasSchema ? null : _vmFromFirestoreList(listStages),
+
+        // pass decision info through
+        decisionType: decisionType,
+        decisionByUid: decisionByUid,
+        decisionByName: decisionByName,
+        decisionReason: decisionReason,
+        decisionAt: decisionAt,
       );
     }
+
     if (s.contains('completed')) return const CompletedPanel();
     if (s.contains('cancel')) return const CancelledPanel();
     if (s.contains('confirmed')) return const ConfirmedPanel();
@@ -2251,10 +2408,17 @@ class BookingsServiceButton extends StatelessWidget {
     required String serviceLabel,
     required String locationLabel,
     required String statusLabel,
+
+    // NEW — decision props
+    String? decisionType,
+    String? decisionByUid,
+    String? decisionByName,
+    String? decisionReason,
+    DateTime? decisionAt,
   }) {
     final text = Theme.of(context).textTheme;
 
-    // Status chip palette
+    // Chip palette (unchanged)
     Color chipBg, chipBorder, chipFg, panelBg, panelBorder, dot;
     String chipText;
     final s = statusLabel.toLowerCase();
@@ -2277,7 +2441,6 @@ class BookingsServiceButton extends StatelessWidget {
       dot = const Color(0xFF23A067);
       chipText = 'Confirmed';
     } else if (isInProgress) {
-      // orange theme
       chipBg = const Color(0xFFFFF7ED);
       chipBorder = const Color(0xFFFED7AA);
       chipFg = const Color(0xFFC2410C);
@@ -2301,6 +2464,29 @@ class BookingsServiceButton extends StatelessWidget {
       panelBorder = const Color(0xFF93C5FD);
       dot = const Color(0xFF3B82F6);
       chipText = statusLabel;
+    }
+
+    // NEW — build a human-friendly decision summary
+    String _decisionSummary() {
+      final t = (decisionType ?? '').trim().toLowerCase();
+      if (t.isEmpty) return '';
+      final who = (decisionByName?.trim().isNotEmpty ?? false)
+          ? decisionByName!.trim()
+          : (decisionByUid?.trim().isNotEmpty ?? false)
+          ? 'Driver ${decisionByUid!.substring(0, 6)}'
+          : 'Assigned driver';
+      final when = (decisionAt != null)
+          ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt!)}'
+          : '';
+      final label = t == 'confirm'
+          ? 'Confirmed'
+          : t == 'decline'
+          ? 'Declined'
+          : '${t[0].toUpperCase()}${t.substring(1)}';
+      final reason = (decisionReason?.trim().isNotEmpty ?? false)
+          ? ' — ${decisionReason!.trim()}'
+          : '';
+      return '$label by $who$when$reason';
     }
 
     Widget infoTile(IconData icon, String title, String value) {
@@ -2341,13 +2527,12 @@ class BookingsServiceButton extends StatelessWidget {
       );
     }
 
-    // brief help panel (used for non-progress states)
     Widget statusHelpPanel() {
       String title, body;
       if (s.contains('pending')) {
         title = 'Awaiting Confirmation';
         body =
-            "Your booking request is being reviewed and will be confirmed shortly. You'll receive a notification once it's approved.";
+            "Your booking request is being reviewed and will be confirmed shortly.";
       } else if (s.contains('confirmed')) {
         title = 'Confirmed';
         body = "You're all set. See you at the scheduled time!";
@@ -2356,11 +2541,10 @@ class BookingsServiceButton extends StatelessWidget {
         body = "Your car is being washed right now.";
       } else if (s.contains('cancel')) {
         title = 'Cancelled';
-        body =
-            "This booking was cancelled. If this was a mistake, please book again.";
+        body = "This booking was cancelled.";
       } else if (s.contains('complete')) {
         title = 'Completed';
-        body = "This booking has been completed. Thanks for choosing us!";
+        body = "This booking has been completed. Thanks!";
       } else {
         title = statusLabel;
         body = "Booking status: $statusLabel";
@@ -2421,10 +2605,12 @@ class BookingsServiceButton extends StatelessWidget {
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
-          maxChildSize: 0.60,
-          initialChildSize: 0.55,
-          minChildSize: 0.45,
+          maxChildSize: 0.75,
+          initialChildSize: 0.70,
+          minChildSize: 0.70,
           builder: (context, controller) {
+            final decisionLine = _decisionSummary();
+
             return SingleChildScrollView(
               controller: controller,
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -2495,6 +2681,26 @@ class BookingsServiceButton extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                  // NEW — decision note under the chip (if any)
+                  if (decisionLine.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.verified, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            decisionLine,
+                            style: text.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   const SizedBox(height: 16),
 
                   // Details grid
@@ -2536,16 +2742,19 @@ class BookingsServiceButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // >>>>>>>>>> WASH PROGRESS UI IN SHEET <<<<<<<<<<
+                  // In-progress panel or help text
                   if (isInProgress) ...[
-                    CurrentlyWashingPanel(
-                      bookingId: bookingId, // live updates
-                      washStageOrder: washStageOrder, // fallback order
-                      washStages: washStages, // fallback map
-                      stages: _vmFromFirestoreList(
-                        // legacy list -> VMs
-                        washProgressStages,
-                      ),
+                    CurrentlyWashingPanelModalSheet(
+                      bookingId: bookingId, // you'll already pass this in
+                      washStageOrder: washStageOrder,
+                      washStages: washStages,
+                      stages: _vmFromFirestoreList(washProgressStages),
+
+                      decisionType: decisionType,
+                      decisionByUid: decisionByUid,
+                      decisionByName: decisionByName,
+                      decisionReason: decisionReason,
+                      decisionAt: decisionAt,
                     ),
                     const SizedBox(height: 16),
                   ] else
@@ -2649,7 +2858,6 @@ class BookingsServiceButton extends StatelessWidget {
           .toList();
     }
 
-    // keep known stages ordered
     final index = {
       for (var i = 0; i < _kStageOrder.length; i++) _kStageOrder[i]: i,
     };
@@ -2698,10 +2906,16 @@ class CurrentlyWashingPanel extends StatelessWidget {
 
   // Static fallback data (used if bookingId is null, or for first paint)
   final List<String>?
-  washStageOrder; // e.g. ["pre_rinse","washing","rinsing","cleaning"]
-  final Map<String, dynamic>?
-  washStages; // e.g. { pre_rinse: {status: 'done'}, washing: {status:'in_progress'} }
-  final List<WashStageVM>? stages; // or prebuilt VMs
+  washStageOrder; // ["pre_rinse","washing","rinsing","cleaning"]
+  final Map<String, dynamic>? washStages; // { pre_rinse: {...}, ... }
+  final List<WashStageVM>? stages; // optional prebuilt VMs
+
+  // Decision/assignment info (can be overridden by live snapshot)
+  final String? decisionType; // "confirm" | "decline" | ...
+  final String? decisionByUid;
+  final String? decisionByName;
+  final String? decisionReason;
+  final DateTime? decisionAt;
 
   const CurrentlyWashingPanel({
     super.key,
@@ -2709,6 +2923,11 @@ class CurrentlyWashingPanel extends StatelessWidget {
     this.washStageOrder,
     this.washStages,
     this.stages,
+    this.decisionType,
+    this.decisionByUid,
+    this.decisionByName,
+    this.decisionReason,
+    this.decisionAt,
   });
 
   // --- look & feel (orange theme) ---
@@ -2716,6 +2935,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
   static const Color _accentSoft = Color.fromARGB(37, 237, 165, 114);
   static const Color _accentBorder = Color.fromARGB(112, 211, 88, 0);
   static const Color _trackGrey = Color.fromARGB(153, 179, 179, 181);
+
   static const List<String> _defaultOrder = [
     'pre_rinse',
     'washing',
@@ -2741,7 +2961,18 @@ class CurrentlyWashingPanel extends StatelessWidget {
     final items =
         stages ??
         _buildFromRaw(washStageOrder, washStages, bookingStatus: null);
-    return _shell(child: _panel(context, items));
+    return _shell(
+      child: _panel(
+        context,
+        items,
+        // pass static decision info
+        decisionType: decisionType,
+        decisionByUid: decisionByUid,
+        decisionByName: decisionByName,
+        decisionReason: decisionReason,
+        decisionAt: decisionAt,
+      ),
+    );
   }
 
   // ============== helpers ==============
@@ -2759,7 +2990,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
     );
   }
 
-  // Build from a live snapshot
+  // Build from a live snapshot (and read decision fields if present)
   Widget _innerFromSnap(
     BuildContext context,
     AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snap,
@@ -2787,8 +3018,31 @@ class CurrentlyWashingPanel extends StatelessWidget {
     final stagesMap = (data['washStages'] as Map?)?.cast<String, dynamic>();
     final bookingStatus = '${data['status'] ?? ''}';
 
+    // Decision (live) — override constructor values when available
+    final dec = (data['decision'] as Map?)?.cast<String, dynamic>();
+    final liveType = dec?['type']?.toString();
+    final liveByName = dec?['byName']?.toString();
+    final liveByUid = dec?['byUid']?.toString();
+    final liveReason = dec?['reason']?.toString();
+    DateTime? liveAt;
+    final atRaw = dec?['at'];
+    if (atRaw is Timestamp) {
+      liveAt = atRaw.toDate();
+    } else if (atRaw is String) {
+      liveAt = DateTime.tryParse(atRaw);
+    }
+
     final items = _buildFromRaw(order, stagesMap, bookingStatus: bookingStatus);
-    return _panel(context, items);
+
+    return _panel(
+      context,
+      items,
+      decisionType: liveType ?? decisionType,
+      decisionByUid: liveByUid ?? decisionByUid,
+      decisionByName: liveByName ?? decisionByName,
+      decisionReason: liveReason ?? decisionReason,
+      decisionAt: liveAt ?? decisionAt,
+    );
   }
 
   // Build list of stage VMs from order/map (and infer when data is partial)
@@ -2798,17 +3052,17 @@ class CurrentlyWashingPanel extends StatelessWidget {
     String? bookingStatus,
   }) {
     final o = (order == null || order.isEmpty) ? _defaultOrder : order;
+
+    // clone map
     final m = <String, Map<String, dynamic>>{};
     for (final entry in (map ?? const <String, dynamic>{}).entries) {
       m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
     }
 
-    // Normalize explicit statuses we already have
     String _norm(dynamic s) {
       final v = '${s ?? ''}'.trim().toLowerCase();
       if (v == 'done' || v == 'completed') return 'done';
       if (v == 'in_progress' ||
-          v == 'in_progress' ||
           v == 'in-progress' ||
           v == 'active' ||
           v == 'processing') {
@@ -2817,7 +3071,6 @@ class CurrentlyWashingPanel extends StatelessWidget {
       return 'pending';
     }
 
-    // Figure out which index is explicitly active (if any)
     int activeIndex = -1;
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
@@ -2827,27 +3080,21 @@ class CurrentlyWashingPanel extends StatelessWidget {
       }
     }
 
-    // Build list honoring explicit statuses; if only the active is known,
-    // mark all previous as done and the rest as pending so UI shows all segments.
     final List<WashStageVM> list = [];
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
       String status = _norm(m[key]?['status']);
 
       if (activeIndex >= 0) {
-        // We know which one is active — fill the rest if missing
-        if ((m[key] == null || m[key]!['status'] == null) && i < activeIndex)
+        if ((m[key] == null || m[key]!['status'] == null) && i < activeIndex) {
           status = 'done';
-        if ((m[key] == null || m[key]!['status'] == null) && i > activeIndex)
-          status = 'pending';
-      } else if ((map == null || map.isEmpty) &&
-          (bookingStatus ?? '').toLowerCase().contains('progress')) {
-        // No map yet but booking is in_progress: show the first as active
-        if (i == 0) {
-          status = 'in_progress';
-        } else {
+        }
+        if ((m[key] == null || m[key]!['status'] == null) && i > activeIndex) {
           status = 'pending';
         }
+      } else if ((map == null || map.isEmpty) &&
+          (bookingStatus ?? '').toLowerCase().contains('progress')) {
+        status = (i == 0) ? 'in_progress' : 'pending';
       }
 
       list.add(WashStageVM(key, _labelForKey(key), status));
@@ -2856,9 +3103,50 @@ class CurrentlyWashingPanel extends StatelessWidget {
     return list;
   }
 
-  // Paint the progress row (all segments visible)
-  Widget _panel(BuildContext context, List<WashStageVM> items) {
-    return Column(
+  // Safe initials (no RangeError on empty/one-word names)
+  String _initialsFrom(String? fullName) {
+    final s = (fullName ?? '').trim();
+    if (s.isEmpty) return '??';
+    final parts = s.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final first = parts.isNotEmpty ? parts[0] : '';
+    final second = parts.length > 1 ? parts[1] : '';
+    final i1 = first.isNotEmpty ? first[0] : '';
+    final i2 = second.isNotEmpty ? second[0] : '';
+    final out = ('$i1$i2').toUpperCase();
+    return out.isEmpty ? s[0].toUpperCase() : out;
+  }
+
+  String _prettyDecisionType(String? t) {
+    final v = (t ?? '').trim().toLowerCase();
+    if (v == 'confirm') return 'Confirmed';
+    if (v == 'decline') return 'Declined';
+    if (v.isEmpty) return 'Assigned';
+    return v[0].toUpperCase() + v.substring(1);
+  }
+
+  // Paint the progress row (all segments visible) + driver/decision card
+  Widget _panel(
+    BuildContext context,
+    List<WashStageVM> items, {
+    String? decisionType,
+    String? decisionByUid,
+    String? decisionByName,
+    String? decisionReason,
+    DateTime? decisionAt,
+  }) {
+    final baseName = (decisionByName?.trim().isNotEmpty ?? false)
+        ? decisionByName!.trim()
+        : (decisionByUid?.trim().isNotEmpty ?? false)
+        ? 'Driver ${decisionByUid!.substring(0, 6)}'
+        : 'Assigned Driver';
+
+    final decTypeLabel = _prettyDecisionType(decisionType);
+    final whenLabel = (decisionAt != null)
+        ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt)}'
+        : '';
+
+    // ---------- stages row (unchanged) ----------
+    final stagesRow = Column(
       children: [
         Row(
           children: const [
@@ -2875,7 +3163,6 @@ class CurrentlyWashingPanel extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-
         Row(
           children: List.generate(items.length, (i) {
             final first = i == 0;
@@ -2889,7 +3176,6 @@ class CurrentlyWashingPanel extends StatelessWidget {
             return Expanded(
               child: Column(
                 children: [
-                  // segmented bar piece
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
@@ -2909,8 +3195,6 @@ class CurrentlyWashingPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-
-                  // ✓ / pulsing / grey number
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: _StageChip(
@@ -2919,9 +3203,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
                       status: stage.status,
                     ),
                   ),
-
                   const SizedBox(height: 2),
-
                   Text(
                     stage.label,
                     maxLines: 1,
@@ -2935,6 +3217,687 @@ class CurrentlyWashingPanel extends StatelessWidget {
               ),
             );
           }),
+        ),
+        const SizedBox(height: 15),
+      ],
+    );
+
+    // ---------- driver card (uses photoUrl when available; initials fallback) ----------
+    Widget _driverCard({required String name, String? photoUrl}) {
+      final initials = _initialsFrom(name);
+
+      // Only create an ImageProvider if the URL is non-empty.
+      ImageProvider? _netIfValid(String? url) {
+        if (url == null) return null;
+        final u = url.trim();
+        if (u.isEmpty) return null;
+        return NetworkImage(u);
+      }
+
+      final img = _netIfValid(photoUrl);
+
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.inversePrimary,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
+        child: Row(
+          children: [
+            const SizedBox(width: 5),
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: _accentSoft,
+              foregroundImage: img,
+              // Only provide the error handler when foregroundImage is non-null
+              onForegroundImageError: (img != null)
+                  ? (_, __) {
+                      /* no-op */
+                    }
+                  : null,
+              // Initials are always provided; they'll show if there's no image or it fails.
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: TextSizes.subtitle1,
+                  color: _accent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CustomText(
+                  text: name,
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                ),
+                CustomText(
+                  text: 'Professional Washer',
+                  textSize: TextSizes.caption,
+                ),
+              ],
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                RegularButton(
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  borderRadius: 15,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  textWidget: const CustomText(
+                    text: 'Call',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                  ),
+                  onPressed: () {}, // wire up if you store driver phone
+                ),
+                const SizedBox(width: 5),
+                RegularIconButton(
+                  icon: const Icon(Icons.chat, size: IconSizes.minute),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  borderRadius: 15,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  textWidget: const CustomText(
+                    text: 'Chat',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                  ),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+            const SizedBox(width: 5),
+          ],
+        ),
+      );
+    }
+
+    // ---------- if we have a uid, stream user doc to read photoUrl ----------
+    if (decisionByUid != null && decisionByUid!.trim().isNotEmpty) {
+      final uid = decisionByUid!.trim();
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      return Column(
+        children: [
+          stagesRow,
+          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: userRef.snapshots(),
+            builder: (context, snap) {
+              String name = baseName;
+              String? photoUrl;
+
+              if (snap.hasData && snap.data!.exists) {
+                final u = snap.data!.data() ?? const {};
+
+                // Try common field names
+                photoUrl =
+                    (u['photoUrl'] as String?) ??
+                    (u['photoURL'] as String?) ??
+                    (u['avatarUrl'] as String?) ??
+                    (u['avatar'] as String?);
+
+                // Prefer an explicit name if we didn't get one in props
+                if (!(decisionByName?.trim().isNotEmpty ?? false)) {
+                  name =
+                      (u['displayName'] as String?) ??
+                      (u['name'] as String?) ??
+                      baseName;
+                }
+              }
+
+              return _driverCard(name: name, photoUrl: photoUrl);
+            },
+          ),
+        ],
+      );
+    }
+
+    // ---------- no uid → just render with initials ----------
+    return Column(
+      children: [
+        stagesRow,
+        _driverCard(name: baseName, photoUrl: null),
+      ],
+    );
+  }
+
+  // Pretty label for a stage key
+  String _labelForKey(String k) {
+    switch (k) {
+      case 'pre_rinse':
+        return 'Pre-rinse';
+      case 'washing':
+        return 'Washing';
+      case 'rinsing':
+        return 'Rinsing';
+      case 'cleaning':
+        return 'Cleaning';
+      default:
+        final pretty = k.replaceAll('_', ' ').trim();
+        if (pretty.isEmpty) return 'Stage';
+        return pretty[0].toUpperCase() + pretty.substring(1);
+    }
+  }
+}
+
+class CurrentlyWashingPanelModalSheet extends StatelessWidget {
+  // Live mode: pass bookingId to stream changes from Firestore
+  final String? bookingId;
+
+  // Static fallback data (used if bookingId is null, or for first paint)
+  final List<String>?
+  washStageOrder; // ["pre_rinse","washing","rinsing","cleaning"]
+  final Map<String, dynamic>? washStages; // { pre_rinse: {...}, ... }
+  final List<WashStageVM>? stages; // optional prebuilt VMs
+
+  // Decision/assignment info (can be overridden by live snapshot)
+  final String? decisionType; // "confirm" | "decline" | ...
+  final String? decisionByUid;
+  final String? decisionByName;
+  final String? decisionReason;
+  final DateTime? decisionAt;
+
+  const CurrentlyWashingPanelModalSheet({
+    super.key,
+    this.bookingId,
+    this.washStageOrder,
+    this.washStages,
+    this.stages,
+    this.decisionType,
+    this.decisionByUid,
+    this.decisionByName,
+    this.decisionReason,
+    this.decisionAt,
+  });
+
+  // --- look & feel (orange theme) ---
+  static const Color _accent = Color(0xFFF97316);
+  static const Color _accentSoft = Color.fromARGB(37, 237, 165, 114);
+  static const Color _accentBorder = Color.fromARGB(112, 211, 88, 0);
+  static const Color _trackGrey = Color.fromARGB(153, 179, 179, 181);
+
+  static const List<String> _defaultOrder = [
+    'pre_rinse',
+    'washing',
+    'rinsing',
+    'cleaning',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    // LIVE: stream the booking doc
+    if (bookingId != null) {
+      final docRef = FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId);
+      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+        stream: docRef.snapshots(),
+        builder: (context, snap) =>
+            _shell(child: _innerFromSnap(context, snap)),
+      );
+    }
+
+    // STATIC: build from props
+    final items =
+        stages ??
+        _buildFromRaw(washStageOrder, washStages, bookingStatus: null);
+    return _shell(
+      child: _panel(
+        context,
+        items,
+        // pass static decision info
+        decisionType: decisionType,
+        decisionByUid: decisionByUid,
+        decisionByName: decisionByName,
+        decisionReason: decisionReason,
+        decisionAt: decisionAt,
+      ),
+    );
+  }
+
+  // ============== helpers ==============
+
+  // Outer container
+  Widget _shell({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: _accentBorder, width: 1.7),
+        borderRadius: BorderRadius.circular(20),
+        color: _accentSoft,
+      ),
+      padding: const EdgeInsets.all(10),
+      child: child,
+    );
+  }
+
+  // Build from a live snapshot (and read decision fields if present)
+  Widget _innerFromSnap(
+    BuildContext context,
+    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snap,
+  ) {
+    if (snap.connectionState == ConnectionState.waiting) {
+      return const SizedBox(height: 46);
+    }
+    if (!snap.hasData || !snap.data!.exists) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: Text(
+          'No wash data yet',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    final data = snap.data!.data() ?? <String, dynamic>{};
+
+    // Prefer flat schema; fall back to legacy `washProgress.order`
+    final order =
+        (data['washStageOrder'] as List?)?.cast<String>() ??
+        (data['washProgress']?['order'] as List?)?.cast<String>();
+
+    final stagesMap = (data['washStages'] as Map?)?.cast<String, dynamic>();
+    final bookingStatus = '${data['status'] ?? ''}';
+
+    // Decision (live) — override constructor values when available
+    final dec = (data['decision'] as Map?)?.cast<String, dynamic>();
+    final liveType = dec?['type']?.toString();
+    final liveByName = dec?['byName']?.toString();
+    final liveByUid = dec?['byUid']?.toString();
+    final liveReason = dec?['reason']?.toString();
+    DateTime? liveAt;
+    final atRaw = dec?['at'];
+    if (atRaw is Timestamp) {
+      liveAt = atRaw.toDate();
+    } else if (atRaw is String) {
+      liveAt = DateTime.tryParse(atRaw);
+    }
+
+    final items = _buildFromRaw(order, stagesMap, bookingStatus: bookingStatus);
+
+    return _panel(
+      context,
+      items,
+      decisionType: liveType ?? decisionType,
+      decisionByUid: liveByUid ?? decisionByUid,
+      decisionByName: liveByName ?? decisionByName,
+      decisionReason: liveReason ?? decisionReason,
+      decisionAt: liveAt ?? decisionAt,
+    );
+  }
+
+  // Build list of stage VMs from order/map (and infer when data is partial)
+  List<WashStageVM> _buildFromRaw(
+    List<String>? order,
+    Map<String, dynamic>? map, {
+    String? bookingStatus,
+  }) {
+    final o = (order == null || order.isEmpty) ? _defaultOrder : order;
+
+    // clone map
+    final m = <String, Map<String, dynamic>>{};
+    for (final entry in (map ?? const <String, dynamic>{}).entries) {
+      m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
+    }
+
+    String _norm(dynamic s) {
+      final v = '${s ?? ''}'.trim().toLowerCase();
+      if (v == 'done' || v == 'completed') return 'done';
+      if (v == 'in_progress' ||
+          v == 'in-progress' ||
+          v == 'active' ||
+          v == 'processing') {
+        return 'in_progress';
+      }
+      return 'pending';
+    }
+
+    int activeIndex = -1;
+    for (int i = 0; i < o.length; i++) {
+      final key = o[i];
+      if (_norm(m[key]?['status']) == 'in_progress') {
+        activeIndex = i;
+        break;
+      }
+    }
+
+    final List<WashStageVM> list = [];
+    for (int i = 0; i < o.length; i++) {
+      final key = o[i];
+      String status = _norm(m[key]?['status']);
+
+      if (activeIndex >= 0) {
+        if ((m[key] == null || m[key]!['status'] == null) && i < activeIndex) {
+          status = 'done';
+        }
+        if ((m[key] == null || m[key]!['status'] == null) && i > activeIndex) {
+          status = 'pending';
+        }
+      } else if ((map == null || map.isEmpty) &&
+          (bookingStatus ?? '').toLowerCase().contains('progress')) {
+        status = (i == 0) ? 'in_progress' : 'pending';
+      }
+
+      list.add(WashStageVM(key, _labelForKey(key), status));
+    }
+
+    return list;
+  }
+
+  // Safe initials (no RangeError on empty/one-word names)
+  String _initialsFrom(String? fullName) {
+    final s = (fullName ?? '').trim();
+    if (s.isEmpty) return '??';
+    final parts = s.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final first = parts.isNotEmpty ? parts[0] : '';
+    final second = parts.length > 1 ? parts[1] : '';
+    final i1 = first.isNotEmpty ? first[0] : '';
+    final i2 = second.isNotEmpty ? second[0] : '';
+    final out = ('$i1$i2').toUpperCase();
+    return out.isEmpty ? s[0].toUpperCase() : out;
+  }
+
+  String _prettyDecisionType(String? t) {
+    final v = (t ?? '').trim().toLowerCase();
+    if (v == 'confirm') return 'Confirmed';
+    if (v == 'decline') return 'Declined';
+    if (v.isEmpty) return 'Assigned';
+    return v[0].toUpperCase() + v.substring(1);
+  }
+
+  // Small helper to build an ImageProvider from URL (or null)
+  ImageProvider? _imageFromUrl(String? url) {
+    if (url == null) return null;
+    final u = url.trim();
+    if (u.isEmpty) return null;
+    return NetworkImage(u);
+  }
+
+  // Driver card with avatar (image or initials fallback) and meta line
+  Widget _driverCard(
+    BuildContext context, {
+    required String name,
+    String? photoUrl,
+    required String
+    metaText, // e.g., 'Confirmed • Oct 25 • 4:59 PM' or 'Professional Washer'
+  }) {
+    final initials = _initialsFrom(name);
+    final img = _imageFromUrl(photoUrl);
+    final hasUrl = photoUrl != null && photoUrl.trim().isNotEmpty;
+    final size = 80.0; // same visual size as radius:18
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.inversePrimary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
+      child: Row(
+        children: [
+          const SizedBox(width: 7),
+
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: _accentSoft,
+              borderRadius: BorderRadius.circular(12), // <-- rounded corners
+            ),
+            clipBehavior: Clip.antiAlias, // ensure image respects radius
+            child: hasUrl
+                ? Image.network(
+                    photoUrl!.trim(),
+                    fit: BoxFit.cover,
+                    // Fallback to initials if the image fails to load
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Text(
+                        initials,
+                        style: const TextStyle(
+                          fontSize: TextSizes.subtitle1,
+                          color: _accent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: TextSizes.subtitle1,
+                        color: _accent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomText(
+                text: name,
+                textSize: TextSizes.bodyText1,
+                textWeight: FontWeight.bold,
+              ),
+
+              CustomText(
+                text: 'Professional Washer',
+                textSize: TextSizes.caption,
+              ),
+
+              Row(
+                children: [
+                  const Icon(
+                    FontAwesomeIcons.solidStar,
+                    size: 10,
+                    color: Colors.amber,
+                  ),
+                  const CustomText(text: '4.9', textSize: TextSizes.caption),
+                ],
+              ),
+            ],
+          ),
+
+          const Spacer(),
+          Column(
+            children: [
+              RegularIconButton(
+                icon: const Icon(Icons.phone, size: IconSizes.minute),
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                borderRadius: 15,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                textWidget: const CustomText(
+                  text: 'Call',
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                ),
+                onPressed: () {},
+              ),
+              const SizedBox(height: 6),
+              RegularIconButton(
+                icon: const Icon(Icons.chat, size: IconSizes.minute),
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                borderRadius: 15,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                textWidget: const CustomText(
+                  text: 'Chat',
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                ),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const SizedBox(width: 5),
+        ],
+      ),
+    );
+  }
+
+  // Paint the progress row (all segments visible) + driver/decision card
+  Widget _panel(
+    BuildContext context,
+    List<WashStageVM> items, {
+    String? decisionType,
+    String? decisionByUid,
+    String? decisionByName,
+    String? decisionReason,
+    DateTime? decisionAt,
+  }) {
+    final baseName = (decisionByName?.trim().isNotEmpty ?? false)
+        ? decisionByName!.trim()
+        : (decisionByUid?.trim().isNotEmpty ?? false)
+        ? 'Driver ${decisionByUid!.substring(0, 6)}'
+        : 'Assigned Driver';
+
+    final decTypeLabel = _prettyDecisionType(decisionType);
+    final whenLabel = (decisionAt != null)
+        ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt)}'
+        : '';
+    final metaText = decTypeLabel.isEmpty
+        ? 'Professional Washer'
+        : '$decTypeLabel$whenLabel';
+
+    // ---------- stages row ----------
+    final stagesRow = Column(
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.circle, color: _accent, size: 8),
+            SizedBox(width: 6),
+            Text(
+              'Wash Progress',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: _accent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: List.generate(items.length, (i) {
+            final first = i == 0;
+            final last = i == items.length - 1;
+            final stage = items[i];
+
+            final isDone = stage.status == 'done';
+            final isActive = stage.status == 'in_progress';
+            final barColor = (isDone || isActive) ? _accent : _trackGrey;
+
+            return Expanded(
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    height: 4,
+                    margin: EdgeInsets.only(
+                      left: first ? 5 : 0,
+                      right: last ? 5 : 0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(first ? 10 : 0),
+                        bottomLeft: Radius.circular(first ? 10 : 0),
+                        topRight: Radius.circular(last ? 10 : 0),
+                        bottomRight: Radius.circular(last ? 10 : 0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _StageChip(
+                      key: ValueKey('${stage.key}_${stage.status}'),
+                      index: i + 1,
+                      status: stage.status,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    stage.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.surface,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 15),
+      ],
+    );
+
+    // ---------- if we have a uid, stream user doc to read photoUrl ----------
+    if (decisionByUid != null && decisionByUid!.trim().isNotEmpty) {
+      final uid = decisionByUid!.trim();
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      return Column(
+        children: [
+          stagesRow,
+          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: userRef.snapshots(),
+            builder: (context, snap) {
+              String name = baseName;
+              String? photoUrl;
+
+              if (snap.hasData && snap.data!.exists) {
+                final u = snap.data!.data() ?? const {};
+                photoUrl = (u['photoUrl'] as String?);
+                // prefer decisionByName if provided; else use profile displayName/name; else base
+                name = (decisionByName?.trim().isNotEmpty ?? false)
+                    ? decisionByName!.trim()
+                    : (u['displayName'] as String?) ??
+                          (u['name'] as String?) ??
+                          baseName;
+              }
+
+              return _driverCard(
+                context,
+                name: name,
+                photoUrl: photoUrl,
+                metaText: metaText,
+              );
+            },
+          ),
+        ],
+      );
+    }
+
+    // ---------- no uid → just render with initials ----------
+    return Column(
+      children: [
+        stagesRow,
+        _driverCard(
+          context,
+          name: baseName,
+          photoUrl: null,
+          metaText: metaText,
         ),
       ],
     );

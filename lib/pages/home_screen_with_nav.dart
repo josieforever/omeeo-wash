@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
@@ -96,9 +97,65 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
-            ],
+              // fontSize: FontSizes.ml,
+              // color: lightPurple,
+            ),
           ),
         ],
+      ),
+    );
+
+    setState(() {
+      _shouldExit = result ?? false;
+    });
+
+    if (_shouldExit) {
+      SystemNavigator.pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, result) {
+        if (!didPop) {
+          _showExitDialog();
+        }
+      },
+
+      child: Scaffold(
+        extendBody: true,
+        body: _pages[_selectedIndex],
+        bottomNavigationBar:
+            // Actual BottomNavigationBar (with transparent background)
+            BottomNavigationBar(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              elevation: 0,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              selectedItemColor: Theme.of(context).colorScheme.inversePrimary,
+              unselectedItemColor: Theme.of(context).colorScheme.tertiary,
+              showUnselectedLabels: true,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.cabin_outlined),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  label: 'Bookings',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.manage_history),
+                  label: 'Manage',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.emoji_people_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
       ),
     );
   }

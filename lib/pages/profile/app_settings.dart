@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -17,45 +16,17 @@ class _AppSettingsState extends State<AppSettings> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppSettingsTopBar(),
+              SizedBox(height: 10),
+              AppSettingsPage(),
+            ],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [AppSettingsTopBar(), AppSettingsPage()],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -77,21 +48,21 @@ class AppSettingsPage extends StatelessWidget {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText1,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: const Color.fromARGB(32, 137, 43, 226),
+          color: Theme.of(context).colorScheme.inversePrimary,
         ),
         child: CustomText(
           text: label,
@@ -117,14 +88,14 @@ class AppSettingsPage extends StatelessWidget {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Transform.scale(
@@ -152,6 +123,7 @@ class AppSettingsPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).colorScheme.secondary,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Column(
@@ -164,7 +136,7 @@ class AppSettingsPage extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(32, 137, 43, 226),
+                      color: Theme.of(context).colorScheme.inversePrimary,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -178,7 +150,7 @@ class AppSettingsPage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: TextSizes.subtitle2,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -257,13 +229,7 @@ class AppSettingsTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -275,15 +241,13 @@ class AppSettingsTopBar extends StatelessWidget {
                 children: [
                   CustomText(
                     text: 'App Settings',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.primary,
                     textSize: TextSizes.heading2,
                     textWeight: FontWeight.w900,
                   ),
                   CustomText(
                     text: 'Manage your settings',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.subtitle2,
                   ),
                 ],

@@ -16,49 +16,17 @@ class PaymentMethods extends StatelessWidget {
     userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
     final user = userProvider.user;
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PaymentMethodTopBar(),
+              PaymentMethodMiddleBar(),
+              const SizedBox(height: 30),
+            ],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PaymentMethodTopBar(),
-                  PaymentMethodMiddleBar(),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -71,13 +39,7 @@ class PaymentMethodTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -89,15 +51,13 @@ class PaymentMethodTopBar extends StatelessWidget {
                 children: [
                   CustomText(
                     text: 'Payment Methods',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.primary,
                     textSize: TextSizes.heading2,
                     textWeight: FontWeight.w900,
                   ),
                   CustomText(
                     text: 'Manage cards & payments',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.subtitle2,
                   ),
                 ],
@@ -151,15 +111,15 @@ class PaymentMethodMiddleBar extends StatelessWidget {
                     colors: const [
                       Color.fromARGB(
                         207,
-                        109,
-                        102,
-                        246,
+                        176,
+                        176,
+                        176,
                       ), // Right (periwinkle blue-purple)
                       Color.fromARGB(
-                        202,
-                        165,
-                        88,
-                        242,
+                        201,
+                        100,
+                        100,
+                        100,
                       ), // Left (light pink-purple)
                     ],
                   ),
