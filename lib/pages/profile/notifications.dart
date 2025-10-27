@@ -2,10 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/providers/user_provider.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
@@ -21,45 +19,17 @@ class _NotificationsState extends State<Notifications> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NotificationsTopBar(),
+              const SizedBox(height: 10),
+              NotificationSettingsPage(),
+            ],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [NotificationsTopBar(), NotificationSettingsPage()],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -103,8 +73,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     required String title,
     required String subtitle,
     required String keyName,
-    Color iconColor = AppColors.secondary,
   }) {
+    final Color iconColor = Theme.of(context).colorScheme.primary;
     final value = user.notificationSettings[keyName] ?? true;
 
     return ListTile(
@@ -114,14 +84,14 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: TextSizes.bodyText2,
-          color: Theme.of(context).textTheme.bodyMedium?.color,
+          color: Theme.of(context).colorScheme.surface,
         ),
       ),
       trailing: Transform.scale(
@@ -143,6 +113,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).colorScheme.secondary,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
@@ -153,9 +124,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               child: Text(
                 title,
                 style: TextStyle(
-                  fontSize: TextSizes.subtitle2,
+                  fontSize: TextSizes.subtitle1,
                   fontWeight: FontWeight.w800,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -231,13 +202,7 @@ class NotificationsTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -253,9 +218,7 @@ class NotificationsTopBar extends StatelessWidget {
                     children: [
                       CustomText(
                         text: 'Notifications',
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.headlineLarge?.color,
+                        textColor: Theme.of(context).colorScheme.primary,
                         textSize: TextSizes.heading2,
                         textWeight: FontWeight.w900,
                       ),
@@ -263,9 +226,7 @@ class NotificationsTopBar extends StatelessWidget {
                   ),
                   CustomText(
                     text: 'Manage how you recieve updates',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.bodyText1,
                   ),
                 ],

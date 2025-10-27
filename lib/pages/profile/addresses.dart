@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -18,51 +17,19 @@ class Addresses extends StatelessWidget {
     userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
     final user = userProvider.user;
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AddressesTopBar(),
+              user!.locations.isEmpty
+                  ? NoAddressBookScreen()
+                  : AddressesMiddleBar(),
+              const SizedBox(height: 30),
+            ],
           ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
-            ),
-          ),
-          SingleChildScrollView(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AddressesTopBar(),
-                  user!.locations.isEmpty
-                      ? NoAddressBookScreen()
-                      : AddressesMiddleBar(),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -75,13 +42,7 @@ class AddressesTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
       child: Column(
         children: [
           const SizedBox(height: 50),
@@ -93,15 +54,13 @@ class AddressesTopBar extends StatelessWidget {
                 children: [
                   CustomText(
                     text: 'Addresses',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.primary,
                     textSize: TextSizes.heading2,
                     textWeight: FontWeight.w900,
                   ),
                   CustomText(
                     text: 'Manage your saved locations',
-                    textColor: Theme.of(
-                      context,
-                    ).textTheme.headlineMedium?.color,
+                    textColor: Theme.of(context).colorScheme.surface,
                     textSize: TextSizes.subtitle2,
                   ),
                 ],
@@ -141,16 +100,20 @@ class AddressesMiddleBar extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.centerRight,
               end: Alignment.centerLeft,
-              colors: [Color(0xFF9335EA), Color(0xFFB461F5), Color(0xFF9335EA)],
+              colors: [
+                Color.fromARGB(255, 217, 217, 217),
+                Color.fromARGB(255, 191, 191, 191),
+                Color.fromARGB(255, 95, 95, 95),
+              ],
             ),
             icon: Icon(
               FontAwesomeIcons.plus,
-              color: Theme.of(context).textTheme.headlineLarge?.color,
+              color: Theme.of(context).colorScheme.inversePrimary,
               size: IconSizes.small,
             ),
             textWidget: CustomText(
               text: 'Add New Address',
-              textColor: Theme.of(context).textTheme.headlineLarge?.color,
+              textColor: Theme.of(context).colorScheme.inversePrimary,
               textSize: TextSizes.subtitle2,
               textWeight: FontWeight.bold,
             ),
@@ -163,7 +126,7 @@ class AddressesMiddleBar extends StatelessWidget {
               child: CustomText(
                 text: "No saved addresses yet.",
                 textSize: TextSizes.bodyText2,
-                textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                textColor: Theme.of(context).colorScheme.surface,
               ),
             )
           else
@@ -183,21 +146,21 @@ class AddressesMiddleBar extends StatelessWidget {
                   case 'home':
                     icon = Icon(
                       Icons.cottage,
-                      color: Color(0xFF9335EA),
+                      color: Theme.of(context).colorScheme.primary,
                       size: IconSizes.tiny,
                     );
                     break;
                   case 'work':
                     icon = Icon(
                       Icons.apartment,
-                      color: Color(0xFF9335EA),
+                      color: Theme.of(context).colorScheme.primary,
                       size: IconSizes.tiny,
                     );
                     break;
                   default:
                     icon = Icon(
                       FontAwesomeIcons.locationDot,
-                      color: Color(0xFF9335EA),
+                      color: Theme.of(context).colorScheme.primary,
                       size: IconSizes.tiny,
                     );
                 }
@@ -312,7 +275,7 @@ class LocationButton extends StatelessWidget {
       margin: EdgeInsets.symmetric(vertical: 7),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(7),
-        color: Theme.of(context).textTheme.headlineLarge?.color,
+        color: Theme.of(context).colorScheme.inversePrimary,
         boxShadow: [
           BoxShadow(
             color: Theme.of(context).colorScheme.shadow,
@@ -331,7 +294,7 @@ class LocationButton extends StatelessWidget {
               Container(
                 padding: EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: Color.fromARGB(32, 137, 43, 226),
+                  color: Theme.of(context).colorScheme.secondary,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Transform.scale(
@@ -368,12 +331,9 @@ class LocationButton extends StatelessWidget {
                             ? RegularIconButton(
                                 onPressed: () {},
                                 borderRadius: 50,
-                                backgroundColor: Color.fromARGB(
-                                  50,
-                                  138,
-                                  43,
-                                  226,
-                                ),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 icon: Icon(
                                   FontAwesomeIcons.solidStar,
                                   color: Colors.amber,
@@ -381,7 +341,9 @@ class LocationButton extends StatelessWidget {
                                 ),
                                 textWidget: CustomText(
                                   text: 'Default',
-                                  textColor: Color(0xFF9335EA),
+                                  textColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
                                   textSize: TextSizes.bodyText2,
                                   textWeight: FontWeight.bold,
                                 ),
@@ -400,28 +362,28 @@ class LocationButton extends StatelessWidget {
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color.fromARGB(115, 204, 204, 255),
+                            color: Theme.of(context).colorScheme.secondary,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           padding: EdgeInsets.all(5),
                           child: Icon(
                             FontAwesomeIcons.penToSquare,
                             size: IconSizes.small,
-                            color: Color(0xFF9335EA),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
 
                         const SizedBox(width: 15),
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color.fromARGB(115, 204, 204, 255),
+                            color: Theme.of(context).colorScheme.secondary,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           padding: EdgeInsets.all(5),
                           child: Icon(
                             FontAwesomeIcons.trash,
                             size: IconSizes.small,
-                            color: Color(0xFF9335EA),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ],
@@ -431,12 +393,12 @@ class LocationButton extends StatelessWidget {
               ),
               CustomText(
                 text: textWidget2!,
-                textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                textColor: Theme.of(context).colorScheme.surface,
                 textSize: TextSizes.bodyText2,
               ),
               CustomText(
                 text: textWidget3,
-                textColor: Theme.of(context).textTheme.bodyMedium?.color,
+                textColor: Theme.of(context).colorScheme.surface,
                 textSize: TextSizes.bodyText2,
               ),
             ],
@@ -464,8 +426,8 @@ class NoAddressBookScreen extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color.fromARGB(255, 250, 225, 255),
-                  Color.fromARGB(255, 221, 217, 245),
+                  Color.fromARGB(255, 244, 244, 244),
+                  Color.fromARGB(255, 183, 183, 183),
                 ],
               ),
             ),
@@ -475,7 +437,7 @@ class NoAddressBookScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 35,
-                  backgroundColor: Color(0xFF9A5DF1),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   child: Icon(
                     Icons.location_on,
                     color: Theme.of(context).colorScheme.inversePrimary,
@@ -507,19 +469,19 @@ class NoAddressBookScreen extends StatelessWidget {
                     begin: Alignment.centerRight,
                     end: Alignment.centerLeft,
                     colors: const [
-                      Color(0xFF6D66F6), // Main purple tone
-                      Color(0xFF9335EA),
+                      Color.fromARGB(255, 175, 175, 175), // Main purple tone
+                      Color.fromARGB(255, 71, 71, 71),
                       // Lighter lavender
                     ],
                   ),
                   icon: Icon(
                     FontAwesomeIcons.plus,
-                    color: Theme.of(context).textTheme.headlineLarge?.color,
+                    color: Theme.of(context).colorScheme.inversePrimary,
                     size: IconSizes.small,
                   ),
                   textWidget: CustomText(
                     text: 'Add Your First Address',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
+                    textColor: Theme.of(context).colorScheme.inversePrimary,
                     textSize: TextSizes.subtitle2,
                     textWeight: FontWeight.bold,
                   ),
@@ -645,11 +607,14 @@ void showAddLocationDialog(BuildContext context) {
         builder: (context, setState) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(25),
             ),
             child: Container(
-              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-
+              padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSecondary,
+                borderRadius: BorderRadius.circular(25),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -978,14 +943,9 @@ void showAddLocationDialog(BuildContext context) {
                             }
                           },
                           borderRadius: 7,
-                          gradient: const LinearGradient(
-                            begin: Alignment.centerRight,
-                            end: Alignment.centerLeft,
-                            colors: [
-                              Color.fromARGB(255, 73, 64, 241),
-                              Color.fromARGB(255, 149, 60, 237),
-                            ],
-                          ),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           textWidget: CustomText(
                             text: 'Add Address',
