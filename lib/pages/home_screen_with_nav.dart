@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/pages/bookings/bookings_screen.dart';
 import 'package:omeeowash/pages/home/home_screen.dart';
-import 'package:omeeowash/pages/manage_bookings/manage_bookings.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
 
 class HomeScreenWithNav extends StatefulWidget {
@@ -21,8 +20,7 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   final List<Widget> _pages = [
     HomeScreen(), // Index 0
     BookingScreen(), // Index 1
-    ManageBookingsScreen(), // Index 2
-    ProfileScreen(), // Index 3
+    ProfileScreen(), // Index 2
   ];
 
   @override
@@ -33,11 +31,8 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
       case 'booking':
         _selectedIndex = 1;
         break;
-      case 'manageBooking':
-        _selectedIndex = 2;
-        break;
       case 'profile':
-        _selectedIndex = 3;
+        _selectedIndex = 2;
         break;
       case 'home':
       default:
