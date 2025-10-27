@@ -293,6 +293,8 @@ class ActiveTabScreen extends StatelessWidget {
               final dt = _extractDate(b['scheduledTime']);
               final serviceType = '${b['serviceType'] ?? ''}';
               final canonical = _canonicalStatus(b['status']);
+              final bSenderId = b["userId"];
+              final bRecieverId = b['decision']['byUid'] ?? "";
 
               // wash schema (unchanged)
               final List<String> stageOrder =
@@ -316,7 +318,12 @@ class ActiveTabScreen extends StatelessWidget {
               final String? decisionReason = (decision['reason'] as String?)
                   ?.trim();
               final DateTime? decisionAt = _toDate(decision['at']);
+              final bookingId = b["bookingId"];
+
               return BookingsServiceButton(
+                bookingRecieverId: bRecieverId,
+                bookingSenderId: bSenderId,
+                bookingId: bookingId,
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
                 status: canonical,
@@ -327,7 +334,6 @@ class ActiveTabScreen extends StatelessWidget {
                   return d == null ? '⏱️ —' : '⏱️ $d min';
                 })(),
                 price: (b['price']?.toString()),
-                bookingId: b['__docId'],
                 // details
                 address: b['address'] as String?,
                 latitude: (b['latitude'] as num?)?.toDouble(),
@@ -419,8 +425,9 @@ class HistoryTabScreen extends StatelessWidget {
               final b = items[i];
               final dt = _extractDate(b['scheduledTime']);
               final serviceType = '${b['serviceType']}'.trim();
-
+              final bookingId = b["bookingId"];
               return BookingsServiceButton(
+                bookingId: bookingId,
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
                 status: '${b['status']}',

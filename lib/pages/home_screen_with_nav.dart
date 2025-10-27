@@ -17,7 +17,7 @@ class HomeScreenWithNav extends StatefulWidget {
 class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
+  final List<Widget> _pages = const [
     HomeScreen(), // Index 0
     BookingScreen(), // Index 1
     ManageBookingsScreen(), // Index 2
@@ -27,7 +27,7 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
   @override
   void initState() {
     super.initState();
-    // Set the initial tab based on the `view` argument
+    // Set the initial tab based on the view argument
     switch (widget.view.toLowerCase()) {
       case 'booking':
         _selectedIndex = 1;
@@ -68,7 +68,7 @@ class _HomeScreenWithNavState extends State<HomeScreenWithNav> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 "Are you sure you want to close the app?",
                 style: TextStyle(

@@ -854,6 +854,22 @@ class FirebaseService {
     }
   }
 
+  Future<void> toggleIsOnline(bool value) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'isOnline': value,
+        'lastSeen': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('✅ User online status updated: $value');
+    } catch (e) {
+      // With Firestore offline persistence, this will queue and sync later.
+      debugPrint('❌ Failed to update online status: $e');
+    }
+  }
+
   //----------------------------------------------------------------------------
   /// Handles user sign-out from Firebase, Google (if applicable),
   /// clears user data from the provider and cache, and navigates to the login screen.
@@ -864,6 +880,8 @@ class FirebaseService {
 
       // 🧹 Remove FCM token before signing out
       await NotificationService().removeToken();
+
+      await toggleIsOnline(false);
 
       // Sign out from Firebase Authentication
       await auth.signOut();

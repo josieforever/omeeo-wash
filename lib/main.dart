@@ -55,24 +55,6 @@ Future<void> main() async {
     startScreen = const HomeScreenWithNav(view: 'home');
   }
 
-  // 🔍 Determine user role
-  Future<void> checkUserRole(String uid) async {
-    final userSnapshot = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(uid)
-        .get();
-    bool isAdmin = userSnapshot.data()?['isAdmin'] ?? false;
-    AppConfig().setAdmin(isAdmin);
-  }
-
-  FirebaseAuth.instance.authStateChanges().listen((user) async {
-    if (user != null) {
-      await checkUserRole(user.uid);
-    } else {
-      AppConfig().setAdmin(false);
-    }
-  });
-
   // 🗃️ Initialize local DB (Isar)
   final dir = await getApplicationDocumentsDirectory();
   final isar = await Isar.open([MessageSchema], directory: dir.path);
@@ -99,8 +81,8 @@ Future<void> main() async {
 }
 
 class MyApp extends StatefulWidget {
-  final Widget startScreen;
-  const MyApp({super.key, required this.startScreen});
+  final Widget? startScreen;
+  const MyApp({super.key, this.startScreen});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -125,6 +107,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  void listenToAuthChanges() {
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        toggleIsOnline(true);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +124,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       }
     });
     WidgetsBinding.instance.addObserver(this);
+    listenToAuthChanges();
   }
 
   @override
@@ -159,7 +150,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final localeProvider = Provider.of<LocaleProvider>(context);
 
     return MaterialApp(
-      // builder: (context, child) => NetworkListener(),
       builder: (context, child) =>
           NetworkListener(child: child ?? const SizedBox()),
       title: 'Omeeo Wash',
