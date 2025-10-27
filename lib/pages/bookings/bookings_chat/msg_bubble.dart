@@ -27,7 +27,7 @@ import 'package:omeeowash/services/local_chat_storage.dart';
 // }
 
 class MsgBubble extends StatelessWidget {
-  final Message message; // full message
+  final String text; // full message
   final bool isPreviouseMessageMine;
   final bool isFirstSequence;
   final String timestamp;
@@ -37,7 +37,7 @@ class MsgBubble extends StatelessWidget {
 
   const MsgBubble({
     super.key,
-    required this.message,
+    required this.text,
     required this.isPreviouseMessageMine,
     required this.isFirstSequence,
     required this.timestamp,
@@ -61,7 +61,6 @@ class MsgBubble extends StatelessWidget {
     );
 
     // Text-only content (no file/media loading)
-    final String text = (message.text ?? '').trim();
 
     return Stack(
       children: [

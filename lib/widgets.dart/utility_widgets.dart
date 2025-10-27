@@ -6,6 +6,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:lottie/lottie.dart';
+import 'package:omeeowash/pages/bookings/bookings_chat/bookings_chat.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -1336,7 +1337,15 @@ class PendingPanel extends StatelessWidget {
 }
 
 class ConfirmedPanel extends StatelessWidget {
-  const ConfirmedPanel({super.key});
+  final String bookingRecieverId;
+  final String bookingId;
+  final String bookingSenderId;
+  const ConfirmedPanel({
+    super.key,
+    required this.bookingRecieverId,
+    required this.bookingId,
+    required this.bookingSenderId,
+  });
 
   String getInitials(String name) {
     final parts = name.trim().split(' ');
@@ -1480,7 +1489,17 @@ class ConfirmedPanel extends StatelessWidget {
                         textSize: TextSizes.bodyText1,
                         textWeight: FontWeight.bold,
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (BuildContext context) => BookingsChat(
+                              bookingId: bookingId,
+                              bookingRecieverId: bookingRecieverId,
+                              bookingSenderId: bookingSenderId,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1967,6 +1986,8 @@ class StatusTabScreen extends StatelessWidget {
               final serviceType = '${b['serviceType'] ?? ''}';
               final canonical = _canonicalStatus(b['status']);
               final bookingId = b['__id'] as String;
+              final bSenderId = b["userId"];
+              final bRecieverId = b['decision']['byUid'] ?? "";
 
               // Preferred shape: washProgress { order, stages }
               final List<dynamic>? listStages =
@@ -1982,6 +2003,8 @@ class StatusTabScreen extends StatelessWidget {
                   .toList();
 
               return BookingsServiceButton(
+                bookingRecieverId: bRecieverId,
+                bookingSenderId: bSenderId,
                 bookingId: bookingId, // enables live progress panel
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
@@ -2036,6 +2059,8 @@ class BookingsServiceButton extends StatelessWidget {
 
   // Live / static wash progress
   final String? bookingId; // enable live stream in panel
+  final String? bookingSenderId; // enable live stream in panel
+  final String? bookingRecieverId; // enable live stream in panel
   final List<String>? washStageOrder; // e.g. ["pre_rinse","washing",...]
   final Map<String, dynamic>? washStages; // { pre_rinse: {status,...}, ... }
   final List<dynamic>?
@@ -2071,6 +2096,8 @@ class BookingsServiceButton extends StatelessWidget {
     this.washStageOrder,
     this.washStages,
     this.washProgressStages,
+    this.bookingSenderId,
+    this.bookingRecieverId,
   });
   @override
   Widget build(BuildContext context) {
@@ -2200,7 +2227,9 @@ class BookingsServiceButton extends StatelessWidget {
             _statusPanel(
               context,
               statusLabel,
-              bookingId: bookingId,
+              bookingId: bookingId ?? "",
+              bookingRecieverId: bookingRecieverId ?? "",
+              bookingSenderId: bookingSenderId ?? "",
               order: washStageOrder,
               stagesMap: washStages,
               listStages: washProgressStages,
@@ -2215,7 +2244,9 @@ class BookingsServiceButton extends StatelessWidget {
   Widget _statusPanel(
     BuildContext context,
     String statusLabel, {
-    String? bookingId,
+    required String bookingId,
+    required String bookingSenderId,
+    required String bookingRecieverId,
     List<String>? order,
     Map<String, dynamic>? stagesMap,
     List<dynamic>? listStages,
@@ -2241,7 +2272,13 @@ class BookingsServiceButton extends StatelessWidget {
     }
     if (s.contains('completed')) return const CompletedPanel();
     if (s.contains('cancel')) return const CancelledPanel();
-    if (s.contains('confirmed')) return const ConfirmedPanel();
+    if (s.contains('confirmed')) {
+      return ConfirmedPanel(
+        bookingRecieverId: bookingRecieverId,
+        bookingId: bookingId,
+        bookingSenderId: bookingSenderId,
+      );
+    }
     return const PendingPanel();
   }
 

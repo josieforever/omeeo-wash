@@ -372,6 +372,8 @@ class StatusTabScreen extends StatelessWidget {
               final dt = _extractDate(b['scheduledTime']);
               final serviceType = '${b['serviceType'] ?? ''}';
               final canonical = _canonicalStatus(b['status']);
+              final bSenderId = b["userId"];
+              final bRecieverId = b['decision']['byUid'] ?? "";
 
               // ✅ read from the standardized schema
               final List<String> stageOrder =
@@ -384,6 +386,9 @@ class StatusTabScreen extends StatelessWidget {
                   const {};
 
               return BookingsServiceButton(
+                bookingRecieverId: bRecieverId,
+                bookingSenderId: bSenderId,
+                bookingId: bSenderId,
                 service: _serviceLabel(serviceType),
                 serviceLocation: _locationLabel(b),
                 status: canonical,
