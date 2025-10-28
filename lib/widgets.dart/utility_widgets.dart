@@ -2420,10 +2420,11 @@ class BookingsServiceButton extends StatelessWidget {
 
         // pass decision info through
         decisionType: decisionType,
-        decisionByUid: decisionByUid,
+        decisionByUid: bookingRecieverId,
         decisionByName: decisionByName,
         decisionReason: decisionReason,
         decisionAt: decisionAt,
+        bookingSenderId: bookingSenderId,
       );
     }
 
@@ -2782,16 +2783,17 @@ class BookingsServiceButton extends StatelessWidget {
                   // In-progress panel or help text
                   if (isInProgress) ...[
                     CurrentlyWashingPanelModalSheet(
-                      bookingId: bookingId, // you'll already pass this in
+                      bookingId: bookingId ?? "", // you'll already pass this in
                       washStageOrder: washStageOrder,
                       washStages: washStages,
                       stages: _vmFromFirestoreList(washProgressStages),
 
                       decisionType: decisionType,
-                      decisionByUid: decisionByUid,
+                      decisionByUid: decisionByUid ?? "",
                       decisionByName: decisionByName,
                       decisionReason: decisionReason,
                       decisionAt: decisionAt,
+                      bookingSenderId: bookingSenderId ?? "",
                     ),
                     const SizedBox(height: 16),
                   ] else
@@ -2939,7 +2941,7 @@ class BookingsServiceButton extends StatelessWidget {
 
 class CurrentlyWashingPanel extends StatelessWidget {
   // Live mode: pass bookingId to stream changes from Firestore
-  final String? bookingId;
+  final String bookingId;
 
   // Static fallback data (used if bookingId is null, or for first paint)
   final List<String>?
@@ -2949,22 +2951,24 @@ class CurrentlyWashingPanel extends StatelessWidget {
 
   // Decision/assignment info (can be overridden by live snapshot)
   final String? decisionType; // "confirm" | "decline" | ...
-  final String? decisionByUid;
+  final String decisionByUid;
+  final String bookingSenderId;
   final String? decisionByName;
   final String? decisionReason;
   final DateTime? decisionAt;
 
   const CurrentlyWashingPanel({
     super.key,
-    this.bookingId,
+    required this.bookingId,
     this.washStageOrder,
     this.washStages,
     this.stages,
     this.decisionType,
-    this.decisionByUid,
+    required this.decisionByUid,
     this.decisionByName,
     this.decisionReason,
     this.decisionAt,
+    required this.bookingSenderId,
   });
 
   // --- look & feel (orange theme) ---
@@ -3166,7 +3170,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
     BuildContext context,
     List<WashStageVM> items, {
     String? decisionType,
-    String? decisionByUid,
+    required String decisionByUid,
     String? decisionByName,
     String? decisionReason,
     DateTime? decisionAt,
@@ -3350,7 +3354,17 @@ class CurrentlyWashingPanel extends StatelessWidget {
                     textSize: TextSizes.bodyText1,
                     textWeight: FontWeight.bold,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) => BookingsChat(
+                          bookingId: bookingId,
+                          bookingRecieverId: decisionByUid,
+                          bookingSenderId: bookingSenderId,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -3430,7 +3444,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
 
 class CurrentlyWashingPanelModalSheet extends StatelessWidget {
   // Live mode: pass bookingId to stream changes from Firestore
-  final String? bookingId;
+  final String bookingId;
 
   // Static fallback data (used if bookingId is null, or for first paint)
   final List<String>?
@@ -3440,22 +3454,24 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
 
   // Decision/assignment info (can be overridden by live snapshot)
   final String? decisionType; // "confirm" | "decline" | ...
-  final String? decisionByUid;
+  final String decisionByUid;
+  final String bookingSenderId;
   final String? decisionByName;
   final String? decisionReason;
   final DateTime? decisionAt;
 
   const CurrentlyWashingPanelModalSheet({
     super.key,
-    this.bookingId,
+    required this.bookingId,
     this.washStageOrder,
     this.washStages,
     this.stages,
     this.decisionType,
-    this.decisionByUid,
+    required this.decisionByUid,
     this.decisionByName,
     this.decisionReason,
     this.decisionAt,
+    required this.bookingSenderId,
   });
 
   // --- look & feel (orange theme) ---
@@ -3778,7 +3794,17 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
                   textSize: TextSizes.bodyText1,
                   textWeight: FontWeight.bold,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (BuildContext context) => BookingsChat(
+                        bookingId: bookingId,
+                        bookingRecieverId: decisionByUid,
+                        bookingSenderId: bookingSenderId,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

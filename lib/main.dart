@@ -14,7 +14,6 @@ import 'package:omeeowash/notifications/local_notification_service.dart';
 import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
-import 'package:omeeowash/pages/profile/help_and_support/live_chat/app.config.dart';
 import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
