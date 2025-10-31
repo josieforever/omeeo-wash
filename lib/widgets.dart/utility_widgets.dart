@@ -1288,231 +1288,6 @@ class _RegularIconButtonState extends State<RegularIconButton> {
   }
 }
 
-class PendingPanel extends StatelessWidget {
-  const PendingPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Color(0xFFFBF8E8),
-        border: Border.all(color: Color(0xFFE9C56A), width: 1.7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: Color.fromARGB(255, 195, 152, 59),
-                    size: IconSizes.tiny,
-                  ),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: 'Awaiting Confirmation',
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                    textColor: Color.fromARGB(255, 187, 129, 4),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(width: 7),
-          CustomText(
-            text:
-                'Your booking request is being reviewed and will be confirmed shortly.',
-            textSize: TextSizes.bodyText2,
-            textColor: Theme.of(context).colorScheme.surface,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ConfirmedPanel extends StatelessWidget {
-  final String bookingRecieverId;
-  final String bookingId;
-  final String bookingSenderId;
-  const ConfirmedPanel({
-    super.key,
-    required this.bookingRecieverId,
-    required this.bookingId,
-    required this.bookingSenderId,
-  });
-
-  String getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    } else if (parts.isNotEmpty) {
-      return parts[0][0].toUpperCase();
-    } else {
-      return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final valetDriverName = "John Doe";
-    final initials = getInitials(valetDriverName);
-
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Color.fromARGB(19, 0, 158, 16),
-        border: Border.all(color: Color.fromARGB(88, 0, 158, 16), width: 1.7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: Color(0xFF2ECC71),
-                    size: IconSizes.tiny,
-                  ),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: 'Booking Confirmed',
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                    textColor: Color.fromARGB(255, 0, 102, 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(width: 7),
-          Row(
-            children: [
-              CustomText(
-                text: "You're all set. See you at the scheduled time!",
-                textSize: TextSizes.bodyText3,
-                textColor: Theme.of(context).colorScheme.surface,
-              ),
-            ],
-          ),
-
-          /*  LiveLocationProgressBar(), */
-          const SizedBox(height: 15),
-
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.inversePrimary,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 1, vertical: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const SizedBox(width: 5),
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: const Color(0xFFDFF6E3),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: TextSizes.subtitle1,
-                      color: Color.fromARGB(255, 0, 102, 10),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomText(
-                      text: valetDriverName,
-                      textSize: TextSizes.bodyText1,
-                      textWeight: FontWeight.bold,
-                    ),
-                    Row(
-                      children: [
-                        CustomText(
-                          text: 'Valet Driver',
-                          textSize: TextSizes.caption,
-                        ),
-                        const SizedBox(width: 5),
-                        CustomText(text: '. 4.9', textSize: TextSizes.caption),
-                        const SizedBox(width: 5),
-                        Icon(
-                          FontAwesomeIcons.solidStar,
-                          size: 10,
-                          color: Colors.amber,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Expanded(child: SizedBox()),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    RegularButton(
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
-                      borderRadius: 15,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 8,
-                      ),
-                      textWidget: CustomText(
-                        text: 'Call',
-                        textSize: TextSizes.bodyText1,
-                        textWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    RegularIconButton(
-                      icon: Icon(Icons.chat, size: IconSizes.minute),
-                      backgroundColor: Theme.of(context).colorScheme.secondary,
-                      borderRadius: 15,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 8,
-                      ),
-                      textWidget: CustomText(
-                        text: 'Chat',
-                        textSize: TextSizes.bodyText1,
-                        textWeight: FontWeight.bold,
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (BuildContext context) => BookingsChat(
-                              bookingId: bookingId,
-                              bookingRecieverId: bookingRecieverId,
-                              bookingSenderId: bookingSenderId,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 5),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class LiveLocationProgressBar extends StatefulWidget {
   const LiveLocationProgressBar({super.key});
 
@@ -1590,116 +1365,6 @@ class _LiveLocationProgressBarState extends State<LiveLocationProgressBar> {
     );
   }
 }
-
-class CompletedPanel extends StatelessWidget {
-  const CompletedPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Color.fromARGB(255, 232, 238, 251),
-        border: Border.all(
-          color: Color.fromARGB(255, 106, 148, 233),
-          width: 1.7,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: Color.fromARGB(255, 59, 104, 195),
-                    size: IconSizes.tiny,
-                  ),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: 'Wash Completed',
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                    textColor: Color.fromARGB(255, 4, 47, 187),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(width: 7),
-          Row(
-            children: [
-              CustomText(
-                text: 'Your car wash has been completed successfully!',
-                textSize: TextSizes.bodyText2,
-                textColor: Theme.of(context).colorScheme.surface,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CancelledPanel extends StatelessWidget {
-  const CancelledPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Color.fromARGB(255, 251, 232, 232),
-        border: Border.all(
-          color: Color.fromARGB(255, 233, 106, 106),
-          width: 1.7,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    color: Color.fromARGB(255, 195, 59, 59),
-                    size: IconSizes.tiny,
-                  ),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: 'Wash Cancelled',
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.bold,
-                    textColor: Color.fromARGB(255, 187, 4, 4),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(width: 7),
-          Row(
-            children: [
-              CustomText(
-                text: 'Your wash has been cancelled!',
-                textSize: TextSizes.bodyText2,
-                textColor: Theme.of(context).colorScheme.surface,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ====== SHARED TYPES / HELPERS ======
 
 class WashStageVM {
   final String key; // e.g. "pre_rinse"
@@ -1803,8 +1468,6 @@ List<WashStageVM> _vmFromFirestoreList(
   );
   return out;
 }
-
-// ====== SCREENS ======
 
 class StatusTabScreen extends StatelessWidget {
   const StatusTabScreen({super.key});
@@ -2042,8 +1705,6 @@ class StatusTabScreen extends StatelessWidget {
   }
 }
 
-// ====== BOOKING ITEM ======
-
 class BookingsServiceButton extends StatelessWidget {
   // Core fields
   final String service;
@@ -2118,8 +1779,6 @@ class BookingsServiceButton extends StatelessWidget {
     final serviceLabel = _serviceLabel(service);
     final locationLabel = _serviceLocationLabel(serviceLocation);
     final statusLabel = _statusLabel(status);
-
-    debugPrint('iurgo8wegowhgliwe7 ===============>>>>>>>>>> $bookingId');
 
     return GestureDetector(
       onTap: () => _openDetailsSheet(
@@ -2435,6 +2094,11 @@ class BookingsServiceButton extends StatelessWidget {
         bookingRecieverId: bookingRecieverId,
         bookingId: bookingId,
         bookingSenderId: bookingSenderId,
+        decisionType: decisionType,
+        decisionByUid: bookingRecieverId,
+        decisionByName: decisionByName,
+        decisionReason: decisionReason,
+        decisionAt: decisionAt,
       );
     }
     return const PendingPanel();
@@ -2461,6 +2125,7 @@ class BookingsServiceButton extends StatelessWidget {
     String chipText;
     final s = statusLabel.toLowerCase();
     final isInProgress = s.contains('progress') || s == 'in_progress';
+    final isInConfirmed = s.contains('confirm') || s == 'confirmed';
 
     if (s.contains('pending')) {
       chipBg = const Color(0xFFFFF7DA);
@@ -2780,14 +2445,25 @@ class BookingsServiceButton extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
+                  if (isInConfirmed)
+                    ConfirmedPanelModalSHeet(
+                      bookingRecieverId: bookingRecieverId ?? "",
+                      bookingId: bookingId ?? "",
+                      bookingSenderId: bookingSenderId ?? "",
+                      decisionType: decisionType,
+                      decisionByUid: bookingRecieverId,
+                      decisionByName: decisionByName,
+                      decisionReason: decisionReason,
+                      decisionAt: decisionAt,
+                    ),
+
                   // In-progress panel or help text
-                  if (isInProgress) ...[
+                  if (isInProgress)
                     CurrentlyWashingPanelModalSheet(
                       bookingId: bookingId ?? "", // you'll already pass this in
                       washStageOrder: washStageOrder,
                       washStages: washStages,
                       stages: _vmFromFirestoreList(washProgressStages),
-
                       decisionType: decisionType,
                       decisionByUid: decisionByUid ?? "",
                       decisionByName: decisionByName,
@@ -2795,9 +2471,7 @@ class BookingsServiceButton extends StatelessWidget {
                       decisionAt: decisionAt,
                       bookingSenderId: bookingSenderId ?? "",
                     ),
-                    const SizedBox(height: 16),
-                  ] else
-                    statusHelpPanel(),
+                  if (!isInConfirmed && !isInProgress) statusHelpPanel(),
                 ],
               ),
             );
@@ -2935,9 +2609,113 @@ class BookingsServiceButton extends StatelessWidget {
   }
 }
 
-// Simple VM (keep where you define other models if you prefer
+class CompletedPanel extends StatelessWidget {
+  const CompletedPanel({super.key});
 
-// ====== PROGRESS PANEL ======
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(255, 232, 238, 251),
+        border: Border.all(
+          color: Color.fromARGB(255, 106, 148, 233),
+          width: 1.7,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 59, 104, 195),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Wash Completed',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 4, 47, 187),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          Row(
+            children: [
+              CustomText(
+                text: 'Your car wash has been completed successfully!',
+                textSize: TextSizes.bodyText2,
+                textColor: Theme.of(context).colorScheme.surface,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CancelledPanel extends StatelessWidget {
+  const CancelledPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(255, 251, 232, 232),
+        border: Border.all(
+          color: Color.fromARGB(255, 233, 106, 106),
+          width: 1.7,
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 195, 59, 59),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Wash Cancelled',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 187, 4, 4),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          Row(
+            children: [
+              CustomText(
+                text: 'Your wash has been cancelled!',
+                textSize: TextSizes.bodyText2,
+                textColor: Theme.of(context).colorScheme.surface,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class CurrentlyWashingPanel extends StatelessWidget {
   // Live mode: pass bookingId to stream changes from Firestore
@@ -3309,21 +3087,35 @@ class CurrentlyWashingPanel extends StatelessWidget {
             ),
 
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CustomText(
-                  text: name,
-                  textSize: TextSizes.bodyText1,
-                  textWeight: FontWeight.bold,
-                ),
-                CustomText(
-                  text: 'Professional Washer',
-                  textSize: TextSizes.caption,
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: TextSizes.bodyText1,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // Subtitle (ellipsized)
+                  Text(
+                    'Professional Washer',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: TextSizes.caption,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
+            const SizedBox(width: 10),
             Row(
               children: [
                 RegularButton(
@@ -3735,34 +3527,35 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
                   ),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CustomText(
-                text: name,
-                textSize: TextSizes.bodyText1,
-                textWeight: FontWeight.bold,
-              ),
-
-              CustomText(
-                text: 'Professional Washer',
-                textSize: TextSizes.caption,
-              ),
-
-              Row(
-                children: [
-                  const Icon(
-                    FontAwesomeIcons.solidStar,
-                    size: 10,
-                    color: Colors.amber,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: TextSizes.bodyText1,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
                   ),
-                  const CustomText(text: '4.9', textSize: TextSizes.caption),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 2),
+                // Subtitle (ellipsized)
+                Text(
+                  'Professional Washer',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: TextSizes.caption,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
           ),
-
-          const Spacer(),
+          const SizedBox(width: 10),
           Column(
             children: [
               RegularIconButton(
@@ -3985,6 +3778,767 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
   }
 }
 
+class PendingPanel extends StatelessWidget {
+  const PendingPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Color(0xFFFBF8E8),
+        border: Border.all(color: Color(0xFFE9C56A), width: 1.7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    color: Color.fromARGB(255, 195, 152, 59),
+                    size: IconSizes.tiny,
+                  ),
+                  const SizedBox(width: 5),
+                  CustomText(
+                    text: 'Awaiting Confirmation',
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                    textColor: Color.fromARGB(255, 187, 129, 4),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(width: 7),
+          CustomText(
+            text:
+                'Your booking request is being reviewed and will be confirmed shortly.',
+            textSize: TextSizes.bodyText2,
+            textColor: Theme.of(context).colorScheme.surface,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ConfirmedPanel extends StatelessWidget {
+  // Required
+  final String bookingRecieverId;
+  final String bookingId;
+  final String bookingSenderId;
+
+  // Decision/assignment (optional – will be overridden by live user doc name/photo when available)
+  final String? decisionType; // "confirm" | "decline" | ...
+  final String? decisionByUid; // usually the assigned driver's uid
+  final String? decisionByName;
+  final String? decisionReason;
+  final DateTime? decisionAt;
+
+  const ConfirmedPanel({
+    super.key,
+    required this.bookingRecieverId,
+    required this.bookingId,
+    required this.bookingSenderId,
+    this.decisionType,
+    this.decisionByUid,
+    this.decisionByName,
+    this.decisionReason,
+    this.decisionAt,
+  });
+
+  // ——— palette (green theme for confirmed) ———
+  static const Color _accent = Color(0xFF2ECC71);
+  static const Color _accentText = Color.fromARGB(255, 0, 102, 10);
+  static const Color _accentSoft = Color.fromARGB(19, 0, 158, 16);
+  static const Color _accentBorder = Color.fromARGB(88, 0, 158, 16);
+  static const Color _avatarBg = Color(0xFFDFF6E3);
+
+  String _initialsFrom(String? fullName) {
+    final s = (fullName ?? '').trim();
+    if (s.isEmpty) return '??';
+    final parts = s.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final first = parts.isNotEmpty ? parts[0] : '';
+    final second = parts.length > 1 ? parts[1] : '';
+    final i1 = first.isNotEmpty ? first[0] : '';
+    final i2 = second.isNotEmpty ? second[0] : '';
+    final out = ('$i1$i2').toUpperCase();
+    return out.isEmpty ? s[0].toUpperCase() : out;
+  }
+
+  String _prettyDecisionType(String? t) {
+    final v = (t ?? '').trim().toLowerCase();
+    if (v == 'confirm') return 'Confirmed';
+    if (v == 'decline') return 'Declined';
+    if (v.isEmpty) return 'Assigned';
+    return v[0].toUpperCase() + v.substring(1);
+  }
+
+  Widget _driverCard({
+    required BuildContext context,
+    required String name,
+    String? photoUrl,
+  }) {
+    final initials = _initialsFrom(name);
+
+    // Only create an ImageProvider if the URL is non-empty.
+    ImageProvider? _netIfValid(String? url) {
+      if (url == null) return null;
+      final u = url.trim();
+      if (u.isEmpty) return null;
+      return NetworkImage(u);
+    }
+
+    final img = _netIfValid(photoUrl);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.inversePrimary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
+      child: Row(
+        children: [
+          const SizedBox(width: 5),
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: _accentSoft,
+            foregroundImage: img,
+            // Only provide the error handler when foregroundImage is non-null
+            onForegroundImageError: (img != null)
+                ? (_, __) {
+                    /* no-op */
+                  }
+                : null,
+            // Initials are always provided; they'll show if there's no image or it fails.
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontSize: TextSizes.subtitle1,
+                color: _accent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: TextSizes.bodyText1,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // Subtitle (ellipsized)
+                Text(
+                  'Professional Washer',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: TextSizes.caption,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Row(
+            children: [
+              RegularButton(
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                borderRadius: 15,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                textWidget: const CustomText(
+                  text: 'Call',
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                ),
+                onPressed: () {}, // wire up if you store driver phone
+              ),
+              const SizedBox(width: 5),
+              RegularIconButton(
+                icon: const Icon(Icons.chat, size: IconSizes.minute),
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                borderRadius: 15,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                textWidget: const CustomText(
+                  text: 'Chat',
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (BuildContext context) => BookingsChat(
+                        bookingId: bookingId,
+                        bookingRecieverId: decisionByUid!,
+                        bookingSenderId: bookingSenderId,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(width: 5),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Prefer explicit decisionByUid; otherwise fall back to the receiver id
+    final rawUid = (decisionByUid != null && decisionByUid!.trim().isNotEmpty)
+        ? decisionByUid!.trim()
+        : bookingRecieverId.trim();
+
+    // Base name while waiting for user doc
+    final shortId = rawUid.length >= 6 ? rawUid.substring(0, 6) : rawUid;
+    final baseName = (decisionByName?.trim().isNotEmpty ?? false)
+        ? decisionByName!.trim()
+        : (rawUid.isNotEmpty ? 'Driver $shortId' : 'Assigned Driver');
+
+    final decTypeLabel = _prettyDecisionType(decisionType);
+    final whenLabel = (decisionAt != null)
+        ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt!)}'
+        : '';
+
+    // shell
+    Widget shell(Widget child) => Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _accentSoft,
+        border: Border.all(color: _accentBorder, width: 1.7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: child,
+    );
+
+    // header + message
+    Widget header() => Column(
+      children: [
+        Row(
+          children: const [
+            Icon(Icons.circle, color: _accent, size: IconSizes.tiny),
+            SizedBox(width: 5),
+            CustomText(
+              text: 'Booking Confirmed',
+              textSize: TextSizes.bodyText1,
+              textWeight: FontWeight.bold,
+              textColor: _accentText,
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Row(
+          children: [
+            CustomText(
+              text: "You're all set. See you at the scheduled time!",
+              textSize: TextSizes.bodyText3,
+              textColor: Theme.of(context).colorScheme.surface,
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+      ],
+    );
+
+    // Live-read the user doc for photoUrl/displayName
+    if (rawUid.isNotEmpty) {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(rawUid);
+      return shell(
+        Column(
+          children: [
+            header(),
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: userRef.snapshots(),
+              builder: (context, snap) {
+                String name = baseName;
+                String? photoUrl;
+
+                if (snap.hasData && snap.data!.exists) {
+                  final u = snap.data!.data() ?? const {};
+                  // Try common keys
+                  photoUrl =
+                      (u['photoUrl'] as String?) ??
+                      (u['photoURL'] as String?) ??
+                      (u['avatarUrl'] as String?) ??
+                      (u['avatar'] as String?);
+
+                  if (!(decisionByName?.trim().isNotEmpty ?? false)) {
+                    name =
+                        (u['displayName'] as String?) ??
+                        (u['name'] as String?) ??
+                        baseName;
+                  }
+                }
+
+                return _driverCard(
+                  context: context,
+                  name: name,
+                  photoUrl: photoUrl,
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No uid → just show initials (no photo)
+    return shell(
+      Column(
+        children: [
+          header(),
+          _driverCard(context: context, name: baseName, photoUrl: null),
+        ],
+      ),
+    );
+  }
+}
+
+class ConfirmedPanelModalSHeet extends StatelessWidget {
+  // Required
+  final String bookingRecieverId;
+  final String bookingId;
+  final String bookingSenderId;
+
+  // Decision/assignment (optional – will be overridden by live user doc name/photo when available)
+  final String? decisionType; // "confirm" | "decline" | ...
+  final String? decisionByUid; // usually the assigned driver's uid
+  final String? decisionByName;
+  final String? decisionReason;
+  final DateTime? decisionAt;
+
+  const ConfirmedPanelModalSHeet({
+    super.key,
+    required this.bookingRecieverId,
+    required this.bookingId,
+    required this.bookingSenderId,
+    this.decisionType,
+    this.decisionByUid,
+    this.decisionByName,
+    this.decisionReason,
+    this.decisionAt,
+  });
+
+  // ——— palette (green theme for confirmed) ———
+  static const Color _accent = Color(0xFF2ECC71);
+  static const Color _accentText = Color.fromARGB(255, 0, 102, 10);
+  static const Color _accentSoft = Color.fromARGB(19, 0, 158, 16);
+  static const Color _accentBorder = Color.fromARGB(88, 0, 158, 16);
+  static const Color _avatarBg = Color(0xFFDFF6E3);
+
+  String _initialsFrom(String? fullName) {
+    final s = (fullName ?? '').trim();
+    if (s.isEmpty) return '??';
+    final parts = s.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final first = parts.isNotEmpty ? parts[0] : '';
+    final second = parts.length > 1 ? parts[1] : '';
+    final i1 = first.isNotEmpty ? first[0] : '';
+    final i2 = second.isNotEmpty ? second[0] : '';
+    final out = ('$i1$i2').toUpperCase();
+    return out.isEmpty ? s[0].toUpperCase() : out;
+  }
+
+  String _prettyDecisionType(String? t) {
+    final v = (t ?? '').trim().toLowerCase();
+    if (v == 'confirm') return 'Confirmed';
+    if (v == 'decline') return 'Declined';
+    if (v.isEmpty) return 'Assigned';
+    return v[0].toUpperCase() + v.substring(1);
+  }
+
+  Widget _roundedAvatar({
+    required BuildContext context,
+    required String displayName,
+    String? photoUrl,
+    double size = 76,
+    double radius = 15,
+  }) {
+    final initials = _initialsFrom(displayName);
+
+    Widget initialsBox() => Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _avatarBg,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Text(
+        initials,
+        style: const TextStyle(
+          fontSize: TextSizes.subtitle1,
+          color: _accentText,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+
+    if (photoUrl == null || photoUrl.trim().isEmpty) return initialsBox();
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: _avatarBg,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.network(
+        photoUrl.trim(),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => initialsBox(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // prefer the explicit decisionByUid; otherwise fall back to the receiver id
+    final uid = (decisionByUid != null && decisionByUid!.trim().isNotEmpty)
+        ? decisionByUid!.trim()
+        : bookingRecieverId.trim();
+
+    // base name shown while waiting for user doc
+    final baseName = (decisionByName?.trim().isNotEmpty ?? false)
+        ? decisionByName!.trim()
+        : (uid.isNotEmpty
+              ? 'Driver ${uid.substring(0, uid.length.clamp(0, 6))}'
+              : 'Assigned Driver');
+
+    final decTypeLabel = _prettyDecisionType(decisionType);
+    final whenLabel = (decisionAt != null)
+        ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt!)}'
+        : '';
+
+    // UI shell
+    Widget shell(Widget child) => Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _accentSoft,
+        border: Border.all(color: _accentBorder, width: 1.7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: child,
+    );
+
+    // header + message
+    Widget header() => Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.circle, color: _accent, size: IconSizes.tiny),
+                SizedBox(width: 5),
+                CustomText(
+                  text: 'Booking Confirmed',
+                  textSize: TextSizes.bodyText1,
+                  textWeight: FontWeight.bold,
+                  textColor: _accentText,
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Row(
+          children: [
+            CustomText(
+              text: "You're all set. See you at the scheduled time!",
+              textSize: TextSizes.bodyText3,
+              textColor: Theme.of(context).colorScheme.surface,
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+      ],
+    );
+
+    // driver row builder
+    Widget driverRow({required String displayName, String? photoUrl}) =>
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.inversePrimary,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 5),
+          child: Row(
+            children: [
+              const SizedBox(width: 7),
+              _roundedAvatar(
+                context: context,
+                displayName: displayName,
+                photoUrl: photoUrl,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSizes.bodyText1,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    // Subtitle (ellipsized)
+                    Text(
+                      'Professional Washer',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSizes.caption,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                children: [
+                  RegularIconButton(
+                    icon: const Icon(Icons.phone, size: IconSizes.minute),
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    borderRadius: 15,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 8,
+                    ),
+                    textWidget: const CustomText(
+                      text: 'Call',
+                      textSize: TextSizes.bodyText1,
+                      textWeight: FontWeight.bold,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (BuildContext context) => BookingsChat(
+                            bookingId: bookingId,
+                            bookingRecieverId: bookingRecieverId,
+                            bookingSenderId: bookingSenderId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 7),
+                  RegularIconButton(
+                    icon: const Icon(Icons.chat, size: IconSizes.minute),
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    borderRadius: 15,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 8,
+                    ),
+                    textWidget: const CustomText(
+                      text: 'Chat',
+                      textSize: TextSizes.bodyText1,
+                      textWeight: FontWeight.bold,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (BuildContext context) => BookingsChat(
+                            bookingId: bookingId,
+                            bookingRecieverId: bookingRecieverId,
+                            bookingSenderId: bookingSenderId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(width: 5),
+            ],
+          ),
+        );
+
+    // If we have a uid, live-read the user doc for photoUrl/displayName
+    if (uid.isNotEmpty) {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      return shell(
+        Column(
+          children: [
+            header(),
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: userRef.snapshots(),
+              builder: (context, snap) {
+                String name = baseName;
+                String? photoUrl;
+
+                if (snap.hasData && snap.data!.exists) {
+                  final u = snap.data!.data() ?? const {};
+                  photoUrl = (u['photoUrl'] as String?);
+                  // prefer passed decisionByName; otherwise fall back to profile fields
+                  name = (decisionByName?.trim().isNotEmpty ?? false)
+                      ? decisionByName!.trim()
+                      : (u['displayName'] as String?) ??
+                            (u['name'] as String?) ??
+                            baseName;
+                }
+
+                return driverRow(displayName: name, photoUrl: photoUrl);
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No uid → just render with initials (no photo)
+    return shell(
+      Column(
+        children: [
+          header(),
+          driverRow(displayName: baseName, photoUrl: null),
+        ],
+      ),
+    );
+  }
+}
+
+class StatusBar extends StatelessWidget {
+  final String status;
+  const StatusBar({super.key, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = status.toLowerCase();
+    Color bg, fg;
+    if (s == 'pending') {
+      bg = const Color.fromARGB(121, 255, 234, 113);
+      fg = const Color.fromARGB(255, 187, 129, 4);
+    } else if (s == 'confirmed') {
+      bg = const Color.fromARGB(121, 180, 255, 180);
+      fg = const Color.fromARGB(255, 4, 129, 4);
+    } else if (s.contains('progress')) {
+      bg = const Color.fromARGB(121, 255, 200, 120);
+      fg = const Color.fromARGB(255, 187, 80, 4);
+    } else if (s == 'completed') {
+      bg = const Color.fromARGB(121, 120, 158, 255);
+      fg = const Color.fromARGB(255, 4, 37, 129);
+    } else {
+      bg = const Color.fromARGB(121, 255, 120, 120);
+      fg = const Color.fromARGB(255, 129, 4, 4);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Text(
+        s == 'pending'
+            ? 'Pending'
+            : s == 'in progress'
+            ? 'Currently Washing'
+            : s == 'confirmed'
+            ? 'Confirmed'
+            : s == 'completed'
+            ? 'Completed'
+            : 'Cancelled',
+        style: TextStyle(fontWeight: FontWeight.bold, color: fg, fontSize: 12),
+      ),
+    );
+  }
+}
+
+class _NoGlowScroll extends ScrollBehavior {
+  const _NoGlowScroll();
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
+}
+
+class _ListLoading extends StatelessWidget {
+  const _ListLoading({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(
+    child: Padding(
+      padding: EdgeInsets.all(24),
+      child: CircularProgressIndicator(),
+    ),
+  );
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  const _ErrorState({super.key, required this.message});
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(padding: const EdgeInsets.all(24), child: Text(message)),
+  );
+}
+
+class _EmptyState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  const _EmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: Theme.of(context).disabledColor),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(subtitle, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class FadingCircle extends StatefulWidget {
   final int number;
   final double size;
@@ -4072,117 +4626,6 @@ class _StageChip extends StatelessWidget {
           color: _greyFg,
           fontWeight: FontWeight.bold,
           fontSize: 11,
-        ),
-      ),
-    );
-  }
-}
-
-// ====== STATUS CHIPS / PANELS ======
-
-class StatusBar extends StatelessWidget {
-  final String status;
-  const StatusBar({super.key, required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final s = status.toLowerCase();
-    Color bg, fg;
-    if (s == 'pending') {
-      bg = const Color.fromARGB(121, 255, 234, 113);
-      fg = const Color.fromARGB(255, 187, 129, 4);
-    } else if (s == 'confirmed') {
-      bg = const Color.fromARGB(121, 180, 255, 180);
-      fg = const Color.fromARGB(255, 4, 129, 4);
-    } else if (s.contains('progress')) {
-      bg = const Color.fromARGB(121, 255, 200, 120);
-      fg = const Color.fromARGB(255, 187, 80, 4);
-    } else if (s == 'completed') {
-      bg = const Color.fromARGB(121, 120, 158, 255);
-      fg = const Color.fromARGB(255, 4, 37, 129);
-    } else {
-      bg = const Color.fromARGB(121, 255, 120, 120);
-      fg = const Color.fromARGB(255, 129, 4, 4);
-    }
-    debugPrint('status =========>>>>>>>>>> ${s}');
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(50),
-      ),
-      child: Text(
-        s == 'pending'
-            ? 'Pending'
-            : s == 'in progress'
-            ? 'Currently Washing'
-            : s == 'confirmed'
-            ? 'Confirmed'
-            : s == 'completed'
-            ? 'Completed'
-            : 'Cancelled',
-        style: TextStyle(fontWeight: FontWeight.bold, color: fg, fontSize: 12),
-      ),
-    );
-  }
-}
-
-// ====== SMALL UTILS USED ABOVE ======
-
-class _NoGlowScroll extends ScrollBehavior {
-  const _NoGlowScroll();
-  @override
-  Widget buildOverscrollIndicator(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) => child;
-}
-
-class _ListLoading extends StatelessWidget {
-  const _ListLoading({super.key});
-  @override
-  Widget build(BuildContext context) => const Center(
-    child: Padding(
-      padding: EdgeInsets.all(24),
-      child: CircularProgressIndicator(),
-    ),
-  );
-}
-
-class _ErrorState extends StatelessWidget {
-  final String message;
-  const _ErrorState({super.key, required this.message});
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(padding: const EdgeInsets.all(24), child: Text(message)),
-  );
-}
-
-class _EmptyState extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  const _EmptyState({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 36, color: Theme.of(context).disabledColor),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(subtitle, textAlign: TextAlign.center),
-          ],
         ),
       ),
     );
