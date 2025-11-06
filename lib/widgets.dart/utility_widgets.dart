@@ -133,35 +133,6 @@ class ServiceButton extends StatelessWidget {
                 SizedBox(width: 10),
               ],
             ),
-            /* Column(
-              children: [
-                Row(
-                  children: [
-                    CustomText(
-                      text: "Includes :",
-                      textSize: TextSizes.bodyText1,
-                      textWeight: FontWeight.bold,
-                      textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                    ),
-                  ],
-                ),
-
-                for (var service in serviceItems!)
-                  Row(
-                    children: [
-                      Icon(Icons.do_not_disturb_on_sharp, size: 8),
-                      const SizedBox(width: 5),
-                      CustomText(
-                        text: service,
-                        textColor: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color,
-                        textSize: TextSizes.bodyText3,
-                      ),
-                    ],
-                  ),
-              ],
-            ), */
           ],
         ),
       ),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -149,6 +151,64 @@ class HomeScreenMiddleSection extends StatelessWidget {
             // Optional:
             // title: 'Rewards Points',
             // encouragingText: "You're doing great!",
+          ),
+
+          const SizedBox(height: 15),
+          ServiceCard(
+            pictureString: [
+              'assets/images/house.png',
+              'assets/images/office.png',
+              'assets/images/sofa.png',
+              'assets/images/carpet.png',
+              'assets/images/toilet.png',
+            ],
+            title: 'Home Office Spaces',
+            subtitle: 'Complete home cleaning service',
+            priceText: r'$120',
+            durationText: '3 hrs',
+            icon: Icons.home,
+            isPopular: true,
+            onTap: () {},
+          ),
+          const SizedBox(height: 15),
+          ServiceCard(
+            pictureString: [
+              'assets/images/car.png',
+              'assets/images/engine.png',
+              'assets/images/dashboard.png',
+              'assets/images/tyre.png',
+              'assets/images/seat.png',
+            ],
+            title: 'Auto Care',
+            subtitle: 'Complete home cleaning service',
+            priceText: r'$120',
+            durationText: '3 hrs',
+            isPopular: true,
+            serviceCTA: ServiceButton(
+              textWidget1: 'Express Wash',
+              textWidget2: 'Quick exterior wash',
+              textWidget3: '⏱️ 10 min',
+              price: '10',
+              icon: Icon(
+                Icons.shower_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              scale: 1.1,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const ServicesScreen(serviceType: 'express'),
+                  ),
+                );
+              },
+              modalSheet: () {
+                // your bottom sheet…
+              },
+            ),
+            onSelectedChanged: (selected) {
+              // optional: keep only one card open, analytics, etc.
+            },
           ),
 
           const SizedBox(height: 10),
@@ -310,7 +370,6 @@ class HomeScreenMiddleSection extends StatelessWidget {
             },
             price: '10',
           ),
-
           const SizedBox(height: 15),
           ServiceButton(
             modalSheet: () {
@@ -1828,5 +1887,251 @@ Future<void> adminSetActiveWashStageStrict({
     });
   } catch (_) {
     /* ignore */
+  }
+}
+
+class ServiceCard extends StatefulWidget {
+  const ServiceCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.priceText, // e.g. "$120" or "₵120"
+    required this.durationText, // e.g. "3 hrs"
+    this.icon = Icons.home_outlined,
+    this.isPopular = false,
+    this.onTap,
+    required this.pictureString,
+    this.initiallySelected = false,
+    this.onSelectedChanged,
+    this.serviceCTA, // what appears when selected (e.g., ServiceButton)
+  });
+
+  final String title;
+  final String subtitle;
+  final String priceText;
+  final String durationText;
+  final IconData icon;
+  final bool isPopular;
+  final List<String> pictureString;
+  final VoidCallback? onTap;
+
+  /// selection controls
+  final bool initiallySelected;
+  final ValueChanged<bool>? onSelectedChanged;
+  final Widget? serviceCTA;
+
+  @override
+  State<ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<ServiceCard> {
+  late bool _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initiallySelected;
+  }
+
+  void _toggleSelected() {
+    setState(() => _selected = !_selected);
+    widget.onSelectedChanged?.call(_selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface.withOpacity(0.85);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _toggleSelected(); // reveal/hide CTA
+          widget.onTap?.call(); // still allow external action
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOutCubic,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFEDEDED), Color(0xFFDCDCDC)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(_selected ? 0.10 : 0.06),
+                blurRadius: _selected ? 20 : 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            border: _selected
+                ? Border.all(
+                    color: theme.colorScheme.primary.withOpacity(.25),
+                    width: 1.4,
+                  )
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // —— thumbnails row ——
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: widget.pictureString
+                    .take(math.min(widget.pictureString.length, 5))
+                    .map((p) => _Thumbnail(path: p))
+                    .toList(),
+              ),
+              const SizedBox(height: 10),
+
+              // —— title ——
+              Text(
+                widget.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+
+              // —— subtitle ——
+              Text(
+                widget.subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.55),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // —— price + duration chips ——
+              Row(
+                children: [
+                  _Pill(
+                    label: widget.priceText,
+                    bg: Colors.white,
+                    fg: theme.colorScheme.onSurface.withOpacity(.85),
+                  ),
+                  const SizedBox(width: 8),
+                  _Pill(
+                    label: widget.durationText,
+                    bg: Colors.white,
+                    fg: theme.colorScheme.onSurface.withOpacity(.75),
+                    icon: Icons.schedule,
+                  ),
+                ],
+              ),
+
+              // —— animated CTA reveal ——
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, anim) => SizeTransition(
+                  sizeFactor: anim,
+                  axisAlignment: -1.0,
+                  child: FadeTransition(opacity: anim, child: child),
+                ),
+                child: _selected && widget.serviceCTA != null
+                    ? Padding(
+                        key: const ValueKey('cta'),
+                        padding: const EdgeInsets.only(top: 14),
+                        child: widget.serviceCTA!,
+                      )
+                    : const SizedBox(key: ValueKey('empty')),
+              ),
+
+              // —— popular badge (overlay alternative kept inline for simplicity) ——
+              if (widget.isPopular) const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({required this.path});
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.asset(path, fit: BoxFit.cover),
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({
+    required this.label,
+    required this.bg,
+    required this.fg,
+    this.icon,
+  });
+
+  final String label;
+  final Color bg;
+  final Color fg;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: fg),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
