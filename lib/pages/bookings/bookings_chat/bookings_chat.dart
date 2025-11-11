@@ -132,6 +132,7 @@ class _BookingsChatState extends State<BookingsChat> {
     await _msgsRef.add({
       'text': text,
       "bookingRecieverId": widget.bookingRecieverId,
+      "bookingSenderId": widget.bookingSenderId,
       'senderId': _me.uid,
       'senderName': myName,
       'createdAt': FieldValue.serverTimestamp(),

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/profile/help_and_support/live_chat/app.config.dart';
 
@@ -18,22 +19,24 @@ class NotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('✅ User granted notification permission');
+      debugPrint('✅ User granted notification permission');
       await _getAndSaveToken();
     } else {
-      print('🚫 Notification permission denied or not accepted');
+      debugPrint('🚫 Notification permission denied or not accepted');
     }
 
     // Listen for foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       // Only show notification if user is NOT on chat screen, for example
-      print('📩 Foreground message received: ${message.notification?.title}');
+      debugPrint(
+        '📩 Foreground message received: ${message.notification?.title}',
+      );
       // You can integrate local notifications here (if you want)
     });
 
     // Handle when user taps a notification to open the app
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('🔔 Notification clicked!');
+      debugPrint('🔔 Notification clicked!');
       // Navigate or handle deep link here
     });
   }
@@ -60,26 +63,26 @@ class NotificationService {
       await checkUserRole(user.uid);
 
       if (newToken == null) {
-        print('⚠️ No FCM token received.');
+        debugPrint('⚠️ No FCM token received.');
         return;
       }
 
       if (cachedToken != newToken) {
-        print('🔄 Updating FCM token...');
+        debugPrint('🔄 Updating FCM token...');
         await _saveTokenIfNew(newToken);
         await prefs.setString('fcmToken', newToken);
       } else {
-        print('✅ FCM token already cached and up-to-date.');
+        debugPrint('✅ FCM token already cached and up-to-date.');
       }
 
       // Automatically handle token refresh events
       _messaging.onTokenRefresh.listen((refreshedToken) async {
-        print('♻️ Token refreshed: $refreshedToken');
+        debugPrint('♻️ Token refreshed: $refreshedToken');
         await _saveTokenIfNew(refreshedToken);
         await prefs.setString('fcmToken', refreshedToken);
       });
     } catch (e) {
-      print('❌ Error retrieving or saving FCM token: $e');
+      debugPrint('❌ Error retrieving or saving FCM token: $e');
     }
   }
 
@@ -87,30 +90,38 @@ class NotificationService {
   Future<void> _saveTokenIfNew(String token) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      print('⚠️ No logged-in user. Skipping token save.');
+      debugPrint('⚠️ No logged-in user. Skipping token save.');
       return;
     }
 
     final isAdmin = AppConfig().isAdmin;
-    print("isAdmin:''''''''''''''''''''''''''''''''''  $isAdmin");
-    final ref = isAdmin
-        ? FirebaseFirestore.instance.collection('admin').doc('idforadminv1')
-        : FirebaseFirestore.instance.collection('users').doc(user.uid);
+    debugPrint("isAdmin: $isAdmin");
 
-    final snap = await ref.get();
-    final existing = (snap.data()?['fcmTokens'] as List?)?.cast<String>() ?? [];
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc(user.uid);
+    final adminRef = firestore.collection('admin').doc('idforadminv1');
 
-    if (existing.contains(token)) {
-      print('✅ Token already exists in Firestore.');
-      return;
+    try {
+      // Always save token in the user doc
+      await userRef.set({
+        'fcmTokens': FieldValue.arrayUnion([token]),
+        'fcmUpdatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // If admin, also save token in admin doc
+      if (isAdmin) {
+        await adminRef.set({
+          'fcmTokens': FieldValue.arrayUnion([token]),
+          'fcmUpdatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      debugPrint(
+        '💾 Token saved successfully for ${isAdmin ? "admin & user" : "user"}: ${user.uid}',
+      );
+    } catch (e, st) {
+      debugPrint('❌ Failed to save token: $e');
     }
-
-    await ref.set({
-      'fcmTokens': FieldValue.arrayUnion([token]),
-      'fcmUpdatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    print('💾 Token saved successfully in Firestore for user: ${user.uid}');
   }
 
   /// Remove the token from both local storage & Firestore on logout
@@ -120,29 +131,39 @@ class NotificationService {
     final user = FirebaseAuth.instance.currentUser;
 
     if (cachedToken == null) {
-      print('⚠️ No cached FCM token found.');
+      debugPrint('⚠️ No cached FCM token found.');
       return;
     }
 
     if (user == null) {
-      print('⚠️ No logged-in user. Cannot remove token.');
+      debugPrint('⚠️ No logged-in user. Cannot remove token.');
       return;
     }
 
     try {
       final isAdmin = AppConfig().isAdmin;
-      final ref = isAdmin
-          ? FirebaseFirestore.instance.collection('admin').doc('idforadminv1')
-          : FirebaseFirestore.instance.collection('users').doc(user.uid);
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
 
-      await ref.update({
+      final adminRef = FirebaseFirestore.instance
+          .collection('admin')
+          .doc('idforadminv1');
+
+      await userRef.update({
         'fcmTokens': FieldValue.arrayRemove([cachedToken]),
       });
 
+      if (isAdmin) {
+        await adminRef.update({
+          'fcmTokens': FieldValue.arrayRemove([cachedToken]),
+        });
+      }
+
       await prefs.remove('fcmToken');
-      print('🧹 Token removed successfully for user: ${user.uid}');
+      debugPrint('🧹 Token removed successfully for user: ${user.uid}');
     } catch (e) {
-      print('❌ Error removing FCM token: $e');
+      debugPrint('❌ Error removing FCM token: $e');
     }
   }
 }
