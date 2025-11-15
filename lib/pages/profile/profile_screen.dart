@@ -13,6 +13,7 @@ import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
+import 'package:omeeowash/pages/profile/referral.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -303,6 +304,28 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => Notifications()),
+                );
+              },
+            ),
+            ProfileButton(
+              textWidget1: 'Refer & Earn',
+              textWidget2: 'Invite friends, get rewards',
+              svg: SvgPicture.asset(
+                'assets/icons/notification_settings.svg',
+                height: 24,
+                width: 24,
+                colorFilter: ColorFilter.mode(
+                  Theme.of(
+                    context,
+                  ).colorScheme.primary, // 🎨 Replace with your desired color
+                  BlendMode.srcIn,
+                ),
+              ),
+              scale: 1.2,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ReferAndEarnPage()),
                 );
               },
             ),
