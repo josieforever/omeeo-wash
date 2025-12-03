@@ -163,11 +163,11 @@ class _StatsRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        children: const [
+        children: [
           Expanded(
             child: _StatCard(
               icon: Icons.group_outlined,
-              iconColor: Color(0xFF4F46E5),
+              iconColor: Color(0xFF23A067),
               label: 'Friends Invited',
               value: '12',
             ),
@@ -176,7 +176,7 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCard(
               icon: Icons.attach_money_rounded,
-              iconColor: Color(0xFF9333EA),
+              iconColor: Color(0xFFF97316),
               label: 'Rewards Earned',
               value: '600 Pts',
             ),
@@ -185,7 +185,7 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCard(
               icon: Icons.card_giftcard_outlined,
-              iconColor: Color(0xFFFBBF24),
+              iconColor: Color(0xFF3B82F6),
               label: 'Pending',
               value: '3',
             ),
@@ -266,18 +266,18 @@ class _HowItWorksSection extends StatelessWidget {
                   subtitle:
                       'Send your unique referral code to friends and family.',
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 15),
                 _HowItWorksStep(
                   number: '2',
                   title: 'They get \$10 off',
-                  subtitle: 'Your friend saves \$10 on their first wash.',
+                  subtitle: 'Your friend saves 10% on their first wash.',
                 ),
-                SizedBox(height: 12),
+                SizedBox(height: 15),
                 _HowItWorksStep(
                   number: '3',
                   title: 'You earn rewards',
                   subtitle:
-                      'Get up to \$10 credit for each successful referral.',
+                      'Get up to 100 Pts credit for each successful referral.',
                 ),
               ],
             ),
@@ -298,25 +298,29 @@ class _RecentReferralsSection extends StatelessWidget {
         initials: 'MC',
         name: 'Mike Chen',
         dateLabel: '2 days ago',
-        amount: '\$5',
+        amount: '100 Pts',
         status: 'Completed',
-        statusColor: Colors.greenAccent,
       ),
       const _Referral(
         initials: 'EW',
         name: 'Emma Wilson',
         dateLabel: '5 days ago',
-        amount: '\$5',
+        amount: '100 Pts',
         status: 'Pending',
-        statusColor: Color(0xFFFACC15),
       ),
       const _Referral(
         initials: 'AK',
         name: 'Alex Kim',
         dateLabel: '1 week ago',
-        amount: '\$5',
+        amount: '100 Pts',
         status: 'Completed',
-        statusColor: Colors.greenAccent,
+      ),
+      const _Referral(
+        initials: 'AK',
+        name: 'James Appiah',
+        dateLabel: '2 week ago',
+        amount: '100 Pts',
+        status: 'Completed',
       ),
     ];
 
@@ -344,7 +348,7 @@ class _RecentReferralsSection extends StatelessWidget {
                         if (r != referrals.last)
                           Divider(
                             height: 1,
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: Theme.of(context).colorScheme.inversePrimary,
                           ),
                       ],
                     ),
@@ -430,7 +434,7 @@ class _StatCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.white70,
+              color: Theme.of(context).colorScheme.inversePrimary,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -495,12 +499,16 @@ class _HowItWorksStep extends StatelessWidget {
           height: 26,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xFF4F46E5).withOpacity(0.25),
+            color: Theme.of(context).colorScheme.inversePrimary,
           ),
           alignment: Alignment.center,
           child: Text(
             number,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -510,19 +518,16 @@ class _HowItWorksStep extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white70,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -538,7 +543,6 @@ class _Referral {
   final String dateLabel;
   final String amount;
   final String status;
-  final Color statusColor;
 
   const _Referral({
     required this.initials,
@@ -546,7 +550,6 @@ class _Referral {
     required this.dateLabel,
     required this.amount,
     required this.status,
-    required this.statusColor,
   });
 }
 
@@ -564,19 +567,27 @@ class _ReferralTile extends StatelessWidget {
         backgroundColor: Colors.white,
         child: Text(
           referral.initials,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       ),
       title: Text(
         referral.name,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
       subtitle: Text(
         referral.dateLabel,
-        style: const TextStyle(fontSize: 12, color: Colors.white60),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: const Color.fromARGB(138, 0, 0, 0),
+        ),
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -589,10 +600,20 @@ class _ReferralTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             referral.status,
-            style: TextStyle(fontSize: 11, color: referral.statusColor),
+            style: TextStyle(
+              fontSize: 12,
+              color: referral.status == "Completed"
+                  ? Color(0xFF23A067)
+                  : Color(0xFFF97316),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+
+
+
+//adb connect 192.168.100.40
