@@ -332,9 +332,9 @@ class NewBookingsScreen extends StatelessWidget {
 
   // ---- Robust name/phone from booking (no extra reads) ----
   String? _bestNameFromBooking(Map<String, dynamic> b) {
-    String? _s(String k) => (b[k] as String?)?.trim();
+    String? s(String k) => (b[k] as String?)?.trim();
 
-    String? _nested(List<String> path) {
+    String? nested(List<String> path) {
       dynamic cur = b;
       for (final seg in path) {
         if (cur is Map && cur.containsKey(seg)) {
@@ -347,29 +347,29 @@ class NewBookingsScreen extends StatelessWidget {
     }
 
     final first =
-        _s('firstName') ??
-        _nested(['customer', 'firstName']) ??
-        _nested(['user', 'firstName']) ??
-        _nested(['profile', 'firstName']);
+        s('firstName') ??
+        nested(['customer', 'firstName']) ??
+        nested(['user', 'firstName']) ??
+        nested(['profile', 'firstName']);
     final last =
-        _s('lastName') ??
-        _nested(['customer', 'lastName']) ??
-        _nested(['user', 'lastName']) ??
-        _nested(['profile', 'lastName']);
+        s('lastName') ??
+        nested(['customer', 'lastName']) ??
+        nested(['user', 'lastName']) ??
+        nested(['profile', 'lastName']);
     final fromParts = (first != null || last != null)
         ? [first, last].whereType<String>().where((e) => e.isNotEmpty).join(' ')
         : null;
 
     final candidates = <String?>[
-      _s('customerName'),
-      _s('userName'),
-      _s('name'),
-      _s('fullName'),
-      _s('displayName'),
-      _nested(['customer', 'name']),
-      _nested(['customer', 'fullName']),
-      _nested(['user', 'displayName']),
-      _nested(['profile', 'displayName']),
+      s('customerName'),
+      s('userName'),
+      s('name'),
+      s('fullName'),
+      s('displayName'),
+      nested(['customer', 'name']),
+      nested(['customer', 'fullName']),
+      nested(['user', 'displayName']),
+      nested(['profile', 'displayName']),
       fromParts,
     ];
 
@@ -380,9 +380,9 @@ class NewBookingsScreen extends StatelessWidget {
   }
 
   String? _bestPhoneFromBooking(Map<String, dynamic> b) {
-    String? _s(String k) => (b[k] as String?)?.trim();
+    String? s0(String k) => (b[k] as String?)?.trim();
 
-    String? _nested(List<String> path) {
+    String? nested(List<String> path) {
       dynamic cur = b;
       for (final seg in path) {
         if (cur is Map && cur.containsKey(seg)) {
@@ -395,16 +395,16 @@ class NewBookingsScreen extends StatelessWidget {
     }
 
     final candidates = <String?>[
-      _s('phone'),
-      _s('phoneNumber'),
-      _s('tel'),
-      _s('mobile'),
-      _nested(['contact', 'phone']),
-      _nested(['customer', 'phone']),
-      _nested(['customer', 'phoneNumber']),
-      _nested(['user', 'phone']),
-      _nested(['user', 'phoneNumber']),
-      _nested(['profile', 'phone']),
+      s0('phone'),
+      s0('phoneNumber'),
+      s0('tel'),
+      s0('mobile'),
+      nested(['contact', 'phone']),
+      nested(['customer', 'phone']),
+      nested(['customer', 'phoneNumber']),
+      nested(['user', 'phone']),
+      nested(['user', 'phoneNumber']),
+      nested(['profile', 'phone']),
     ];
 
     String? raw;
@@ -625,14 +625,16 @@ class DoneBookingsScreen extends StatelessWidget {
   String _canonicalStatus(dynamic s) {
     final v = '${s ?? ''}'.trim().toLowerCase();
     if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
-    if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
+    if (v == 'in_progress' || v == 'in-progress' || v == 'processing') {
       return 'in_progress';
+    }
     if (v == 'confirmed' || v == 'booked') return 'confirmed';
     if (v == 'cancelled' ||
         v == 'canceled' ||
         v == 'declined' ||
-        v == 'rejected')
+        v == 'rejected') {
       return 'declined';
+    }
     if (v == 'pending') return 'pending';
     return v;
   }
@@ -985,8 +987,9 @@ class DeclinedBookingScreen extends StatelessWidget {
       return 'declined';
     }
     if (v == 'completed' || v == 'done' || v == 'finished') return 'completed';
-    if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
+    if (v == 'in_progress' || v == 'in-progress' || v == 'processing') {
       return 'in_progress';
+    }
     if (v == 'confirmed' || v == 'booked') return 'confirmed';
     if (v == 'pending') return 'pending';
     return v;
@@ -1723,14 +1726,16 @@ class ManageBookingsButton extends StatelessWidget {
       return 'Pending';
     }
     if (v == 'confirmed' || v == 'booked') return 'Confirmed';
-    if (v == 'in_progress' || v == 'in-progress' || v == 'processing')
+    if (v == 'in_progress' || v == 'in-progress' || v == 'processing') {
       return 'In Progress';
+    }
     if (v == 'completed' || v == 'done' || v == 'finished') return 'Completed';
     if (v == 'cancelled' ||
         v == 'canceled' ||
         v == 'declined' ||
-        v == 'rejected')
+        v == 'rejected') {
       return 'Declined';
+    }
     return (raw ?? '—');
   }
 
@@ -1812,8 +1817,9 @@ class ManageBookingsButton extends StatelessWidget {
     for (final item in raw) {
       if (item is String) {
         final key = item.trim();
-        if (key.isNotEmpty)
+        if (key.isNotEmpty) {
           out.add(WashStageVM(key, _labelFromKey(key), 'pending'));
+        }
         continue;
       }
       if (item is Map) {
@@ -2213,7 +2219,7 @@ class ManageBookingsButton extends StatelessWidget {
     final listStages = washProgressStages;
     final hasSchema =
         (order != null && order.isNotEmpty) ||
-        (stagesMap != null && stagesMap!.isNotEmpty);
+        (stagesMap != null && stagesMap.isNotEmpty);
 
     final cleaningActive = _isCleaningActive(
       order: order,
@@ -2691,7 +2697,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
       m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
     }
 
-    String _normStatus(dynamic s) {
+    String normStatus(dynamic s) {
       final v = '${s ?? ''}'.trim().toLowerCase();
       if (v == 'done' || v == 'completed') return 'done';
       if (v == 'in_progress' ||
@@ -2706,7 +2712,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
     int activeIndex = -1;
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      if (_normStatus(m[key]?['status']) == 'in_progress') {
+      if (normStatus(m[key]?['status']) == 'in_progress') {
         activeIndex = i;
         break;
       }
@@ -2715,7 +2721,7 @@ class _CurrentlyWashingPanelState extends State<CurrentlyWashingPanel> {
     final List<WashStageVM> list = [];
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      String status = _normStatus(m[key]?['status']);
+      String status = normStatus(m[key]?['status']);
 
       if (activeIndex >= 0) {
         // Fill missing statuses around the known active one

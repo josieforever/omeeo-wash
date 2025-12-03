@@ -553,7 +553,7 @@ class _SelectDateScreenState extends State<SelectDateScreen> {
                           ).textTheme.bodyMedium!.color!,
                         ),
                         CustomText(
-                          text: '${price!.toStringAsFixed(0)}',
+                          text: price!.toStringAsFixed(0),
                           textWeight: FontWeight.bold,
                         ),
                       ],

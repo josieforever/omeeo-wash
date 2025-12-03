@@ -81,10 +81,12 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
 
   bool get _canConfirm {
     if (paymentMethodSelected == 'Cash') return true;
-    if (paymentMethodSelected == 'card' && selectedPaymentDocId != null)
+    if (paymentMethodSelected == 'card' && selectedPaymentDocId != null) {
       return true;
-    if (paymentMethodSelected == 'momo' && selectedPaymentDocId != null)
+    }
+    if (paymentMethodSelected == 'momo' && selectedPaymentDocId != null) {
       return true;
+    }
     return false;
   }
 
@@ -148,7 +150,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
     }
 
     // ---- helpers (local) ----
-    String? _firstNonEmpty(Iterable<String?> vals) {
+    String? firstNonEmpty(Iterable<String?> vals) {
       for (final v in vals) {
         if (v != null && v.trim().isNotEmpty) return v.trim();
       }
@@ -156,7 +158,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
     }
 
     // If you want a super-light GH E.164 normalization, keep this; otherwise remove.
-    String? _normalizePhone(String? raw) {
+    String? normalizePhone(String? raw) {
       if (raw == null) return null;
       final s = raw.trim();
       if (s.isEmpty) return null;
@@ -188,7 +190,7 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         profile = null; // ignore profile read errors; we’ll fall back
       }
 
-      final pickedName = _firstNonEmpty([
+      final pickedName = firstNonEmpty([
         profile?['name']?.toString(),
         [profile?['firstName']?.toString(), profile?['lastName']?.toString()]
             .whereType<String>()
@@ -199,14 +201,14 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
         user.displayName,
       ]);
 
-      final pickedEmail = _firstNonEmpty([
+      final pickedEmail = firstNonEmpty([
         profile?['email']?.toString(),
         profile?['emailAddress']?.toString(),
         user.email,
       ]);
 
-      final pickedPhone = _normalizePhone(
-        _firstNonEmpty([
+      final pickedPhone = normalizePhone(
+        firstNonEmpty([
           profile?['phone']?.toString(),
           profile?['phoneNumber']?.toString(),
           profile?['mobile']?.toString(),
@@ -1402,8 +1404,9 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
   String? _validateMomoPhone(String? value) {
     final v = _normalizeMsisdn(value ?? '');
     if (v.isEmpty) return 'Enter mobile number';
-    if (!RegExp(r'^0\d{9}$').hasMatch(v))
+    if (!RegExp(r'^0\d{9}$').hasMatch(v)) {
       return 'Enter a valid 10-digit number';
+    }
     return null;
   }
 
@@ -1655,8 +1658,9 @@ InputDecoration _inputDecoration(BuildContext context, String hint) {
 String _detectBrand(String digits) {
   if (RegExp(r'^4').hasMatch(digits)) return 'visa';
   if (RegExp(r'^(5[1-5])').hasMatch(digits)) return 'mastercard';
-  if (RegExp(r'^(22[2-9]|2[3-6]\d|27[01]|2720)').hasMatch(digits))
+  if (RegExp(r'^(22[2-9]|2[3-6]\d|27[01]|2720)').hasMatch(digits)) {
     return 'mastercard';
+  }
   if (RegExp(r'^3[47]').hasMatch(digits)) return 'amex';
   if (RegExp(r'^(6011|65|64[4-9])').hasMatch(digits)) return 'discover';
   return 'other';
