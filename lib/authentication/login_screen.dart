@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'
+    show FirebaseMessaging;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/forgot_password.dart';
 import 'package:omeeowash/authentication/signup_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/home_screen_with_nav.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
@@ -14,6 +15,9 @@ import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// ✅ ADD: connectivity_plus in pubspec.yaml: connectivity_plus: ^6.0.0
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -90,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Theme.of(context).colorScheme.shadow,
                             blurRadius: 12,
                             spreadRadius: 2,
-                            offset: Offset(0, 6),
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
@@ -123,16 +128,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             textSize: TextSizes.bodyText1,
                           ),
                           const SizedBox(height: 10),
+
+                          // GOOGLE SIGN IN
                           ContinueSignInButton(
                             text: 'Continue with Google',
                             animation: 'assets/animations/google.json',
                             scale: 3,
                             onPressed: () async {
-                              setState(() {
-                                _isLoading = true;
-                              });
+                              setState(() => _isLoading = true);
+
                               final userCredential = await FirebaseService()
                                   .signInWithGoogle(context);
+
+                              if (!mounted) return;
+
                               if (userCredential != null) {
                                 Navigator.pushReplacement(
                                   context,
@@ -142,9 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 );
                               } else {
-                                setState(() {
-                                  _isLoading = false;
-                                });
+                                setState(() => _isLoading = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("Google sign-in failed"),
@@ -153,6 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             },
                           ),
+
                           ContinueSignInButton(
                             text: 'Continue with Apple',
                             animation: 'assets/animations/apple.json',
@@ -167,6 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               );
                             },
                           ),
+
                           const SizedBox(height: 10),
                           Row(
                             children: [
@@ -193,6 +202,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
+
+                          // EMAIL/PASSWORD FORM
                           Form(
                             key: _formKey,
                             autovalidateMode:
@@ -200,7 +211,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Email
                                 Text(
                                   "Email",
                                   style: TextStyle(
@@ -219,9 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
                                       return 'Please enter your email';
-                                    }
-                                    // CORRECTED REGEX: Removed the backslash before $
-                                    else if (!RegExp(
+                                    } else if (!RegExp(
                                       r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
                                     ).hasMatch(value)) {
                                       return 'Enter a valid email address';
@@ -229,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     return null;
                                   },
                                   decoration: InputDecoration(
-                                    // Moved generic border to the top to allow specific borders to override
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(5),
                                     ),
@@ -286,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
-                                // Password
+
                                 Text(
                                   "Password",
                                   style: TextStyle(
@@ -312,7 +319,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     return null;
                                   },
                                   decoration: InputDecoration(
-                                    // Moved generic border to the top to allow specific borders to override
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(5),
                                     ),
@@ -391,7 +397,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                           ),
+
                           const SizedBox(height: 20),
+
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -420,7 +428,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ],
                           ),
+
                           const SizedBox(height: 20),
+
+                          // EMAIL/PASSWORD SIGN IN
                           _isLoading
                               ? LoadingButton(height: 50, width: 50, scale: 1)
                               : RegularButton(
@@ -431,9 +442,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       final password = _passwordController.text
                                           .trim();
 
-                                      setState(() {
-                                        _isLoading = true;
-                                      });
+                                      setState(() => _isLoading = true);
 
                                       try {
                                         await FirebaseService()
@@ -443,48 +452,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                               context: context,
                                             );
 
-                                        // Fetch and set user data from Firestore into Provider
-                                        final userDoc = await FirebaseFirestore
-                                            .instance
-                                            .collection('users')
-                                            .doc(
-                                              FirebaseAuth
-                                                  .instance
-                                                  .currentUser!
-                                                  .uid,
-                                            )
-                                            .get();
+                                        if (!mounted) return;
 
-                                        final userModel = UserModel.fromMap(
-                                          userDoc.data()!,
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Login successful! 🎉",
+                                            ),
+                                            backgroundColor: Colors.green,
+                                          ),
                                         );
-                                        await context
-                                            .read<UserProvider>()
-                                            .setUser(userModel);
 
-                                        // Show success feedback
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Login successful! 🎉",
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const HomeScreenWithNav(
-                                                    view: 'home',
-                                                  ),
-                                            ),
-                                          );
-                                        }
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const HomeScreenWithNav(
+                                                  view: 'home',
+                                                ),
+                                          ),
+                                        );
                                       } on FirebaseAuthException catch (e) {
                                         String displayMessage;
 
@@ -494,13 +483,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 'Account not found. Please register or check your credentials.';
                                             break;
                                           case 'user-not-found':
-                                            displayMessage =
-                                                'invalid email or password.';
-                                            break;
                                           case 'wrong-password':
-                                            displayMessage =
-                                                'invalid email or password.';
-                                            break;
                                           case 'invalid-credential':
                                             displayMessage =
                                                 'invalid email or password.';
@@ -565,9 +548,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         }
                                       } finally {
                                         if (mounted) {
-                                          setState(() {
-                                            _isLoading = false;
-                                          });
+                                          setState(() => _isLoading = false);
                                         }
                                       }
                                     }
@@ -595,6 +576,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
 
                           const SizedBox(height: 30),
+
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -701,222 +683,399 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class FirebaseService {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseMessaging fcm = FirebaseMessaging.instance;
+  final GoogleSignIn googleSignIn = GoogleSignIn(scopes: const ['email']);
 
-  String _monthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  String _monthName(int month) => _months[month - 1];
+  FieldValue _serverNow() => FieldValue.serverTimestamp();
+
+  DocumentReference<Map<String, dynamic>> _userRef(String uid) =>
+      firestore.collection('users').doc(uid);
+
+  void _logError(String title, Object e, StackTrace st) {
+    debugPrint('❌ $title: $e\n$st');
   }
 
+  Future<bool> _hasInternet() async {
+    final res = await Connectivity().checkConnectivity();
+    return res != ConnectivityResult.none;
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _getUserDocResolved(
+    String uid,
+  ) async {
+    final ref = _userRef(uid);
+
+    final online = await _hasInternet();
+    if (!online) {
+      return await ref.get(const GetOptions(source: Source.cache));
+    }
+
+    try {
+      return await ref
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      return await ref.get(const GetOptions(source: Source.cache));
+    }
+  }
+
+  Map<String, dynamic> _readMap(dynamic v) {
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _mergeFcmToken(
+    Map<String, dynamic>? existing,
+    String? token,
+  ) {
+    final updated = Map<String, dynamic>.from(existing ?? {});
+    if (token != null && token.isNotEmpty) {
+      updated[token] = true;
+    }
+    return updated;
+  }
+
+  Map<String, dynamic> _sanitizeUserMap(Map<String, dynamic> data) {
+    data['notificationSettings'] ??= {
+      "push": true,
+      "email": true,
+      "bookingConfirmed": true,
+      "washStarted": true,
+      "washCompleted": true,
+      "appUpdates": true,
+    };
+    data['settings'] ??= {
+      "autoLock": false,
+      "biometricAuth": false,
+      "darkMode": false,
+    };
+    data['locations'] ??= [];
+    data['fcmTokens'] ??= <String, dynamic>{};
+
+    final nowUtcTs = Timestamp.fromDate(DateTime.now().toUtc());
+    data['createdAt'] ??= nowUtcTs;
+    data['updatedAt'] ??= nowUtcTs;
+    data['lastLoginAt'] ??= nowUtcTs;
+    data['lastSeen'] ??= nowUtcTs;
+    data['fcmUpdatedAt'] ??= nowUtcTs;
+
+    data['uid'] ??= '';
+    data['email'] ??= data['emailAddress'] ?? '';
+    data['emailAddress'] ??= data['email'] ?? '';
+    data['name'] ??= '';
+
+    return data;
+  }
+
+  Future<void> _saveLoggedInFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
+  }
+
+  Future<void> _loadUserIntoProvider(BuildContext context, String uid) async {
+    final doc = await _getUserDocResolved(uid);
+    final data = doc.data();
+    if (data == null) throw Exception('User document has no data for uid=$uid');
+
+    final safe = _sanitizeUserMap(data);
+    final userModel = UserModel.fromMap(safe);
+
+    if (context.mounted) {
+      await context.read<UserProvider>().setUser(userModel);
+    }
+  }
+
+  // ✅ NEW: ensure full user profile exists even if doc already exists partially
+  Future<void> _ensureUserProfile({
+    required User user,
+    required String? fcmToken,
+  }) async {
+    final uid = user.uid;
+    final ref = _userRef(uid);
+
+    final snap = await ref.get().timeout(const Duration(seconds: 8));
+    final existing = snap.data() ?? <String, dynamic>{};
+
+    String pickString(String key, String fallback) {
+      final v = existing[key];
+      if (v is String && v.trim().isNotEmpty) return v;
+      return fallback;
+    }
+
+    final nowUtc = DateTime.now().toUtc();
+    final memberSinceDefault = "${_monthName(nowUtc.month)} ${nowUtc.year}";
+
+    final safeName = pickString(
+      'name',
+      user.displayName ?? user.email?.split('@').first ?? '',
+    );
+    final safeEmail = pickString('email', user.email ?? '');
+    final safeEmailAddress = pickString('emailAddress', user.email ?? '');
+    final safePhone = pickString('phoneNumber', user.phoneNumber ?? '');
+    final safePhoto = pickString('photoUrl', user.photoURL ?? '');
+    final safeMemberSince = pickString('memberSince', memberSinceDefault);
+
+    final existingTokens = _readMap(existing['fcmTokens']);
+    final updatedTokens = _mergeFcmToken(existingTokens, fcmToken);
+
+    final notificationDefaults = <String, dynamic>{
+      "push": true,
+      "email": true,
+      "bookingConfirmed": true,
+      "washStarted": true,
+      "washCompleted": true,
+      "appUpdates": true,
+    };
+
+    final settingsDefaults = <String, dynamic>{
+      "autoLock": false,
+      "biometricAuth": false,
+      "darkMode": false,
+    };
+
+    final data = <String, dynamic>{
+      // identity
+      'uid': uid,
+      'name': safeName,
+      'email': safeEmail,
+      'emailAddress': safeEmailAddress,
+      'phoneNumber': safePhone,
+      'photoUrl': safePhoto,
+      'memberSince': safeMemberSince,
+
+      // keep existing if present else default
+      'address': existing['address'] ?? '',
+      'dateOfBirth': existing['dateOfBirth'] ?? '',
+      'locations': existing['locations'] ?? [],
+      'totalWashes': existing['totalWashes'] ?? 0,
+      'washesThisMonth': existing['washesThisMonth'] ?? 0,
+      'rating': existing['rating'] ?? 0.0,
+      'loyaltyPoints': existing['loyaltyPoints'] ?? 0,
+
+      // merge nested maps (don’t lose old settings)
+      'notificationSettings': {
+        ...notificationDefaults,
+        ..._readMap(existing['notificationSettings']),
+      },
+      'settings': {...settingsDefaults, ..._readMap(existing['settings'])},
+
+      // session + times (server authoritative)
+      'isOnline': true,
+      'updatedAt': _serverNow(),
+      'lastLoginAt': _serverNow(),
+      'lastSeen': _serverNow(),
+    };
+
+    // tokens
+    if (fcmToken != null && fcmToken.isNotEmpty) {
+      data['fcmTokens'] = updatedTokens;
+      data['fcmUpdatedAt'] = _serverNow();
+    } else {
+      data['fcmTokens'] = existing['fcmTokens'] ?? <String, dynamic>{};
+      data['fcmUpdatedAt'] =
+          existing['fcmUpdatedAt'] ?? Timestamp.fromDate(nowUtc);
+    }
+
+    // createdAt once
+    if (!snap.exists) {
+      data['createdAt'] = _serverNow();
+    } else {
+      data['createdAt'] = existing['createdAt'] ?? _serverNow();
+    }
+
+    // ✅ merge so we never wipe any user-entered info
+    await ref.set(data, SetOptions(merge: true));
+  }
+
+  // --- SIGN IN WITH GOOGLE (now guarantees full profile) ---------------------
   Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      debugPrint('🟦 GS1: open Google sign-in');
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('🟨 GS cancelled (googleUser == null)');
+        return null;
+      }
 
-      if (googleUser == null) return null; // User cancelled
+      debugPrint('🟦 GS2: get auth tokens');
+      final googleAuth = await googleUser.authentication;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
 
+      if ((idToken == null || idToken.isEmpty) &&
+          (accessToken == null || accessToken.isEmpty)) {
+        debugPrint('❌ GS tokens empty (idToken/accessToken both null/empty)');
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        return null;
+      }
+
+      debugPrint('🟦 GS3: Firebase signInWithCredential');
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        accessToken: accessToken,
+        idToken: idToken,
       );
 
       final userCredential = await auth.signInWithCredential(credential);
       final user = userCredential.user;
-
-      if (user == null || user.email == null) return null;
-
-      final userDoc = await firestore.collection('users').doc(user.uid).get();
-
-      if (!userDoc.exists) {
-        final now = DateTime.now();
-        final memberSince = "${_monthName(now.month)} ${now.year}";
-
-        final newUser = UserModel(
-          uid: user.uid,
-          name: user.displayName ?? user.email!.split('@')[0],
-          email: user.email!,
-          emailAddress: user.email!,
-          phoneNumber: user.phoneNumber ?? '',
-          address: '',
-          dateOfBirth: '',
-          memberSince: memberSince,
-          totalWashes: 0,
-          washesThisMonth: 0,
-          rating: 0.0,
-          loyaltyPoints: 0,
-          photoUrl: '',
-          locations: [],
-          notificationSettings: {
-            "push": true,
-            "email": true,
-            "bookingConfirmed": true,
-            "washStarted": true,
-            "washCompleted": true,
-            "appUpdates": true,
-          },
-          settings: {
-            "autoLock": false,
-            "biometricAuth": false,
-            "darkMode": false,
-          },
-        );
-
-        await firestore.collection('users').doc(user.uid).set(newUser.toMap());
-
-        // Save to Provider
-        await context.read<UserProvider>().setUser(newUser);
-      } else {
-        // Existing user – load from Firestore
-        final existingUser = UserModel.fromMap(userDoc.data()!);
-        await context.read<UserProvider>().setUser(existingUser);
+      if (user == null) {
+        debugPrint('❌ GS userCredential.user is null');
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        return null;
       }
 
-      // ✅ Save login status
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
+      debugPrint('🟦 GS4: ensureUserProfile');
+      final fcmToken = await fcm.getToken();
+      await _ensureUserProfile(user: user, fcmToken: fcmToken);
 
+      debugPrint('🟦 GS5: load user into provider');
+      await _loadUserIntoProvider(context, user.uid);
+
+      debugPrint('🟦 GS6: save logged-in flag');
+      await _saveLoggedInFlag();
+
+      debugPrint('✅ GS done');
       return userCredential;
-    } catch (e) {
-      debugPrint('Google Sign-In Error: $e');
+    } catch (e, st) {
+      _logError('Google Sign-In Error', e, st);
+
+      try {
+        await auth.signOut();
+      } catch (_) {}
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
       return null;
     }
   }
 
-  /// Handles user sign-in with email and password.
-  /// It verifies the user's existence in Firebase Auth and then in Firestore.
-  /// If the user's Firestore document does not exist, it prevents login.
+  // --- SIGN IN WITH EMAIL/PASSWORD (optional: also ensure profile completeness)
   Future<void> signInWithEmailAndPassword({
     required String email,
     required String password,
     required BuildContext context,
   }) async {
     try {
-      // Authenticate user
       final userCredential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      final user = userCredential.user!;
-      final docSnapshot = await firestore
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final user = userCredential.user;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'invalid-user',
+          message: 'Login failed: user is null.',
+        );
+      }
 
-      // If Firestore user profile is missing, treat as failed login
-      if (!docSnapshot.exists) {
-        await auth.signOut(); // Sign out for safety
+      final uid = user.uid;
+      final docSnapshot = await _userRef(
+        uid,
+      ).get().timeout(const Duration(seconds: 8));
+
+      if (!docSnapshot.exists || docSnapshot.data() == null) {
+        await auth.signOut();
         throw FirebaseAuthException(
           code: 'user-data-not-found',
           message: 'User profile not found. Please register before logging in.',
         );
       }
 
-      // Parse and store user data using your UserProvider
-      final userModel = UserModel.fromMap(docSnapshot.data()!);
-      // Optionally: leave this part to the caller
-      // await userProvider.setUser(userModel);
+      final existingData = docSnapshot.data()!;
+      final existingTokens = _readMap(existingData['fcmTokens']);
 
-      // Update last login timestamp
-      await firestore.collection('users').doc(user.uid).update({
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
+      final fcmToken = await fcm.getToken();
+      final updatedTokens = _mergeFcmToken(existingTokens, fcmToken);
 
-      // ✅ Save login status
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
+      final updateMap = <String, dynamic>{
+        'isOnline': true,
+        'updatedAt': _serverNow(),
+        'lastLoginAt': _serverNow(),
+        'lastSeen': _serverNow(),
+      };
+
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        updateMap['fcmTokens'] = updatedTokens;
+        updateMap['fcmUpdatedAt'] = _serverNow();
+      }
+
+      await _userRef(uid).set(updateMap, SetOptions(merge: true));
+
+      // ✅ ensure old email users also get missing defaults/time fields filled
+      await _ensureUserProfile(user: user, fcmToken: fcmToken);
+
+      await _loadUserIntoProvider(context, uid);
+      await _saveLoggedInFlag();
     } on FirebaseAuthException {
-      // Rethrow specific Firebase auth exceptions
       rethrow;
     } catch (e) {
-      // Rethrow any other general errors
       throw Exception('Unexpected error: $e');
     }
   }
 
+  // --- TOGGLE IS ONLINE ------------------------------------------------------
   Future<void> toggleIsOnline(bool value) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      await _userRef(user.uid).set({
         'isOnline': value,
-        'lastSeen': FieldValue.serverTimestamp(),
+        'updatedAt': _serverNow(),
+        'lastSeen': _serverNow(),
       }, SetOptions(merge: true));
+
       debugPrint('✅ User online status updated: $value');
     } catch (e) {
-      // With Firestore offline persistence, this will queue and sync later.
       debugPrint('❌ Failed to update online status: $e');
     }
   }
 
-  //----------------------------------------------------------------------------
-  /// Handles user sign-out from Firebase, Google (if applicable),
-  /// clears user data from the provider and cache, and navigates to the login screen.
+  // --- SIGN OUT --------------------------------------------------------------
   Future<void> signOut(BuildContext context) async {
     try {
-      final auth = FirebaseAuth.instance;
-      final googleSignIn = GoogleSignIn();
-
-      // 🧹 Remove FCM token before signing out
-      await NotificationService().removeToken();
-
       await toggleIsOnline(false);
-
-      // Sign out from Firebase Authentication
       await auth.signOut();
 
-      // Sign out from Google if the user was signed in with Google
       if (await googleSignIn.isSignedIn()) {
         await googleSignIn.signOut();
       }
 
-      // Clear user data from the UserProvider
       if (context.mounted) {
         await context.read<UserProvider>().clearCache();
       }
 
-      // Remove login flag from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_logged_in');
-
-      // Navigate to LoginScreen and remove all previous routes
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
     } catch (e) {
       debugPrint('Error signing out: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error signing out: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 }

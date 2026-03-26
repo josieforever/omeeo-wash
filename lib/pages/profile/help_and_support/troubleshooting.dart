@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/services_screen.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/auto_care/auto_care_services.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -143,7 +143,8 @@ class _TroubleshootingPageState extends State<TroubleshootingPage> {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (BuildContext context) => const ServicesScreen(),
+                  builder: (BuildContext context) =>
+                      const AutoCareServicesScreen(),
                 ),
               );
             },

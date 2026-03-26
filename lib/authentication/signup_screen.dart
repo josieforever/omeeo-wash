@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lottie/lottie.dart';
@@ -747,6 +748,7 @@ String _monthName(int month) {
 Future<UserCredential?> signInWithGoogle(BuildContext context) async {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseMessaging fcm = FirebaseMessaging.instance; // ✅ Initialize FCM
 
   try {
     final GoogleSignIn googleSignIn = GoogleSignIn();
@@ -773,12 +775,21 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
       final now = DateTime.now();
       final memberSince = "${_monthName(now.month)} ${now.year}";
 
+      // ✅ Get the FCM token and prepare the map
+      final fcmToken = await fcm.getToken();
+      final fcmTokensMap = (fcmToken != null && fcmToken.isNotEmpty)
+          ? {fcmToken: true}
+          : <String, dynamic>{}; // Ensures a non-null map
+
       final newUser = UserModel(
         uid: user.uid,
         name: user.displayName ?? user.email!.split('@')[0],
         email: user.email!,
         emailAddress: user.email!,
-        phoneNumber: user.phoneNumber ?? '',
+        phoneNumber:
+            user.phoneNumber ??
+            user.phoneNumber ??
+            '', // Using null-coalescing from Google
         address: '',
         dateOfBirth: '',
         memberSince: memberSince,
@@ -786,7 +797,8 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
         washesThisMonth: 0,
         rating: 0.0,
         loyaltyPoints: 0,
-        photoUrl: '',
+        // Use photoUrl from Google Auth if available
+        photoUrl: user.photoURL ?? '',
         locations: [],
         notificationSettings: {
           "push": true,
@@ -801,6 +813,12 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
           "biometricAuth": false,
           "darkMode": false,
         },
+
+        // ✅ ADDED REQUIRED FIELDS FOR COMPLETENESS
+        fcmTokens: fcmTokensMap,
+        fcmUpdatedAt: now,
+        isOnline: true,
+        lastSeen: now,
       );
 
       await firestore.collection('users').doc(user.uid).set(newUser.toMap());
@@ -810,8 +828,36 @@ Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     } else {
       // Existing user – load from Firestore
       final existingUser = UserModel.fromMap(userDoc.data()!);
-      await context.read<UserProvider>().setUser(existingUser);
+
+      // OPTIONAL: Update online status and token on sign-in for existing users
+      // If you want to update the token/status on every sign-in (recommended)
+      final now = DateTime.now();
+      final fcmToken = await fcm.getToken();
+
+      if (fcmToken != null) {
+        final updatedTokens = Map<String, dynamic>.from(
+          existingUser.fcmTokens!,
+        );
+        updatedTokens[fcmToken] = true;
+
+        final updatedUser = existingUser.copyWith(
+          isOnline: true,
+          lastSeen: now,
+          fcmTokens: updatedTokens,
+          fcmUpdatedAt: now,
+        );
+
+        await firestore
+            .collection('users')
+            .doc(user.uid)
+            .update(updatedUser.toMap());
+
+        await context.read<UserProvider>().setUser(updatedUser);
+      } else {
+        await context.read<UserProvider>().setUser(existingUser);
+      }
     }
+
     // ✅ Save login status
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_logged_in', true);
@@ -832,6 +878,7 @@ Future<void> signUpWithEmail({
 }) async {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseMessaging fcm = FirebaseMessaging.instance; // ✅ Initialize FCM
 
   final userCredential = await auth.createUserWithEmailAndPassword(
     email: email,
@@ -850,6 +897,12 @@ Future<void> signUpWithEmail({
   if (!docExists) {
     final now = DateTime.now();
     final memberSince = "${_monthName(now.month)} ${now.year}";
+
+    // ✅ Get the FCM token and prepare the map
+    final fcmToken = await fcm.getToken();
+    final fcmTokensMap = (fcmToken != null && fcmToken.isNotEmpty)
+        ? {fcmToken: true}
+        : <String, dynamic>{}; // Ensures a non-null map
 
     final newUser = UserModel(
       uid: user.uid,
@@ -875,6 +928,12 @@ Future<void> signUpWithEmail({
         "appUpdates": true,
       },
       settings: {"autoLock": false, "biometricAuth": false, "darkMode": false},
+
+      // ✅ ADDED REQUIRED FIELDS
+      fcmTokens: fcmTokensMap,
+      fcmUpdatedAt: now,
+      isOnline: true,
+      lastSeen: now,
     );
 
     await userRef.set(newUser.toMap());

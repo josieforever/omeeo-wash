@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -27,12 +28,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 🔔 Background handler — must be top-level
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ✅ FIX ADDED: Activate App Check in background isolate to prevent token errors
+  // Note: Using debug provider here assumes you are testing.
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.appAttest,
+  );
+
   await LocalNotificationService.show(message);
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ✅ FIX ADDED: Activate App Check Main Instance
+  // This explicitly installs the provider, solving the "No AppCheckProvider" error.
+  await FirebaseAppCheck.instance.activate(
+    // 'debug' allows it to work on emulators/simulators without Play Store signing
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.appAttest,
+  );
 
   // ✅ Initialize local notifications (for background display)
   await LocalNotificationService.initialize();
@@ -41,7 +59,7 @@ Future<void> main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // 🧠 Load user prefs
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance(); ///////
   final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
   final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
 

@@ -53,16 +53,8 @@ class ServiceButton extends StatelessWidget {
           color: isSelected
               ? AppColors.pink
               : Theme.of(context).colorScheme.inversePrimary,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.shadow,
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 6), // x, y
-            ),
-          ],
         ),
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
         child: Column(
           children: [
             Row(
@@ -130,7 +122,7 @@ class ServiceButton extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: 10),
+                SizedBox(width: 5),
               ],
             ),
           ],
@@ -231,10 +223,12 @@ class _RegularButtonState extends State<RegularButton> {
 
 class IconStackTextButton extends StatelessWidget {
   final Widget textWidget;
+  final Widget textWidget2;
   final Widget? numberWidget;
   final Icon icon;
   final VoidCallback onPressed;
   final String? lottieAsset; // 👈 background animation file
+  final String? sideIconString;
   final BoxBorder? border;
   final double borderRadius;
   final EdgeInsetsGeometry? padding;
@@ -245,16 +239,27 @@ class IconStackTextButton extends StatelessWidget {
     required this.icon,
     required this.textWidget,
     this.numberWidget,
+    this.sideIconString,
     required this.onPressed,
     this.lottieAsset,
     this.border,
     required this.borderRadius,
     this.padding,
     this.margin,
+    required this.textWidget2,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color bg1 = const Color.fromARGB(255, 19, 47, 46);
+    final Color bg2 = const Color.fromARGB(255, 43, 37, 86);
+    final Color pillFg = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(.9);
+    final Color pillBg = Theme.of(
+      context,
+    ).colorScheme.inversePrimary.withOpacity(.12);
+    final Color btnFg = Colors.black87;
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -262,63 +267,64 @@ class IconStackTextButton extends StatelessWidget {
         decoration: BoxDecoration(
           border: border,
           borderRadius: BorderRadius.circular(borderRadius),
-          color: const Color.fromARGB(80, 117, 117, 117),
+          /* color: Theme.of(context).colorScheme.primary, */
+          gradient: LinearGradient(
+            colors: [bg1, bg2],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(borderRadius),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // 🔥 Background Lottie (fills button perfectly)
-              if (lottieAsset != null)
-                Positioned.fill(
-                  child: Transform.rotate(
-                    angle: 90,
-                    child: Transform.scale(
-                      scale: 0.4,
-                      child: Lottie.asset(
-                        lottieAsset!,
-                        fit: BoxFit.cover, // 👈 fills perfectly inside button
-                        repeat: true,
-                      ),
-                    ),
-                  ),
-                ),
-              if (lottieAsset != null)
-                Positioned.fill(
-                  left: 100,
-                  child: Transform.rotate(
-                    angle: 270,
-                    child: Transform.scale(
-                      scale: 0.4,
-                      child: Lottie.asset(
-                        lottieAsset!,
-                        fit: BoxFit.cover, // 👈 fills perfectly inside button
-                        repeat: true,
-                      ),
-                    ),
-                  ),
-                ),
-
               // 🔥 Foreground content
-              Padding(
-                padding: padding ?? const EdgeInsets.all(12.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(5),
+                    margin: EdgeInsets.all(5),
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(119, 108, 108, 108),
+                      //color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+
+                      child: Transform.scale(
+                        scale: 3,
+                        child: Lottie.asset(
+                          lottieAsset!,
+                          fit: BoxFit.cover, // 👈 fills perfectly inside button
+                          repeat: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        icon,
-                        const SizedBox(width: 10),
-                        if (numberWidget != null) numberWidget!,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [textWidget, textWidget2],
+                        ),
+                        Icon(
+                          FontAwesomeIcons.chevronRight,
+                          size: 15,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        const SizedBox(width: 1),
                       ],
                     ),
-
-                    const SizedBox(height: 2),
-                    textWidget,
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -330,159 +336,373 @@ class IconStackTextButton extends StatelessWidget {
 
 class ServiceButtonExpanded extends StatelessWidget {
   final String textWidget1;
-  final String? animation;
   final String? textWidget2;
   final String textWidget3;
-  final String? price;
-  final String? stars;
-  final Icon? icon;
-  final SvgPicture? svg;
-  final double? scale;
-  final VoidCallback onPressed;
-  final bool isSelected;
+
   final List<String>? serviceItems;
+  final List<String>? addOns;
+
+  final Image? image;
+  final Color deepColor;
+  final Color backgroundColor;
+  final Color? boxShadowColor;
+
+  final bool isSelected;
+  final bool isExpanded;
+
+  final Set<String> selectedAddOns;
+  final Function(String) onAddOnToggle;
+
+  final VoidCallback onTap;
+
   const ServiceButtonExpanded({
     super.key,
     required this.textWidget1,
     this.textWidget2,
     required this.textWidget3,
-    this.price,
-    this.icon,
-    required this.onPressed,
-    this.stars,
-    this.animation,
-    this.scale,
-    this.svg,
-    this.isSelected = false,
     this.serviceItems,
+    this.addOns,
+    required this.deepColor,
+    required this.backgroundColor,
+    this.boxShadowColor,
+    required this.isSelected,
+    required this.isExpanded,
+    required this.onTap,
+    required this.selectedAddOns,
+    required this.onAddOnToggle,
+    this.image,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAddOns = addOns != null && addOns!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            width: 2.5,
+            color: isSelected ? deepColor : Colors.transparent,
+          ),
+          color: Theme.of(context).colorScheme.inversePrimary,
+          boxShadow: [
+            BoxShadow(
+              color: boxShadowColor ?? Colors.black12,
+              blurRadius: 25,
+              spreadRadius: 1,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (image != null)
+                  Container(
+                    padding: EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: image!,
+                  ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomText(
+                        text: textWidget1,
+                        textWeight: FontWeight.bold,
+                      ),
+                      if (textWidget2 != null) CustomText(text: textWidget2!),
+                      CustomText(text: textWidget3),
+                    ],
+                  ),
+                ),
+                if (hasAddOns)
+                  AnimatedRotation(
+                    duration: const Duration(milliseconds: 300),
+                    turns: isExpanded ? 0.5 : 0,
+                    child: Icon(Icons.keyboard_arrow_down, color: deepColor),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Base service chips
+            if (serviceItems != null)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: serviceItems!.map((s) => _baseChip(s)).toList(),
+              ),
+
+            // Expandable Add-ons
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: isExpanded && hasAddOns
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        Divider(color: deepColor.withOpacity(.2)),
+                        const SizedBox(height: 2),
+                        CustomText(
+                          text: "Available Add-Ons",
+                          textWeight: FontWeight.bold,
+                          textColor: deepColor,
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: addOns!.map((a) => _addOnChip(a)).toList(),
+                        ),
+                      ],
+                    )
+                  : const SizedBox(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _baseChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: deepColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _addOnChip(String text) {
+    final bool selected = selectedAddOns.contains(text);
+
+    return GestureDetector(
+      onTap: () => onAddOnToggle(text),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? deepColor : backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: deepColor, width: selected ? 0 : 0),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              const Icon(Icons.check, size: 14, color: Colors.white),
+            if (selected) const SizedBox(width: 4),
+            Text(
+              text,
+              style: TextStyle(
+                color: selected ? Colors.white : deepColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ServiceButtonExpanded2 extends StatelessWidget {
+  final String textWidget1;
+  final String? textWidget2;
+  final String textWidget3;
+  final bool? position;
+  final List<String>? serviceItems;
+  final List<String>? addOns;
+
+  final Image? image;
+  final Color deepColor;
+  final Color backgroundColor;
+  final Color? boxShadowColor;
+
+  final bool isSelected;
+  final bool isExpanded;
+
+  final Set<String> selectedAddOns;
+  final Function(String) onAddOnToggle;
+
+  final VoidCallback onTap;
+
+  const ServiceButtonExpanded2({
+    super.key,
+    required this.textWidget1,
+    this.textWidget2,
+    required this.textWidget3,
+    this.serviceItems,
+    this.addOns,
+    required this.deepColor,
+    required this.backgroundColor,
+    this.boxShadowColor,
+    required this.isSelected,
+    required this.isExpanded,
+    required this.onTap,
+    required this.selectedAddOns,
+    required this.onAddOnToggle,
+    this.image,
+    this.position,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            width: 2.5,
-            color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.inversePrimary,
-          ),
-          color: isSelected
-              ? Theme.of(context).colorScheme.onSecondary
-              : Theme.of(context).colorScheme.inversePrimary,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.shadow,
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 6), // x, y
-            ),
-          ],
-        ),
-        padding: EdgeInsets.all(15),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.inversePrimary
-                            : Theme.of(context).colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Transform.scale(
-                        scale: scale,
-                        child: Center(child: icon ?? svg),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CustomText(
-                      text: textWidget1,
-                      textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                      textSize: TextSizes.bodyText1,
-                      textWeight: FontWeight.bold,
-                    ),
-                    textWidget2 == null
-                        ? SizedBox()
-                        : CustomText(
-                            text: textWidget2!,
-                            textColor: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.color,
-                            textSize: TextSizes.bodyText1,
-                          ),
-                    CustomText(
-                      text: textWidget3,
-                      textColor: Theme.of(context).textTheme.bodyMedium?.color,
-                      textSize: TextSizes.bodyText1,
-                    ),
-                  ],
-                ),
-                Expanded(child: SizedBox()),
-                price == null
-                    ? Row(
-                        children: [
-                          Icon(
-                            FontAwesomeIcons.solidStar,
-                            size: IconSizes.midSmall,
-                            color: Colors.amber,
-                          ),
-                          const SizedBox(width: 5),
-                          CustomText(
-                            text: stars!,
-                            textColor: Theme.of(
-                              context,
-                            ).textTheme.bodyLarge?.color,
-                            textSize: TextSizes.subtitle1,
-                            textWeight: FontWeight.bold,
-                          ),
-                        ],
-                      )
-                    : SizedBox(),
-              ],
-            ),
-
-            Row(
-              children: [
-                CustomText(
-                  text: "Includes :",
-                  textSize: TextSizes.bodyText1,
-                  textWeight: FontWeight.bold,
-                  textColor: Theme.of(context).textTheme.bodyLarge?.color,
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: backgroundColor,
+              boxShadow: [
+                BoxShadow(
+                  color: boxShadowColor!,
+                  blurRadius: 25,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
-
-            for (var service in serviceItems!)
-              Row(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
                 children: [
-                  Icon(Icons.do_not_disturb_on_sharp, size: 8),
-                  const SizedBox(width: 5),
-                  CustomText(
-                    text: service,
-                    textColor: Theme.of(context).textTheme.bodyMedium?.color,
-                    textSize: TextSizes.bodyText3,
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _PinkCirclesPainter(
+                        color: const Color(0xFFE88AAF).withOpacity(0.16),
+                        lightColor: const Color(0xFFFFC1D6).withOpacity(0.22),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              textWidget1,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: deepColor,
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-          ],
-        ),
+            ),
+          ),
+          if (image != null) Positioned(top: 11, left: 10, child: image!),
+        ],
       ),
     );
+  }
+}
+
+class _PinkCirclesPainter extends CustomPainter {
+  final Color color;
+  final Color lightColor;
+
+  const _PinkCirclesPainter({required this.color, required this.lightColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    void drawFilledCircle(double x, double y, double r, Color c) {
+      fillPaint.color = c;
+      canvas.drawCircle(Offset(x, y), r, fillPaint);
+    }
+
+    void drawStrokeCircle(double x, double y, double r, Color c) {
+      strokePaint.color = c;
+      canvas.drawCircle(Offset(x, y), r, strokePaint);
+    }
+
+    // scattered filled circles
+    drawFilledCircle(size.width * 0.18, size.height * 0.20, 10, lightColor);
+    drawFilledCircle(size.width * 0.32, size.height * 0.68, 6, color);
+    drawFilledCircle(size.width * 0.48, size.height * 0.28, 8, lightColor);
+    drawFilledCircle(size.width * 0.62, size.height * 0.76, 12, color);
+    drawFilledCircle(size.width * 0.78, size.height * 0.22, 9, lightColor);
+    drawFilledCircle(size.width * 0.88, size.height * 0.58, 7, color);
+
+    drawFilledCircle(size.width * 0.12, size.height * 0.82, 5, color);
+    drawFilledCircle(size.width * 0.26, size.height * 0.42, 4, lightColor);
+    drawFilledCircle(size.width * 0.56, size.height * 0.54, 5, color);
+    drawFilledCircle(size.width * 0.70, size.height * 0.40, 4, lightColor);
+    drawFilledCircle(size.width * 0.92, size.height * 0.18, 5, color);
+
+    // scattered outlined circles
+    drawStrokeCircle(
+      size.width * 0.22,
+      size.height * 0.52,
+      16,
+      color.withOpacity(0.22),
+    );
+    drawStrokeCircle(
+      size.width * 0.42,
+      size.height * 0.14,
+      12,
+      lightColor.withOpacity(0.26),
+    );
+    drawStrokeCircle(
+      size.width * 0.66,
+      size.height * 0.18,
+      18,
+      color.withOpacity(0.20),
+    );
+    drawStrokeCircle(
+      size.width * 0.82,
+      size.height * 0.78,
+      14,
+      lightColor.withOpacity(0.24),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PinkCirclesPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.lightColor != lightColor;
   }
 }
 
@@ -1129,7 +1349,7 @@ class GoBack extends StatelessWidget {
           // backgroundColor: Colors.red,
           child: Center(
             child: Transform.scale(
-              scale: 1.2,
+              scale: 0.8,
               child: Icon(
                 Icons.arrow_back_rounded,
                 color: Theme.of(context).colorScheme.inversePrimary,

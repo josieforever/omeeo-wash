@@ -18,6 +18,7 @@ class ThemeProvider extends ChangeNotifier {
     fontFamily: 'Poppins',
     brightness: Brightness.light,
     scaffoldBackgroundColor: Color.fromARGB(255, 255, 255, 255),
+    //scaffoldBackgroundColor: const Color.fromARGB(255, 28, 28, 28),
     colorScheme: ColorScheme.light(
       primary: Colors.black87,
       inversePrimary: Colors.white,

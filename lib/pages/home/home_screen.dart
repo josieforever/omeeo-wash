@@ -1,11 +1,10 @@
 import 'dart:math' as math;
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/services_screen.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/auto_care/auto_care_services.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/home_office_spaces/home_office_spaces.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -33,14 +32,14 @@ class HomeScreenTopBar extends StatelessWidget {
     return Container(
       width: MediaQuery.of(context).size.width,
       margin: EdgeInsets.all(10),
-      padding: EdgeInsets.all(10),
+      padding: EdgeInsets.all(5),
 
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.inversePrimary,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow,
+            color: const Color.fromARGB(255, 177, 177, 177),
             blurRadius: 12,
             spreadRadius: 2,
             offset: const Offset(0, 6), // x, y
@@ -56,16 +55,23 @@ class HomeScreenTopBar extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CustomText(
-                    text: 'Hello, Sarah!',
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.heading1,
-                    textWeight: FontWeight.w900,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: CustomText(
+                      text: 'Good morning',
+                      textColor: Theme.of(context).colorScheme.surface,
+                      textSize: TextSizes.subtitle1,
+                      textWeight: FontWeight.w700,
+                    ),
                   ),
-                  CustomText(
-                    text: 'Ready to wash your 🚗?',
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.heading3,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: CustomText(
+                      text: 'Welcome back, Sarah!',
+                      textColor: Theme.of(context).colorScheme.primary,
+                      textSize: TextSizes.heading2,
+                      textWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
@@ -92,35 +98,41 @@ class HomeScreenTopBar extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: IconStackTextButton(
                   padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-
+                  sideIconString: 'assets/images/shop.png',
                   icon: Icon(
                     FontAwesomeIcons.calendar,
                     size: IconSizes.small,
                     color: Theme.of(context).colorScheme.inversePrimary,
                   ),
                   textWidget: CustomText(
-                    text: 'Book Now',
+                    text: 'Shop Products',
                     textColor: Theme.of(context).colorScheme.inversePrimary,
-                    textSize: TextSizes.subtitle2,
+                    textSize: TextSizes.bodyText1,
+                    textWeight: FontWeight.bold,
+                  ),
+                  textWidget2: CustomText(
+                    text: 'Keychains, mats, cleaning materials & more',
+                    textColor: Theme.of(context).colorScheme.onSecondary,
+                    textSize: TextSizes.bodyText2,
                     textWeight: FontWeight.bold,
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (BuildContext context) =>
-                            const ServicesScreen(),
+                            const AutoCareServicesScreen(),
                       ),
                     );
                   },
-                  borderRadius: 25,
+                  borderRadius: 12,
                   lottieAsset:
-                      "assets/animations/floating_black.json", // 👈 your Lottie file
+                      "assets/animations/cart_icon_loader.json", // 👈 your Lottie file
                   /*  border: Border.all(color: Theme.of(context).colorScheme.inversePrimary, width: 2), */
                 ),
               ),
@@ -135,6 +147,27 @@ class HomeScreenTopBar extends StatelessWidget {
 class HomeScreenMiddleSection extends StatelessWidget {
   const HomeScreenMiddleSection({super.key});
 
+  final chipBg = const Color(0xFFEDE9FE); // very light periwinkle-purple
+  final chipBorder = const Color(0xFFC4B5FD); // soft border
+  final chipFg = const Color(0xFF5B21B6); // deep readable purple (text/icon)
+  final panelBg = const Color(0xFFF5F3FF); // extra light panel background
+  final panelBorder = const Color(0xFFC4B5FD); // match border
+  final dot = const Color(0xFF8B5CF6); // vivid periwinkle dot
+
+  final chipBg1 = const Color(0xFFCCFBF1); // light seafoam (bg)
+  final chipBorder1 = const Color(0xFF5EEAD4); // seafoam border
+  final chipFg1 = const Color(0xFF0F766E); // deep teal (text/icon)
+  final panelBg1 = const Color(0xFFF0FDFA); // very light seafoam panel
+  final panelBorder1 = const Color(0xFF5EEAD4); // panel border
+  final dot1 = const Color(0xFF14B8A6); // seafoam accent dot
+
+  final chipBg2 = const Color(0xFFFCE7F3); // light periwinkle-pink (bg)
+  final chipBorder2 = const Color(0xFFF9A8D4); // periwinkle-pink border
+  final chipFg2 = const Color(0xFF7C3AED); // deep periwinkle-purple (text/icon)
+  final panelBg2 = const Color(0xFFFFF1F7); // very light pink panel
+  final panelBorder2 = const Color(0xFFF9A8D4); // panel border
+  final dot2 = const Color(0xFFA855F7); // periwinkle accent dot
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -143,17 +176,8 @@ class HomeScreenMiddleSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 5),
 
-          RewardsPointsCard(
-            currentPoints: 850,
-            nextThreshold: 1000,
-            // Optional:
-            // title: 'Rewards Points',
-            // encouragingText: "You're doing great!",
-          ),
-
-          const SizedBox(height: 15),
           ServiceCard(
             pictureString: [
               'assets/images/house.png',
@@ -162,15 +186,949 @@ class HomeScreenMiddleSection extends StatelessWidget {
               'assets/images/carpet.png',
               'assets/images/toilet.png',
             ],
-            title: 'Home Office Spaces',
-            subtitle: 'Complete home cleaning service',
+            title: 'Home / Office Spaces',
+            subtitle: 'Home and Office cleaning service',
             priceText: r'$120',
             durationText: '3 hrs',
             icon: Icons.home,
             isPopular: true,
-            onTap: () {},
+            sideIconString: 'assets/images/office.png',
+            boxShadowColor: Color.fromARGB(255, 51, 0, 255),
+            iconBackgroundColor: Color.fromARGB(255, 206, 193, 255),
+            colorList: [Color(0xFFC4B5FD), Color(0xFFC4B5FD)],
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const HomeOfficeSpacesServicesScreen(serviceType: ""),
+                ),
+              );
+            },
+            servicesCTA: Column(
+              children: [
+                const SizedBox(height: 15),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(17),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(15),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 2,
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.alarm,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Express Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Quick exterior wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "10 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Apartment Cleaning',
+                  textWidget2: 'Perfect for apartment & condos',
+                  textWidget3: '⏱️ 2hrs',
+                  serviceItems: ['Exterior wash & dry', 'Tire shine'],
+                  icon: Icon(
+                    FontAwesomeIcons.building,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.1,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "express",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '10',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'DashBoard shine',
+                              'Upholstry clean',
+                              'Car fLooring vacuum',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.5,
+                                              child: Center(
+                                                child: Icon(
+                                                  FontAwesomeIcons.shower,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Standard Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text:
+                                                'Complete exterior & interior',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "30 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Office Cleaning',
+                  textWidget2: 'Professional workspace cleaning',
+                  textWidget3: '⏱️ 4 hrs',
+                  serviceItems: [
+                    'Exterior wash',
+                    'Interior clean & vacuum',
+                    'Tire shine',
+                  ],
+                  icon: Icon(
+                    Icons.work,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.1,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "standard",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '30',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'DashBoard shine',
+                              'Upholstry clean',
+                              'Car fLooring vacuum',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.5,
+                                              child: Center(
+                                                child: Icon(
+                                                  FontAwesomeIcons.shower,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Standard Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text:
+                                                'Complete exterior & interior',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "30 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Move-In/Out Cleaning',
+                  textWidget2: 'Perfect for relocations',
+                  textWidget3: '⏱️ 4 hrs',
+                  serviceItems: [
+                    'Full exterior wash',
+                    'Deep interior clean',
+                    'Wax protection',
+                    'Tire shine',
+                    'Air freshener',
+                  ],
+                  icon: Icon(
+                    FontAwesomeIcons.doorOpen,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.1,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "standard",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '30',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Full exterior wash',
+                              'Deep interior clean',
+                              'Wax protection',
+                              'Tire shine',
+                              'Air freshener',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.8,
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  'assets/icons/cleaning.svg',
+                                                  height: 24,
+                                                  width: 24,
+                                                  colorFilter: ColorFilter.mode(
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary, // 🎨 Replace with your desired color
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Premium Detail',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Full detailing service',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "120 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CustomText(
+                                            text: "Includes :",
+                                            textSize: TextSizes.subtitle1,
+                                            textWeight: FontWeight.bold,
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                          ),
+                                        ],
+                                      ),
+
+                                      RegularButton(
+                                        onPressed: () {},
+                                        borderRadius: 50,
+                                        textWidget: CustomText(
+                                          text: 'Most Popular',
+                                          textColor: Theme.of(
+                                            context,
+                                          ).colorScheme.inversePrimary,
+                                          textSize: TextSizes.bodyText1,
+                                          textWeight: FontWeight.w700,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 3,
+                                          horizontal: 10,
+                                        ),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Upholstery Deep Clean',
+                  textWidget2: 'Professional furniture restoration',
+                  textWidget3: '⏱️ 2.5 hrs',
+                  serviceItems: [
+                    'Full exterior wash',
+                    'Deep interior clean',
+                    'Wax protection',
+                    'Tire shine',
+                    'Air freshener',
+                  ],
+                  svg: SvgPicture.asset(
+                    'assets/icons/sofa.svg',
+                    height: 24,
+                    width: 24,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context)
+                          .colorScheme
+                          .primary, // 🎨 Replace with your desired color
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  scale: 1.4,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "premium",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '200',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'DashBoard shine',
+                              'Upholstry clean',
+                              'Car fLooring vacuum',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.5,
+                                              child: Center(
+                                                child: Icon(
+                                                  FontAwesomeIcons.shower,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Standard Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text:
+                                                'Complete exterior & interior',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "30 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Carpet Cleaning',
+                  textWidget2: 'Deep carpet & upholstery care',
+                  textWidget3: '⏱️ 2 hrs',
+                  serviceItems: [
+                    'Exterior wash',
+                    'Interior clean & vacuum',
+                    'Tire shine',
+                  ],
+                  icon: Icon(
+                    FontAwesomeIcons.rug,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.1,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "standard",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '30',
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 15),
+
+          const SizedBox(height: 17),
           ServiceCard(
             pictureString: [
               'assets/images/car.png',
@@ -180,566 +1138,1190 @@ class HomeScreenMiddleSection extends StatelessWidget {
               'assets/images/seat.png',
             ],
             title: 'Auto Care',
-            subtitle: 'Complete home cleaning service',
+            subtitle: 'Car cleaning and detailing service',
             priceText: r'$120',
             durationText: '3 hrs',
             isPopular: true,
-            serviceCTA: ServiceButton(
-              textWidget1: 'Express Wash',
-              textWidget2: 'Quick exterior wash',
-              textWidget3: '⏱️ 10 min',
-              price: '10',
-              icon: Icon(
-                Icons.shower_rounded,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.1,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const ServicesScreen(serviceType: 'express'),
+            sideIconString: 'assets/images/car.png',
+            boxShadowColor: Color.fromARGB(255, 0, 255, 217),
+            iconBackgroundColor: Color.fromARGB(143, 166, 255, 230),
+            colorList: [Color(0xFF92E6D9), Color(0xFF92E6D9)],
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const AutoCareServicesScreen(serviceType: ""),
+                ),
+              );
+            },
+            servicesCTA: Column(
+              children: [
+                const SizedBox(height: 15),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(17),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(15),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 2,
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.alarm,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Express Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Quick exterior wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "10 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Express Wash',
+                  textWidget2: 'Quick exterior wash',
+                  textWidget3: '⏱️10 min',
+                  serviceItems: ['Exterior wash & dry', 'Tire shine'],
+                  icon: Icon(
+                    FontAwesomeIcons.shower,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                );
-              },
-              modalSheet: () {
-                // your bottom sheet…
-              },
+                  scale: 1.2,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "express",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '10',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'DashBoard shine',
+                              'Upholstry clean',
+                              'Car fLooring vacuum',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.5,
+                                              child: Center(
+                                                child: Icon(
+                                                  FontAwesomeIcons.shower,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Standard Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text:
+                                                'Complete exterior & interior',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "30 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Standard Wash',
+                  textWidget2: 'Complete exterior & interior',
+                  textWidget3: '⏱️ 30 min',
+                  serviceItems: [
+                    'Exterior wash',
+                    'Interior clean & vacuum',
+                    'Tire shine',
+                  ],
+                  icon: Icon(
+                    Icons.alarm,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.2,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "standard",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '30',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Full exterior wash',
+                              'Deep interior clean',
+                              'Wax protection',
+                              'Tire shine',
+                              'Air freshener',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.8,
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  'assets/icons/cleaning.svg',
+                                                  height: 24,
+                                                  width: 24,
+                                                  colorFilter: ColorFilter.mode(
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary, // 🎨 Replace with your desired color
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Premium Detail',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Full detailing service',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "120 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CustomText(
+                                            text: "Includes :",
+                                            textSize: TextSizes.subtitle1,
+                                            textWeight: FontWeight.bold,
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                          ),
+                                        ],
+                                      ),
+
+                                      RegularButton(
+                                        onPressed: () {},
+                                        borderRadius: 50,
+                                        textWidget: CustomText(
+                                          text: 'Most Popular',
+                                          textColor: Theme.of(
+                                            context,
+                                          ).colorScheme.inversePrimary,
+                                          textSize: TextSizes.bodyText1,
+                                          textWeight: FontWeight.w700,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 3,
+                                          horizontal: 10,
+                                        ),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Premium Detail',
+                  textWidget2: 'Full detailing service',
+                  textWidget3: '⏱️ 120 min',
+                  serviceItems: [
+                    'Full exterior wash',
+                    'Deep interior clean',
+                    'Wax protection',
+                    'Tire shine',
+                    'Air freshener',
+                  ],
+                  svg: SvgPicture.asset(
+                    'assets/icons/cleaning.svg',
+                    height: 24,
+                    width: 24,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context)
+                          .colorScheme
+                          .primary, // 🎨 Replace with your desired color
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  scale: 1.5,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "premium",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '200',
+                ),
+              ],
+            ),
+            onSelectedChanged: (selected) {
+              // optional: keep only one card open, analytics, etc.
+            },
+          ),
+          const SizedBox(height: 17),
+          ServiceCard(
+            pictureString: [
+              'assets/images/washing_machine.png',
+              'assets/images/basket.png',
+              'assets/images/sock.png',
+              'assets/images/iron.png',
+              'assets/images/shirt.png',
+            ],
+            title: 'Laundry',
+            subtitle: 'Wash, dry & iron for all garments',
+            priceText: r'$120',
+            durationText: '3 hrs',
+            isPopular: true,
+            sideIconString: 'assets/images/basket.png',
+            boxShadowColor: Color.fromARGB(255, 255, 0, 140),
+            iconBackgroundColor: Color.fromARGB(125, 255, 236, 246),
+            colorList: [
+              Color.fromARGB(255, 255, 199, 230),
+              Color.fromARGB(255, 255, 199, 230),
+            ],
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      const LaundryServicesScreen(serviceType: ""),
+                ),
+              );
+            },
+            servicesCTA: Column(
+              children: [
+                const SizedBox(height: 15),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(17),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(15),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 2,
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.alarm,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Express Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Quick exterior wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "10 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Express Wash',
+                  textWidget2: 'Quick exterior wash',
+                  textWidget3: '⏱️10 min',
+                  serviceItems: ['Exterior wash & dry', 'Tire shine'],
+                  icon: Icon(
+                    FontAwesomeIcons.shower,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.2,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(
+                              serviceType: "express",
+                            ),
+                      ),
+                    );
+                  },
+                  price: '10',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Exterior wash',
+                              'DashBoard shine',
+                              'Upholstry clean',
+                              'Car fLooring vacuum',
+                              'Tire shine',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.5,
+                                              child: Center(
+                                                child: Icon(
+                                                  FontAwesomeIcons.shower,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Standard Wash',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text:
+                                                'Complete exterior & interior',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "30 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      CustomText(
+                                        text: "Includes :",
+                                        textSize: TextSizes.subtitle1,
+                                        textWeight: FontWeight.bold,
+                                        textColor: Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Standard Wash',
+                  textWidget2: 'Complete exterior & interior',
+                  textWidget3: '⏱️ 30 min',
+                  serviceItems: [
+                    'Exterior wash',
+                    'Interior clean & vacuum',
+                    'Tire shine',
+                  ],
+                  icon: Icon(
+                    Icons.alarm,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1.2,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(serviceType: ""),
+                      ),
+                    );
+                  },
+                  price: '30',
+                ),
+                const SizedBox(height: 10),
+                ServiceButton(
+                  modalSheet: () {
+                    showModalBottomSheet(
+                      showDragHandle: true,
+                      context: context,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.inversePrimary,
+                      isScrollControlled:
+                          true, // Makes it full height if needed
+                      builder: (context) {
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            List<String> serviceItems = [
+                              'Full exterior wash',
+                              'Deep interior clean',
+                              'Wax protection',
+                              'Tire shine',
+                              'Air freshener',
+                            ];
+                            return Container(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.inversePrimary,
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(17),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Transform.scale(
+                                              scale: 1.8,
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  'assets/icons/cleaning.svg',
+                                                  height: 24,
+                                                  width: 24,
+                                                  colorFilter: ColorFilter.mode(
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary, // 🎨 Replace with your desired color
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          CustomText(
+                                            text: 'Premium Detail',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                            textSize: TextSizes.heading2,
+                                            textWeight: FontWeight.bold,
+                                          ),
+                                          CustomText(
+                                            text: 'Full detailing service',
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle1,
+                                          ),
+                                        ],
+                                      ),
+                                      Expanded(child: SizedBox()),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          CustomText(
+                                            text: "\$12",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.labelLarge?.color,
+                                            textSize: TextSizes.heading1,
+                                            textWeight: FontWeight.w800,
+                                          ),
+                                          CustomText(
+                                            text: "120 min",
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyMedium?.color,
+                                            textSize: TextSizes.subtitle2,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CustomText(
+                                            text: "Includes :",
+                                            textSize: TextSizes.subtitle1,
+                                            textWeight: FontWeight.bold,
+                                            textColor: Theme.of(
+                                              context,
+                                            ).textTheme.bodyLarge?.color,
+                                          ),
+                                        ],
+                                      ),
+
+                                      RegularButton(
+                                        onPressed: () {},
+                                        borderRadius: 50,
+                                        textWidget: CustomText(
+                                          text: 'Most Popular',
+                                          textColor: Theme.of(
+                                            context,
+                                          ).colorScheme.inversePrimary,
+                                          textSize: TextSizes.bodyText1,
+                                          textWeight: FontWeight.w700,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 3,
+                                          horizontal: 10,
+                                        ),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  for (var service in serviceItems)
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.do_not_disturb_on_sharp,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        CustomText(
+                                          text: service,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).textTheme.bodyMedium?.color,
+                                          textSize: TextSizes.subtitle1,
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  textWidget1: 'Premium Detail',
+                  textWidget2: 'Full detailing service',
+                  textWidget3: '⏱️ 120 min',
+                  serviceItems: [
+                    'Full exterior wash',
+                    'Deep interior clean',
+                    'Wax protection',
+                    'Tire shine',
+                    'Air freshener',
+                  ],
+                  svg: SvgPicture.asset(
+                    'assets/icons/cleaning.svg',
+                    height: 24,
+                    width: 24,
+                    colorFilter: ColorFilter.mode(
+                      Theme.of(context)
+                          .colorScheme
+                          .primary, // 🎨 Replace with your desired color
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  scale: 1.5,
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (BuildContext context) =>
+                            const AutoCareServicesScreen(serviceType: ""),
+                      ),
+                    );
+                  },
+                  price: '200',
+                ),
+              ],
             ),
             onSelectedChanged: (selected) {
               // optional: keep only one card open, analytics, etc.
             },
           ),
 
-          const SizedBox(height: 10),
-          CustomText(
-            text: 'Our Services',
-            textColor: Theme.of(context).textTheme.bodyLarge?.color,
-            textSize: TextSizes.heading2,
-            textWeight: FontWeight.w900,
-          ),
-          const SizedBox(height: 5),
-          ServiceButton(
-            modalSheet: () {
-              showModalBottomSheet(
-                showDragHandle: true,
-                context: context,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                ),
-                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                isScrollControlled: true, // Makes it full height if needed
-                builder: (context) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      List<String> serviceItems = [
-                        'Exterior wash',
-                        'Tire shine',
-                      ];
-                      return Container(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                        padding: const EdgeInsets.all(17),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(15),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.secondary,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Transform.scale(
-                                        scale: 2,
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.alarm,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CustomText(
-                                      text: 'Express Wash',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
-                                      textSize: TextSizes.heading2,
-                                      textWeight: FontWeight.bold,
-                                    ),
-                                    CustomText(
-                                      text: 'Quick exterior wash',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle1,
-                                    ),
-                                  ],
-                                ),
-                                Expanded(child: SizedBox()),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    CustomText(
-                                      text: "\$12",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.labelLarge?.color,
-                                      textSize: TextSizes.heading1,
-                                      textWeight: FontWeight.w800,
-                                    ),
-                                    CustomText(
-                                      text: "10 min",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle2,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                CustomText(
-                                  text: "Includes :",
-                                  textSize: TextSizes.subtitle1,
-                                  textWeight: FontWeight.bold,
-                                  textColor: Theme.of(
-                                    context,
-                                  ).textTheme.bodyLarge?.color,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            for (var service in serviceItems)
-                              Row(
-                                children: [
-                                  Icon(Icons.do_not_disturb_on_sharp, size: 13),
-                                  const SizedBox(width: 5),
-                                  CustomText(
-                                    text: service,
-                                    textColor: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium?.color,
-                                    textSize: TextSizes.subtitle1,
-                                  ),
-                                ],
-                              ),
-                            const SizedBox(height: 40),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              );
-            },
-            textWidget1: 'Express Wash',
-            textWidget2: 'Quick exterior wash',
-            textWidget3: '⏱️10 min',
-            serviceItems: ['Exterior wash & dry', 'Tire shine'],
-            icon: Icon(
-              FontAwesomeIcons.shower,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            scale: 1.2,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      const ServicesScreen(serviceType: "express"),
-                ),
-              );
-            },
-            price: '10',
-          ),
-          const SizedBox(height: 15),
-          ServiceButton(
-            modalSheet: () {
-              showModalBottomSheet(
-                showDragHandle: true,
-                context: context,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                ),
-                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                isScrollControlled: true, // Makes it full height if needed
-                builder: (context) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      List<String> serviceItems = [
-                        'Exterior wash',
-                        'DashBoard shine',
-                        'Upholstry clean',
-                        'Car fLooring vacuum',
-                        'Tire shine',
-                      ];
-                      return Container(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(17),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.secondary,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Transform.scale(
-                                        scale: 1.5,
-                                        child: Center(
-                                          child: Icon(
-                                            FontAwesomeIcons.shower,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CustomText(
-                                      text: 'Standard Wash',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
-                                      textSize: TextSizes.heading2,
-                                      textWeight: FontWeight.bold,
-                                    ),
-                                    CustomText(
-                                      text: 'Complete exterior & interior',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle1,
-                                    ),
-                                  ],
-                                ),
-                                Expanded(child: SizedBox()),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    CustomText(
-                                      text: "\$12",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.labelLarge?.color,
-                                      textSize: TextSizes.heading1,
-                                      textWeight: FontWeight.w800,
-                                    ),
-                                    CustomText(
-                                      text: "30 min",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle2,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                CustomText(
-                                  text: "Includes :",
-                                  textSize: TextSizes.subtitle1,
-                                  textWeight: FontWeight.bold,
-                                  textColor: Theme.of(
-                                    context,
-                                  ).textTheme.bodyLarge?.color,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            for (var service in serviceItems)
-                              Row(
-                                children: [
-                                  Icon(Icons.do_not_disturb_on_sharp, size: 13),
-                                  const SizedBox(width: 5),
-                                  CustomText(
-                                    text: service,
-                                    textColor: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium?.color,
-                                    textSize: TextSizes.subtitle1,
-                                  ),
-                                ],
-                              ),
-                            const SizedBox(height: 40),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              );
-            },
-            textWidget1: 'Standard Wash',
-            textWidget2: 'Complete exterior & interior',
-            textWidget3: '⏱️ 30 min',
-            serviceItems: [
-              'Exterior wash',
-              'Interior clean & vacuum',
-              'Tire shine',
-            ],
-            icon: Icon(
-              Icons.alarm,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            scale: 1.2,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      const ServicesScreen(serviceType: "standard"),
-                ),
-              );
-            },
-            price: '30',
-          ),
-          const SizedBox(height: 15),
-          ServiceButton(
-            modalSheet: () {
-              showModalBottomSheet(
-                showDragHandle: true,
-                context: context,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                ),
-                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                isScrollControlled: true, // Makes it full height if needed
-                builder: (context) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      List<String> serviceItems = [
-                        'Full exterior wash',
-                        'Deep interior clean',
-                        'Wax protection',
-                        'Tire shine',
-                        'Air freshener',
-                      ];
-                      return Container(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(17),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.secondary,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Transform.scale(
-                                        scale: 1.8,
-                                        child: Center(
-                                          child: SvgPicture.asset(
-                                            'assets/icons/cleaning.svg',
-                                            height: 24,
-                                            width: 24,
-                                            colorFilter: ColorFilter.mode(
-                                              Theme.of(context)
-                                                  .colorScheme
-                                                  .primary, // 🎨 Replace with your desired color
-                                              BlendMode.srcIn,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CustomText(
-                                      text: 'Premium Detail',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
-                                      textSize: TextSizes.heading2,
-                                      textWeight: FontWeight.bold,
-                                    ),
-                                    CustomText(
-                                      text: 'Full detailing service',
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle1,
-                                    ),
-                                  ],
-                                ),
-                                Expanded(child: SizedBox()),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    CustomText(
-                                      text: "\$12",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.labelLarge?.color,
-                                      textSize: TextSizes.heading1,
-                                      textWeight: FontWeight.w800,
-                                    ),
-                                    CustomText(
-                                      text: "120 min",
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.color,
-                                      textSize: TextSizes.subtitle2,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    CustomText(
-                                      text: "Includes :",
-                                      textSize: TextSizes.subtitle1,
-                                      textWeight: FontWeight.bold,
-                                      textColor: Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
-                                    ),
-                                  ],
-                                ),
+          const SizedBox(height: 20),
 
-                                RegularButton(
-                                  onPressed: () {},
-                                  borderRadius: 50,
-                                  textWidget: CustomText(
-                                    text: 'Most Popular',
-                                    textColor: Theme.of(
-                                      context,
-                                    ).colorScheme.inversePrimary,
-                                    textSize: TextSizes.bodyText1,
-                                    textWeight: FontWeight.w700,
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 3,
-                                    horizontal: 10,
-                                  ),
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            for (var service in serviceItems)
-                              Row(
-                                children: [
-                                  Icon(Icons.do_not_disturb_on_sharp, size: 13),
-                                  const SizedBox(width: 5),
-                                  CustomText(
-                                    text: service,
-                                    textColor: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium?.color,
-                                    textSize: TextSizes.subtitle1,
-                                  ),
-                                ],
-                              ),
-                            const SizedBox(height: 40),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              );
-            },
-            textWidget1: 'Premium Detail',
-            textWidget2: 'Full detailing service',
-            textWidget3: '⏱️ 120 min',
-            serviceItems: [
-              'Full exterior wash',
-              'Deep interior clean',
-              'Wax protection',
-              'Tire shine',
-              'Air freshener',
-            ],
-            svg: SvgPicture.asset(
-              'assets/icons/cleaning.svg',
-              height: 24,
-              width: 24,
-              colorFilter: ColorFilter.mode(
-                Theme.of(
-                  context,
-                ).colorScheme.primary, // 🎨 Replace with your desired color
-                BlendMode.srcIn,
-              ),
-            ),
-            scale: 1.5,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      const ServicesScreen(serviceType: "premium"),
-                ),
-              );
-            },
-            price: '200',
-          ),
-          const SizedBox(height: 30),
-          BannerCarousel(
-            assets: [
-              "assets/images/omeeo_banner.png",
-              "assets/images/cleaning_banner.png",
-            ],
-            onTap: (i) {
-              // handle tap per banner if you want
-              // e.g., navigate or open a promo
-            },
-          ),
-
-          const SizedBox(height: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -767,31 +2349,17 @@ class HomeScreenMiddleSection extends StatelessWidget {
                 title: 'First Wash Free!',
                 badgeText: 'New Customers',
                 subtitle: 'First standard wash on us',
-                onPressed: () async {
-                  // 1) start a stage
-                  // Make PRE-RINSE the only active stage (earlier=done, later=pending)
-                  await adminSetActiveWashStageStrict(
-                    bookingId: 'vNUu5adYrTlADdwzaoC1',
-                    activeStageKey:
-                        'cleaning', // hyphen/space/underscore all OK
-                    adminId: 'admin_123',
-                  );
-
-                  /*  // Move to WASHING (pre-rinse becomes done, others pending)
-                  await adminSetActiveWashStage(
-                    bookingId: 'Qp9iq8FgsABY0vn79qCH',
-                    activeStageKey: 'washing',
-                    adminId: 'admin_123',
-                  );
-
-                  // Jump directly to RINSING (pre-rinse & washing become done)
-                  await adminSetActiveWashStage(
-                    bookingId: 'Qp9iq8FgsABY0vn79qCH',
-                    activeStageKey: 'rinsing',
-                  ); */
-                },
+                onPressed: () async {},
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
+              RewardsPointsCard(
+                currentPoints: 850,
+                nextThreshold: 1000,
+                // Optional:
+                // title: 'Rewards Points',
+                // encouragingText: "You're doing great!",
+              ),
+              const SizedBox(height: 15),
             ],
           ),
         ],
@@ -1132,8 +2700,8 @@ class RewardsPointsCard extends StatelessWidget {
         ? 1.0
         : (currentPoints / nextThreshold).clamp(0.0, 1.0);
 
-    final Color bg1 = const Color(0xFF1E1E1E);
-    final Color bg2 = const Color(0xFF2D2D2D);
+    final Color bg1 = const Color.fromARGB(255, 19, 47, 46);
+    final Color bg2 = const Color.fromARGB(255, 43, 37, 86);
     final Color surface = const Color(0xFF121212);
     final Color track = Theme.of(
       context,
@@ -1183,11 +2751,7 @@ class RewardsPointsCard extends StatelessWidget {
                   ).colorScheme.inversePrimary.withOpacity(.10),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(
-                  Icons.star_rounded,
-                  color: Theme.of(context).colorScheme.inversePrimary,
-                  size: 22,
-                ),
+                child: Icon(Icons.star_rounded, color: Colors.amber, size: 22),
               ),
               const SizedBox(width: 12),
               // Title + encouragement
@@ -1372,8 +2936,10 @@ class PromoBannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color dark1 = const Color(0xFF1F1F1F);
-    final Color dark2 = const Color(0xFF2B2B2B);
+    final Color bg1 = const Color.fromARGB(255, 19, 47, 46);
+    final Color bg2 = const Color.fromARGB(255, 43, 37, 86);
+    /* final Color bg1 = const Color(0xFF1F2240); // deep periwinkle (dark)
+    final Color bg2 = const Color(0xFF2E335C); // lighter periwinkle (dark) */
     final Color pillFg = Theme.of(
       context,
     ).colorScheme.inversePrimary.withOpacity(.9);
@@ -1387,7 +2953,7 @@ class PromoBannerCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [dark1, dark2],
+            colors: [bg1, bg2],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -1654,11 +3220,7 @@ class StationCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.star_rounded,
-            size: 16,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+          Icon(Icons.star_rounded, size: 16, color: Colors.amber),
           const SizedBox(width: 6),
           Text(
             rating.toStringAsFixed(1),
@@ -1732,168 +3294,12 @@ class StationCard extends StatelessWidget {
   }
 }
 
-/// Make `activeStageKey` the ONLY active stage:
-/// - all stages BEFORE it → `done` (+completedAt)
-/// - that stage → `in_progress` (+startedAt, completedAt=null)
-/// - all stages AFTER it → `pending` (startedAt/completedAt=null)
-///
-/// If `washStageOrder` is missing, we derive an order from washStages keys or
-/// fall back to the default order.
-
-Future<void> adminSetActiveWashStageStrict({
-  required String bookingId,
-  required String activeStageKey, // e.g. "pre-rinse", "washing"
-  String? adminId, // optional for audit
-  List<String> defaultOrder = const [
-    'pre_rinse',
-    'washing',
-    'rinsing',
-    'cleaning',
-  ],
-  bool createIfMissing =
-      false, // set true only if you WANT to seed missing keys
-}) async {
-  final db = FirebaseFirestore.instance;
-  final ref = db.collection('bookings').doc(bookingId);
-
-  String norm(String k) =>
-      k.trim().toLowerCase().replaceAll(RegExp(r'[\s\-]+'), '_');
-
-  await db.runTransaction((tx) async {
-    final snap = await tx.get(ref);
-    if (!snap.exists) throw Exception('Booking not found: $bookingId');
-
-    final data = Map<String, dynamic>.from(snap.data() ?? {});
-
-    // Existing map of stages (normalized keys)
-    final rawStages =
-        (data['washStages'] as Map?)?.cast<String, dynamic>() ?? {};
-    final hasSchema = rawStages.isNotEmpty;
-
-    if (!hasSchema && !createIfMissing) {
-      // abort: nothing to update without creating fields
-      throw Exception(
-        'washStages schema not present on booking; not creating new fields.',
-      );
-    }
-
-    final stages = <String, Map<String, dynamic>>{};
-    rawStages.forEach(
-      (k, v) => stages[norm(k)] = Map<String, dynamic>.from(v ?? {}),
-    );
-
-    // Use existing order if present; otherwise fall back (but only write it if createIfMissing)
-    final rawOrder =
-        (data['washStageOrder'] as List?)
-            ?.map((e) => norm(e.toString()))
-            .toList() ??
-        defaultOrder;
-
-    // If we are not creating, restrict the order to keys that already exist
-    List<String> order = createIfMissing
-        ? List<String>.from(rawOrder)
-        : rawOrder.where((k) => stages.containsKey(k)).toList();
-
-    final active = norm(activeStageKey);
-
-    if (!order.contains(active)) {
-      if (createIfMissing) {
-        order.add(active); // allowed to seed
-      } else {
-        throw Exception(
-          "Stage '$activeStageKey' doesn't exist in washStages; strict mode won't create it.",
-        );
-      }
-    }
-    if (!createIfMissing && !stages.containsKey(active)) {
-      throw Exception(
-        "Stage '$activeStageKey' missing in washStages; strict mode won't create it.",
-      );
-    }
-
-    final activeIdx = order.indexOf(active);
-    bool anyActive = false;
-    bool allDone = true;
-
-    final updates = <String, dynamic>{
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    // Only write washStageOrder if it already exists OR we're allowed to create
-    if (data.containsKey('washStageOrder') || createIfMissing) {
-      updates['washStageOrder'] = order;
-    }
-
-    // Update only existing keys unless we allow creation
-    for (int i = 0; i < order.length; i++) {
-      final key = order[i];
-      final exists = stages.containsKey(key);
-
-      if (!createIfMissing && !exists) continue; // skip non-existent keys
-
-      final prev = Map<String, dynamic>.from(stages[key] ?? const {});
-      final isBefore = i < activeIdx;
-      final isActive = i == activeIdx;
-
-      if (isBefore) {
-        updates['washStages.$key.status'] = 'done';
-        updates['washStages.$key.startedAt'] =
-            prev['startedAt'] ?? FieldValue.serverTimestamp();
-        updates['washStages.$key.completedAt'] =
-            prev['completedAt'] ?? FieldValue.serverTimestamp();
-      } else if (isActive) {
-        anyActive = true;
-        allDone = false;
-        updates['washStages.$key.status'] = 'in_progress';
-        updates['washStages.$key.startedAt'] =
-            prev['startedAt'] ?? FieldValue.serverTimestamp();
-        updates['washStages.$key.completedAt'] = null;
-      } else {
-        allDone = false;
-        updates['washStages.$key.status'] = 'pending';
-        updates['washStages.$key.startedAt'] = null;
-        updates['washStages.$key.completedAt'] = null;
-      }
-    }
-
-    // Overall booking.status
-    final currentOverall = '${data['status'] ?? ''}'.toLowerCase();
-    String nextOverall;
-    if (allDone) {
-      nextOverall = 'completed';
-      updates['completedAt'] = FieldValue.serverTimestamp();
-    } else if (anyActive) {
-      nextOverall = 'in_progress';
-    } else {
-      nextOverall = currentOverall.isEmpty ? 'confirmed' : currentOverall;
-    }
-    if (nextOverall != currentOverall) updates['status'] = nextOverall;
-
-    tx.update(ref, updates);
-  });
-
-  // Best-effort audit trail (doesn't create structural fields)
-  try {
-    await ref.update({
-      'washHistory': FieldValue.arrayUnion([
-        {
-          'action': 'set_active_stage',
-          'stage': activeStageKey,
-          'to': 'in_progress',
-          'at': Timestamp.now(),
-          if (adminId != null) 'by': adminId,
-        },
-      ]),
-    });
-  } catch (_) {
-    /* ignore */
-  }
-}
-
 class ServiceCard extends StatefulWidget {
   const ServiceCard({
     super.key,
     required this.title,
+    required this.colorList,
+    required this.iconBackgroundColor,
     required this.subtitle,
     required this.priceText, // e.g. "$120" or "₵120"
     required this.durationText, // e.g. "3 hrs"
@@ -1903,11 +3309,17 @@ class ServiceCard extends StatefulWidget {
     required this.pictureString,
     this.initiallySelected = false,
     this.onSelectedChanged,
-    this.serviceCTA, // what appears when selected (e.g., ServiceButton)
+    this.servicesCTA,
+    this.sideIconString,
+    required this.boxShadowColor, // what appears when selected (e.g., ServiceButton)
   });
 
   final String title;
+  final List<Color> colorList;
+  final Color iconBackgroundColor;
+  final Color boxShadowColor;
   final String subtitle;
+  final String? sideIconString;
   final String priceText;
   final String durationText;
   final IconData icon;
@@ -1918,26 +3330,13 @@ class ServiceCard extends StatefulWidget {
   /// selection controls
   final bool initiallySelected;
   final ValueChanged<bool>? onSelectedChanged;
-  final Widget? serviceCTA;
+  final Widget? servicesCTA;
 
   @override
   State<ServiceCard> createState() => _ServiceCardState();
 }
 
 class _ServiceCardState extends State<ServiceCard> {
-  late bool _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = widget.initiallySelected;
-  }
-
-  void _toggleSelected() {
-    setState(() => _selected = !_selected);
-    widget.onSelectedChanged?.call(_selected);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1946,112 +3345,108 @@ class _ServiceCardState extends State<ServiceCard> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          _toggleSelected(); // reveal/hide CTA
-          widget.onTap?.call(); // still allow external action
-        },
-        borderRadius: BorderRadius.circular(24),
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(1),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeInOutCubic,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
+            borderRadius: BorderRadius.circular(15),
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFEDEDED), Color(0xFFDCDCDC)],
+              colors: widget.colorList,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(_selected ? 0.10 : 0.06),
-                blurRadius: _selected ? 20 : 18,
-                offset: const Offset(0, 8),
+                color: widget.boxShadowColor.withOpacity(0.22),
+                blurRadius: 30,
+                spreadRadius: 1,
+                offset: const Offset(0, 13),
               ),
             ],
-            border: _selected
-                ? Border.all(
-                    color: theme.colorScheme.primary.withOpacity(.25),
-                    width: 1.4,
-                  )
-                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // —— thumbnails row ——
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: widget.pictureString
-                    .take(math.min(widget.pictureString.length, 5))
-                    .map((p) => _Thumbnail(path: p))
-                    .toList(),
-              ),
-              const SizedBox(height: 10),
-
-              // —— title ——
-              Text(
-                widget.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: onSurface,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-
-              // —— subtitle ——
-              Text(
-                widget.subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.55),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // —— price + duration chips ——
-              Row(
-                children: [
-                  _Pill(
-                    label: widget.priceText,
-                    bg: Colors.white,
-                    fg: theme.colorScheme.onSurface.withOpacity(.85),
-                  ),
-                  const SizedBox(width: 8),
-                  _Pill(
-                    label: widget.durationText,
-                    bg: Colors.white,
-                    fg: theme.colorScheme.onSurface.withOpacity(.75),
-                    icon: Icons.schedule,
-                  ),
-                ],
-              ),
-
-              // —— animated CTA reveal ——
               AnimatedSwitcher(
-                duration: const Duration(milliseconds: 320),
+                duration: const Duration(milliseconds: 200),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 transitionBuilder: (child, anim) => SizeTransition(
-                  sizeFactor: anim,
+                  sizeFactor: anim, // smooth collapse/expand
                   axisAlignment: -1.0,
-                  child: FadeTransition(opacity: anim, child: child),
+                  child: FadeTransition(
+                    opacity: anim, // fade while resizing
+                    child: child,
+                  ),
                 ),
-                child: _selected && widget.serviceCTA != null
-                    ? Padding(
-                        key: const ValueKey('cta'),
-                        padding: const EdgeInsets.only(top: 14),
-                        child: widget.serviceCTA!,
-                      )
-                    : const SizedBox(key: ValueKey('empty')),
-              ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
 
-              // —— popular badge (overlay alternative kept inline for simplicity) ——
-              if (widget.isPopular) const SizedBox(height: 12),
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: widget.iconBackgroundColor,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3.5),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+
+                          child: Image.asset(
+                            widget.sideIconString!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // —— title ——
+                        Text(
+                          widget.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: onSurface,
+                            fontWeight: FontWeight.w800,
+                            // keep your TextSizes if you have them in your project
+                            // fontSize: TextSizes.subtitle1,
+                          ),
+                        ),
+
+                        // —— subtitle ——
+                        Text(
+                          widget.subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(
+                              0.55,
+                            ),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -2135,3 +3530,222 @@ class _Pill extends StatelessWidget {
     );
   }
 }
+
+
+
+
+/* AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 0),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, anim) => SizeTransition(
+                          sizeFactor: anim, // smooth collapse/expand
+                          axisAlignment: -1.0,
+                          child: FadeTransition(
+                            opacity: anim, // fade while resizing
+                            child: child,
+                          ),
+                        ),
+                        child: _selected
+                            ? Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Image.asset(
+                                    widget.sideIconString!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(key: ValueKey('thumbs-hidden')),
+                      ), */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /*    AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, anim) => SizeTransition(
+                  sizeFactor: anim, // smooth collapse/expand
+                  axisAlignment: -1.0,
+                  child: FadeTransition(
+                    opacity: anim, // fade while resizing
+                    child: child,
+                  ),
+                ),
+                child: _selected
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // —— title ——
+                              Text(
+                                widget.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: onSurface,
+                                  fontWeight: FontWeight.w800,
+                                  // keep your TextSizes if you have them in your project
+                                  // fontSize: TextSizes.subtitle1,
+                                ),
+                              ),
+
+                              // —— subtitle ——
+                              Text(
+                                widget.subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.55),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: widget.iconBackgroundColor,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(3.5),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+
+                                child: Image.asset(
+                                  widget.sideIconString!,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox(key: ValueKey('thumbs-hidden')),
+              ),
+ */
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                      /* // —— thumbnails row (HIDES on tap) ——
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 320),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, anim) => SizeTransition(
+                  sizeFactor: anim, // smooth collapse/expand
+                  axisAlignment: -1.0,
+                  child: FadeTransition(
+                    opacity: anim, // fade while resizing
+                    child: child,
+                  ),
+                ),
+                child: !_selected
+                    ? Padding(
+                        key: const ValueKey('thumbs'),
+                        padding: const EdgeInsets.only(top: 8, bottom: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: widget.pictureString
+                              .take(math.min(widget.pictureString.length, 5))
+                              .map((p) => _Thumbnail(path: p))
+                              .toList(),
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('thumbs-hidden')),
+              ),*/

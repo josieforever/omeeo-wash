@@ -10,29 +10,90 @@ class UserProvider with ChangeNotifier {
 
   UserModel? get user => _user;
 
-  /// Load user from cache or Firestore
+  // ---------------------------------------------------------------------------
+  // JSON-SAFE ENCODING HELPERS (fix DateTime/Timestamp caching crash)
+  // ---------------------------------------------------------------------------
+
+  dynamic _jsonSafe(dynamic v) {
+    if (v == null) return null;
+
+    // ✅ Convert DateTime to ISO string
+    if (v is DateTime) return v.toIso8601String();
+
+    // ✅ Convert Timestamp to ISO string
+    if (v is Timestamp) return v.toDate().toIso8601String();
+
+    // ✅ Recurse into maps/lists
+    if (v is Map) {
+      return v.map((k, val) => MapEntry(k.toString(), _jsonSafe(val)));
+    }
+
+    if (v is List) {
+      return v.map(_jsonSafe).toList();
+    }
+
+    // primitives are fine (String, num, bool)
+    return v;
+  }
+
+  Map<String, dynamic> _toJsonSafeMap(Map<String, dynamic> map) {
+    final out = <String, dynamic>{};
+    for (final e in map.entries) {
+      out[e.key] = _jsonSafe(e.value);
+    }
+    return out;
+  }
+
+  Map<String, dynamic>? _safeDecodeMap(String? raw) {
+    if (raw == null) return null;
+    final s = raw.trim();
+    if (s.isEmpty || s == 'null') return null;
+
+    try {
+      final decoded = jsonDecode(s);
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CORE
+  // ---------------------------------------------------------------------------
+
+  /// Load user from cache then refresh from Firestore
   Future<void> loadUser({required String uid}) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load from cache
-    if (prefs.containsKey(cacheKey)) {
-      final cachedData = prefs.getString(cacheKey);
-      if (cachedData != null) {
-        _user = UserModel.fromMap(jsonDecode(cachedData));
-        notifyListeners();
-      }
+    // ✅ 1) Load from cache safely
+    final cachedMap = _safeDecodeMap(prefs.getString(cacheKey));
+    if (cachedMap != null) {
+      _user = UserModel.fromMap(cachedMap);
+      notifyListeners();
     }
 
-    // Fetch latest from Firestore
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    // ✅ 2) Refresh from Firestore safely
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
-    if (doc.exists) {
-      _user = UserModel.fromMap(doc.data()!);
-      await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
-      notifyListeners();
+      final data = doc.data();
+      if (doc.exists && data != null) {
+        _user = UserModel.fromMap(data);
+
+        // ✅ Cache safely (DateTime/Timestamp-safe)
+        final safe = _toJsonSafeMap(_user!.toMap());
+        await prefs.setString(cacheKey, jsonEncode(safe));
+
+        notifyListeners();
+      }
+    } catch (_) {
+      // optional debugPrint
     }
   }
 
@@ -40,7 +101,11 @@ class UserProvider with ChangeNotifier {
   Future<void> setUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
     _user = user;
-    await prefs.setString(cacheKey, jsonEncode(user.toMap()));
+
+    // ✅ Cache safely (DateTime/Timestamp-safe)
+    final safe = _toJsonSafeMap(user.toMap());
+    await prefs.setString(cacheKey, jsonEncode(safe));
+
     notifyListeners();
   }
 
@@ -59,23 +124,28 @@ class UserProvider with ChangeNotifier {
 
   /// 🔔 Update a notification setting in memory, Firestore & cache
   Future<void> updateNotificationSetting(String key, bool value) async {
-    if (_user == null) return;
+    final current = _user;
+    if (current == null) return;
 
-    final updatedSettings = Map<String, bool>.from(_user!.notificationSettings);
+    final updatedSettings = Map<String, bool>.from(
+      current.notificationSettings,
+    );
     updatedSettings[key] = value;
 
-    final updatedUser = _user!.copyWith(notificationSettings: updatedSettings);
+    final updatedUser = current.copyWith(notificationSettings: updatedSettings);
     _user = updatedUser;
     notifyListeners();
 
-    // Update Firestore
-    await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update(
-      {'notificationSettings': updatedSettings},
-    );
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(current.uid).set(
+        {'notificationSettings': updatedSettings},
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
 
-    // Update SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
+    final safe = _toJsonSafeMap(updatedUser.toMap());
+    await prefs.setString(cacheKey, jsonEncode(safe));
   }
 
   /// ⚙️ Get app setting toggle value
@@ -85,20 +155,25 @@ class UserProvider with ChangeNotifier {
 
   /// ⚙️ Update an app setting in memory, Firestore & cache
   Future<void> updateSetting(String key, bool value) async {
-    if (_user == null) return;
+    final current = _user;
+    if (current == null) return;
 
-    final updatedSettings = Map<String, bool>.from(_user!.settings);
+    final updatedSettings = Map<String, bool>.from(current.settings);
     updatedSettings[key] = value;
 
-    final updatedUser = _user!.copyWith(settings: updatedSettings);
+    final updatedUser = current.copyWith(settings: updatedSettings);
     _user = updatedUser;
     notifyListeners();
 
-    await FirebaseFirestore.instance.collection('users').doc(_user!.uid).update(
-      {'settings': updatedSettings},
-    );
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(current.uid).set(
+        {'settings': updatedSettings},
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(cacheKey, jsonEncode(_user!.toMap()));
+    final safe = _toJsonSafeMap(updatedUser.toMap());
+    await prefs.setString(cacheKey, jsonEncode(safe));
   }
 }
