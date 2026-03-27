@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/auto_care/auto_care_services.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -177,7 +177,7 @@ class _BookingAndSchedulingPageState extends State<BookingAndSchedulingPage> {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (BuildContext context) =>
-                      const HomeScreenWithNav(view: 'booking'),
+                      const LaundryServicesScreen(),
                 ),
               );
             },

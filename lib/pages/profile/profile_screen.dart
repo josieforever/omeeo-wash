@@ -132,6 +132,14 @@ class ProfileScreenTopBar extends StatelessWidget {
       ),
       child: Column(
         children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: GoBack(
+              bgColor: Theme.of(context).colorScheme.tertiary,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          SizedBox(height: 20),
           // Header row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

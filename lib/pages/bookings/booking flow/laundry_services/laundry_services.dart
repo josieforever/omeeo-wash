@@ -1,284 +1,13 @@
-/* import 'package:flutter/material.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services_date_time.dart'
-    show LaundryServicestDateScreen;
-import 'package:omeeowash/widgets.dart/responsiveness.dart';
-import 'package:omeeowash/widgets.dart/utility_widgets.dart';
-
-class LaundryServicesScreen extends StatefulWidget {
-  final String? serviceType;
-
-  const LaundryServicesScreen({super.key, this.serviceType});
-
-  @override
-  State<LaundryServicesScreen> createState() => _LaundryServicesScreenState();
-}
-
-class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
-  String serviceType = 'none';
-  int? duration;
-  String? expandedService;
-  Set<String> selectedAddOns = {};
-
-  static const String washFold = 'Wash & Fold';
-  static const String ironingPressing = 'Ironing & Pressing';
-  static const String stainRemoval = 'Stain Removal';
-
-  @override
-  void initState() {
-    super.initState();
-
-    final initialType = widget.serviceType;
-    if (initialType != null && initialType.trim().isNotEmpty) {
-      serviceType = initialType;
-      duration = _durationForService(initialType);
-      expandedService = initialType;
-    }
-  }
-
-  bool get _canContinue => serviceType != 'none' && duration != null;
-
-  int? _durationForService(String type) {
-    switch (type) {
-      case washFold:
-        return 30;
-      case ironingPressing:
-        return 120;
-      case stainRemoval:
-        return 10;
-      default:
-        return null;
-    }
-  }
-
-  void _onSelect(String type) {
-    setState(() {
-      serviceType = type;
-      duration = _durationForService(type);
-
-      if (expandedService == type) {
-        expandedService = null;
-      } else {
-        expandedService = type;
-      }
-    });
-  }
-
-  void _goNext() {
-    final selectedDuration = duration;
-
-    if (!_canContinue || selectedDuration == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a laundry service.')),
-      );
-      return;
-    }
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => LaundryServicestDateScreen(
-          serviceType: serviceType,
-          duration: selectedDuration,
-          addOns: selectedAddOns,
-        ),
-      ),
-    );
-  }
-
-  void _toggleAddOn(String addOn) {
-    setState(() {
-      if (selectedAddOns.contains(addOn)) {
-        selectedAddOns.remove(addOn);
-      } else {
-        selectedAddOns.add(addOn);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final disabled = !_canContinue;
-
-    return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: RegularButton(
-        margin: const EdgeInsets.symmetric(horizontal: 10),
-        height: 60,
-        onPressed: () {
-          if (disabled) return;
-          _goNext();
-        },
-        borderRadius: 8,
-        textWidget: CustomText(
-          text: 'Continue to Date & Time',
-          textColor: Theme.of(context).colorScheme.inversePrimary,
-          textSize: TextSizes.heading3,
-          textWeight: FontWeight.w700,
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [
-            disabled
-                ? const Color.fromARGB(130, 85, 11, 79)
-                : const Color.fromARGB(255, 85, 11, 79),
-            disabled
-                ? const Color.fromARGB(130, 161, 75, 154)
-                : const Color.fromARGB(255, 161, 75, 154),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 30),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 30),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Color.fromARGB(255, 202, 88, 176),
-                    Color.fromARGB(255, 139, 97, 198),
-                  ],
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GoBack(
-                    bgColor: Colors.white.withOpacity(0.18),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        text: "Laundry Services",
-                        textSize: TextSizes.heading1,
-                        textWeight: FontWeight.w700,
-                        textColor: Colors.white,
-                      ),
-                      CustomText(
-                        text: "Fresh, clean & perfectly cared for",
-                        textSize: TextSizes.bodyText1,
-                        textWeight: FontWeight.normal,
-                        textColor: Colors.white.withOpacity(0.85),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Column(
-                children: [
-                  ServiceButtonExpanded(
-                    textWidget1: washFold,
-                    textWidget2: 'Washed, dried & neatly folded',
-                    textWidget3: '⏱️ 30 min',
-                    serviceItems: const [
-                      'Sorted by color',
-                      'Premium detergent',
-                      'Folded & packaged',
-                    ],
-                    addOns: const [
-                      'Express/Delivery',
-                      'Scent Booster',
-                      'Separate Wash',
-                    ],
-                    isSelected: serviceType == washFold,
-                    isExpanded: expandedService == washFold,
-                    onTap: () => _onSelect(washFold),
-                    selectedAddOns: selectedAddOns,
-                    onAddOnToggle: _toggleAddOn,
-                    deepColor: const Color.fromARGB(255, 100, 8, 107),
-                    backgroundColor: const Color.fromARGB(255, 240, 224, 245),
-                    boxShadowColor: const Color.fromARGB(255, 255, 229, 249),
-                    image: Image.asset(
-                      'assets/images/wash_fold_pink.png',
-                      height: 70,
-                      width: 70,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ServiceButtonExpanded(
-                    textWidget1: ironingPressing,
-                    textWidget2: 'Crisp, wrinkle-free',
-                    textWidget3: '⏱️ 120 min',
-                    serviceItems: const [
-                      'Steam pressed',
-                      'Hung on hangers',
-                      'Express available',
-                    ],
-                    addOns: const ['Express/Delivery', 'Starch Treatment'],
-                    isSelected: serviceType == ironingPressing,
-                    isExpanded: expandedService == ironingPressing,
-                    onTap: () => _onSelect(ironingPressing),
-                    selectedAddOns: selectedAddOns,
-                    onAddOnToggle: _toggleAddOn,
-                    boxShadowColor: const Color.fromARGB(255, 255, 229, 249),
-                    deepColor: const Color.fromARGB(255, 100, 8, 107),
-                    backgroundColor: const Color.fromARGB(255, 240, 224, 245),
-                    image: Image.asset(
-                      'assets/images/iron_pressing_pink.png',
-                      height: 70,
-                      width: 70,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ServiceButtonExpanded(
-                    textWidget1: stainRemoval,
-                    textWidget2: 'Specialized treatment for stains',
-                    textWidget3: '⏱️ 10 min',
-                    serviceItems: const [
-                      'Oil & grease',
-                      'Wine & coffee',
-                      'Ink & dye',
-                    ],
-                    addOns: const ['Express/Delivery', 'Odor Removal'],
-                    isSelected: serviceType == stainRemoval,
-                    isExpanded: expandedService == stainRemoval,
-                    onTap: () => _onSelect(stainRemoval),
-                    selectedAddOns: selectedAddOns,
-                    onAddOnToggle: _toggleAddOn,
-                    boxShadowColor: const Color.fromARGB(255, 255, 229, 249),
-                    deepColor: const Color.fromARGB(255, 100, 8, 107),
-                    backgroundColor: const Color.fromARGB(255, 240, 224, 245),
-                    image: Image.asset(
-                      'assets/images/stain_removal_pink.png',
-                      height: 70,
-                      width: 70,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 140),
-          ],
-        ),
-      ),
-    );
-  }
-}
- */
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services_date_time.dart'
     show LaundryServicestDateScreen;
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/location_picker.dart';
+import 'package:omeeowash/pages/profile/profile_screen.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 import 'service_review.dart' show PickedLocationResult;
@@ -293,6 +22,8 @@ class LaundryServicesScreen extends StatefulWidget {
 }
 
 class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   String serviceType = 'none';
   int? duration;
   String? expandedService;
@@ -815,202 +546,274 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
     );
   }
 
+  bool _shouldExit = false;
+
+  Future<void> _showExitDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        content: IntrinsicHeight(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Exit App',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Are you sure you want to close the app?",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              "No",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              "Yes",
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              // fontSize: FontSizes.ml,
+              // color: lightPurple,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    setState(() {
+      _shouldExit = result ?? false;
+    });
+
+    if (_shouldExit) {
+      SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  'assets/images/laundry_backdrop.png',
-                  fit: BoxFit.cover,
-                ),
-                Container(color: Colors.black.withOpacity(0.18)),
-              ],
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, result) {
+        if (!didPop) {
+          _showExitDialog();
+        }
+      },
+
+      child: Scaffold(
+        key: _scaffoldKey,
+        endDrawerEnableOpenDragGesture: false,
+        endDrawer: SizedBox(
+          width: MediaQuery.of(context).size.width,
+          child: const Drawer(
+            //margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            child: ProfileScreen(),
           ),
-          Positioned(
-            top: topInset + 40,
-            left: 16,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: Color(0xFFFFF9FB),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Color.fromARGB(255, 0, 0, 0),
-                  size: 25,
-                ),
+        ),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    'assets/images/laundry_backdrop.png',
+                    fit: BoxFit.cover,
+                  ),
+                  Container(color: Colors.black.withOpacity(0.18)),
+                ],
               ),
             ),
-          ),
-          Positioned(
-            top: topInset + 40,
-            right: 0,
-            left: 0,
-            child: Center(
-              child: Container(
+            Positioned(
+              top: topInset + 40,
+              right: 0,
+              left: 0,
+              child: Center(
                 child: Column(
                   children: [CustomText(text: 'Divin Tassel Academy')],
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: topInset + 40,
-            right: 16,
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: Color(0xFFFFF9FB),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Icon(
-                  Icons.sort,
-                  color: Color.fromARGB(255, 0, 0, 0),
-                  size: 25,
+            Positioned(
+              top: topInset + 40,
+              right: 16,
+              child: GestureDetector(
+                onTap: () {
+                  _scaffoldKey.currentState?.openEndDrawer();
+                },
+                child: Container(
+                  height: 42,
+                  width: 42,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFFF9FB),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Icon(
+                    Icons.sort,
+                    color: Color.fromARGB(255, 0, 0, 0),
+                    size: 25,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          Positioned(
-            top: 150,
-            left: 16,
-            right: 16,
-            child: SearchEventsBar(onTap: _toggleSheetSnap),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 220,
-            child: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(15),
-              color: Color(0xFFFFF9FB),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LocationResultTile(
-                      title: 'Accra Mall, Accra Mall, Middle Gate',
-                      subtitle: 'City of Accra, Greater Accra Region',
-                      trailingText: '40 min',
-                      serviceType: 'wash_fold',
-                      onTap: () {},
-                    ),
-                    LocationResultTile(
-                      title: 'Achimota Mall',
-                      subtitle: 'Greater Accra Region...East Municipal, Taifa',
-                      trailingText: '17 min',
-                      showDivider: false,
-                      serviceType: 'wash_iron',
-                      onTap: () {},
-                    ),
-                  ],
+            Positioned(
+              top: 150,
+              left: 16,
+              right: 16,
+              child: SearchEventsBar(onTap: _toggleSheetSnap),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              top: 220,
+              child: Material(
+                elevation: 8,
+                borderRadius: BorderRadius.circular(15),
+                color: Color(0xFFFFF9FB),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LocationResultTile(
+                        title: 'Accra Mall, Accra Mall, Middle Gate',
+                        subtitle: 'City of Accra, Greater Accra Region',
+                        trailingText: '40 min',
+                        serviceType: 'wash_fold',
+                        onTap: () {},
+                      ),
+                      LocationResultTile(
+                        title: 'Achimota Mall',
+                        subtitle:
+                            'Greater Accra Region...East Municipal, Taifa',
+                        trailingText: '17 min',
+                        showDivider: false,
+                        serviceType: 'wash_iron',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          DraggableScrollableSheet(
-            controller: _sheetController,
-            initialChildSize: _lowSnap,
-            minChildSize: _lowSnap,
-            maxChildSize: _highSnap,
-            snap: true,
-            snapSizes: const [_lowSnap, _highSnap],
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Color.fromRGBO(255, 247, 249, 1),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(23)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x22000000),
-                      blurRadius: 24,
-                      offset: Offset(0, -6),
+            DraggableScrollableSheet(
+              controller: _sheetController,
+              initialChildSize: _lowSnap,
+              minChildSize: _lowSnap,
+              maxChildSize: _highSnap,
+              snap: true,
+              snapSizes: const [_lowSnap, _highSnap],
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Color.fromRGBO(255, 247, 249, 1),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(23),
                     ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    _isSheetHigh
-                        ? Positioned.fill(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 24,
+                        offset: Offset(0, -6),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      _isSheetHigh
+                          ? Positioned.fill(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Opacity(
+                                    opacity: 0.4,
+                                    child: Lottie.asset(
+                                      'assets/animations/washing_machine_icon.json',
+                                      width: 420,
+                                      height: 420,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(),
+                      CustomScrollView(
+                        controller: scrollController,
+                        physics: const ClampingScrollPhysics(),
+                        slivers: [
+                          SliverToBoxAdapter(
                             child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Opacity(
-                                  opacity: 0.4,
+                                GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: _toggleSheetSnap,
                                   child: Lottie.asset(
-                                    'assets/animations/washing_machine_icon.json',
-                                    width: 420,
-                                    height: 420,
+                                    'assets/animations/breathing_pill.json',
+                                    width: 50,
+                                    height: 30,
                                     fit: BoxFit.contain,
                                   ),
                                 ),
                               ],
                             ),
-                          )
-                        : const SizedBox(),
-                    CustomScrollView(
-                      controller: scrollController,
-                      physics: const ClampingScrollPhysics(),
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: _toggleSheetSnap,
-                                child: Lottie.asset(
-                                  'assets/animations/breathing_pill.json',
-                                  width: 50,
-                                  height: 30,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ],
                           ),
-                        ),
-                        SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-                          sliver: SliverToBoxAdapter(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 220),
-                              child: _isSheetHigh
-                                  ? Container(
-                                      key: const ValueKey('searchOnly'),
-                                      child: _buildSearchSection(),
-                                    )
-                                  : Container(
-                                      key: const ValueKey('serviceSelection'),
-                                      child: _buildLowStateContent(),
-                                    ),
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                            sliver: SliverToBoxAdapter(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: _isSheetHigh
+                                    ? Container(
+                                        key: const ValueKey('searchOnly'),
+                                        child: _buildSearchSection(),
+                                      )
+                                    : Container(
+                                        key: const ValueKey('serviceSelection'),
+                                        child: _buildLowStateContent(),
+                                      ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

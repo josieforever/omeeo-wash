@@ -14,7 +14,7 @@ import 'package:omeeowash/models/message.dart';
 import 'package:omeeowash/notifications/local_notification_service.dart';
 import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/onboarding/onboarding_screen.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/providers/locale_provider.dart';
 import 'package:omeeowash/providers/top_nav_provider.dart';
 import 'package:omeeowash/providers/user_provider.dart';
@@ -69,7 +69,7 @@ Future<void> main() async {
   } else if (!isLoggedIn) {
     startScreen = const LoginScreen();
   } else {
-    startScreen = const HomeScreenWithNav(view: 'home');
+    startScreen = const LaundryServicesScreen();
   }
 
   // 🗃️ Initialize local DB (Isar)

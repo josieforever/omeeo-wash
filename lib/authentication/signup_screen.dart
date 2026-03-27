@@ -6,7 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -146,7 +146,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) =>
-                                        const HomeScreenWithNav(view: 'home'),
+                                        const LaundryServicesScreen(),
                                   ),
                                 );
                               } else {
@@ -545,9 +545,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const HomeScreenWithNav(
-                                                  view: 'home',
-                                                ),
+                                                const LaundryServicesScreen(),
                                           ),
                                         );
                                       } catch (e) {

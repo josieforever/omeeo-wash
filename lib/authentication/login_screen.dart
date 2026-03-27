@@ -8,7 +8,7 @@ import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/forgot_password.dart';
 import 'package:omeeowash/authentication/signup_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
@@ -147,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) =>
-                                        const HomeScreenWithNav(view: 'home'),
+                                        const LaundryServicesScreen(),
                                   ),
                                 );
                               } else {
@@ -469,9 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const HomeScreenWithNav(
-                                                  view: 'home',
-                                                ),
+                                                const LaundryServicesScreen(),
                                           ),
                                         );
                                       } on FirebaseAuthException catch (e) {

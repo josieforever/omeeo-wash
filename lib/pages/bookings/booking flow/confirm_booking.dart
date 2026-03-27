@@ -6,7 +6,7 @@ import 'package:omeeowash/helpers/miscellaneous.dart'
     show progressIndicatorValues;
 import 'package:omeeowash/pages/bookings/booking%20flow/common_widgets.dart'
     show LnProgressIndicator;
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
@@ -344,9 +344,9 @@ class _ConfirmBookingState extends State<ConfirmBooking> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => HomeScreenWithNav(view: 'booking')),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => LaundryServicesScreen()));
     } catch (e) {
       messenger?.showSnackBar(
         SnackBar(content: Text('Could not confirm booking: $e')),
