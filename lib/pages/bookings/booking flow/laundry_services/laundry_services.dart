@@ -360,8 +360,8 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                 onTap: _openMapPicker,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 233, 233, 233),
-                    borderRadius: BorderRadius.circular(14),
+                    color: Color(0xFFFFF7F9),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
                         color: const Color.fromARGB(
@@ -674,7 +674,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                   height: 42,
                   width: 42,
                   decoration: BoxDecoration(
-                    color: Color(0xFFFFF9FB),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: const Icon(
@@ -699,7 +699,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
               child: Material(
                 elevation: 8,
                 borderRadius: BorderRadius.circular(15),
-                color: Color(0xFFFFF9FB),
+                color: Colors.white,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: Column(
@@ -736,7 +736,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
-                    color: Color.fromRGBO(255, 247, 249, 1),
+                    color: Colors.white,
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(23),
                     ),
@@ -947,7 +947,7 @@ class SearchEventsBar extends StatelessWidget {
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: Color(0xFFFFF9FB),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(
