@@ -8,6 +8,7 @@ import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/app_settings.dart';
+import 'package:omeeowash/pages/profile/discounts_gifts.dart';
 import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
@@ -103,12 +104,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  ProfileScreenTopBar(user: user),
-                  ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
-                ],
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    ProfileScreenTopBar(user: user),
+                    ProfileScreenMiddleSection(
+                      loyaltyPoints: user.loyaltyPoints,
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -194,7 +200,7 @@ class ProfileScreenTopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 CircleAvatar(
-                  radius: 35,
+                  radius: 45,
                   backgroundColor: avatarBg,
                   backgroundImage: user.photoUrl.isNotEmpty
                       ? NetworkImage(user.photoUrl)
@@ -210,7 +216,7 @@ class ProfileScreenTopBar extends StatelessWidget {
                         )
                       : null,
                 ),
-                const SizedBox(height: 10),
+
                 CustomText(
                   text: displayName,
                   textColor: Theme.of(context).colorScheme.primary,
@@ -248,7 +254,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
         children: [
           const SizedBox(height: 20),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               color: Color(0xFFFFF1F4),
               borderRadius: BorderRadius.circular(15),
@@ -271,23 +277,29 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const HelpAndSupport()),
+                      MaterialPageRoute(
+                        builder: (_) => const GiftsAndDiscountsScreen(),
+                      ),
                     );
                   },
                 ),
-
+                const SizedBox(height: 5),
                 Divider(
                   color: const Color(0xFF919191),
                   indent: 40,
                   endIndent: 20,
                 ),
+                const SizedBox(height: 5),
                 ProfileButton(
-                  textWidget1: 'Payment Methods',
-                  icon2: FontAwesomeIcons.creditCard,
+                  textWidget1: ' Payment Methods',
+                  selectedPaymentMethod: 'card',
+                  icon2: Icons.payment,
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const PaymentMethods()),
+                      MaterialPageRoute(
+                        builder: (_) => const PaymentMethodsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -296,7 +308,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               color: Color(0xFFFFF1F4),
               borderRadius: BorderRadius.circular(15),
@@ -313,15 +325,19 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const Addresses()),
+                      MaterialPageRoute(
+                        builder: (_) => const MyAddressesScreen(),
+                      ),
                     );
                   },
                 ),
+                const SizedBox(height: 5),
                 Divider(
                   color: const Color(0xFF919191),
                   indent: 40,
                   endIndent: 20,
                 ),
+                const SizedBox(height: 5),
                 ProfileButton(
                   textWidget1: 'History',
                   icon: Icon(
@@ -336,11 +352,13 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 5),
                 Divider(
                   color: const Color(0xFF919191),
                   indent: 40,
                   endIndent: 20,
                 ),
+                const SizedBox(height: 5),
                 ProfileButton(
                   textWidget1: 'Support',
                   icon: Icon(
@@ -360,7 +378,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           Container(
-            padding: EdgeInsets.all(10),
+            padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
             decoration: BoxDecoration(
               color: Color.fromARGB(255, 32, 32, 32),
               borderRadius: BorderRadius.circular(15),
@@ -388,7 +406,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               color: Color(0xFFFFF1F4),
               borderRadius: BorderRadius.circular(15),
@@ -410,7 +428,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 10),
+            padding: EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               color: Color(0xFFFFF1F4),
               borderRadius: BorderRadius.circular(15),
@@ -420,7 +438,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                 ProfileButton(
                   textWidget1: 'Settings',
                   icon: Icon(
-                    Icons.assignment_rounded,
+                    Icons.settings,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   scale: 1,
