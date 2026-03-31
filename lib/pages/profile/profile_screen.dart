@@ -9,6 +9,9 @@ import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/app_settings.dart';
 import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/chat.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/live_chat.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/methods.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
@@ -18,6 +21,8 @@ import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
 
+import 'help_and_support/live_chat/app.config.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -26,36 +31,94 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String? _uid;
+
   @override
   void initState() {
     super.initState();
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    _uid = currentUser?.uid;
+
+    if (_uid != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.loadUser(uid: _uid!);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, _) {
-        final user = userProvider.user;
+    if (_uid == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.account_circle_outlined,
+                size: 72,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No user signed in',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Please log in to view your profile.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.primary.withOpacity(.7),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                child: const Text('Go to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-        if (user == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Material(
+      color: const Color(0xFFFFFFFF),
+      child: SafeArea(
+        child: Consumer<UserProvider>(
+          builder: (context, userProvider, _) {
+            final user = userProvider.user;
 
-        return Scaffold(
-          body: SafeArea(
-            child: SingleChildScrollView(
+            if (user == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return SingleChildScrollView(
               child: Column(
                 children: [
                   ProfileScreenTopBar(user: user),
                   ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
                 ],
               ),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -64,7 +127,6 @@ class ProfileScreenTopBar extends StatelessWidget {
   final UserModel user;
   const ProfileScreenTopBar({super.key, required this.user});
 
-  // Safe initials: handles empty/whitespace names and falls back to email/"U"
   String _safeInitials({required String? name, required String? email}) {
     final parts = (name ?? '')
         .trim()
@@ -84,7 +146,6 @@ class ProfileScreenTopBar extends StatelessWidget {
     return 'U';
   }
 
-  // Deterministic color so it doesn't change on rebuilds
   Color _avatarColor(String seed) {
     final palette = <Color>[
       Colors.deepPurple,
@@ -100,267 +161,322 @@ class ProfileScreenTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Prefer model name; fall back to Firebase displayName; then email local-part; lastly "User"
     final auth = FirebaseAuth.instance.currentUser;
-    String displayName = (user.name).trim();
+
+    String displayName = user.name.trim();
     if (displayName.isEmpty) {
       displayName = (auth?.displayName ?? '').trim();
     }
     if (displayName.isEmpty) {
-      final emailLocal = (user.email).split('@').first;
+      final emailLocal = user.email.split('@').first;
       displayName = emailLocal.isNotEmpty ? emailLocal : 'User';
     }
 
     final initials = _safeInitials(name: displayName, email: user.email);
-    final avatarBg = _avatarColor(user.uid); // stable per user
+    final avatarBg = _avatarColor(user.uid);
 
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      margin: const EdgeInsets.all(10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.inversePrimary,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow,
-            blurRadius: 12,
-            spreadRadius: 2,
-            offset: const Offset(0, 6),
+    return Stack(
+      children: [
+        Align(
+          alignment: Alignment.topLeft,
+          child: GoBack(
+            bgColor: Theme.of(context).colorScheme.tertiary,
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: GoBack(
-              bgColor: Theme.of(context).colorScheme.tertiary,
-              onPressed: () => Navigator.pop(context),
+        ),
+        const SizedBox(height: 20),
+
+        Align(
+          alignment: Alignment.topCenter,
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PersonalInformation()),
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 35,
+                  backgroundColor: avatarBg,
+                  backgroundImage: user.photoUrl.isNotEmpty
+                      ? NetworkImage(user.photoUrl)
+                      : null,
+                  child: user.photoUrl.isEmpty
+                      ? Text(
+                          initials,
+                          style: TextStyle(
+                            fontSize: 24,
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                CustomText(
+                  text: displayName,
+                  textColor: Theme.of(context).colorScheme.primary,
+                  textSize: TextSizes.heading2,
+                  textWeight: FontWeight.w900,
+                ),
+                CustomText(
+                  text: user.email,
+                  textColor: Theme.of(context).colorScheme.primary,
+                  textSize: TextSizes.bodyText1,
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 20),
-          // Header row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              CustomText(
-                text: 'Profile',
-                textColor: Theme.of(context).colorScheme.primary,
-                textSize: TextSizes.heading1,
-                textWeight: FontWeight.w900,
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PersonalInformation(),
-                    ),
-                  );
-                },
-                icon: Icon(
-                  FontAwesomeIcons.penToSquare,
-                  size: IconSizes.midSmall,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ],
-          ),
+        ),
 
-          // Avatar + info
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: avatarBg,
-                backgroundImage: (user.photoUrl.isNotEmpty)
-                    ? NetworkImage(user.photoUrl)
-                    : null,
-                child: (user.photoUrl.isEmpty)
-                    ? Text(
-                        initials, // always at least 1 char ('U')
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: Theme.of(context).colorScheme.inversePrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: displayName, // use safe display name
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.heading2,
-                    textWeight: FontWeight.w900,
-                  ),
-                  CustomText(
-                    text: user.email,
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.bodyText1,
-                  ),
-                  CustomText(
-                    text: 'Member since ${user.memberSince}',
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.bodyText1,
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // … (rest of your top bar content unchanged)
-        ],
-      ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 }
 
-class ProfileScreenMiddleSection extends StatelessWidget {
+class ProfileScreenMiddleSection extends StatefulWidget {
   final int loyaltyPoints;
 
   const ProfileScreenMiddleSection({super.key, required this.loyaltyPoints});
 
   @override
-  Widget build(BuildContext context) {
-    String remainingPoints = (200 - loyaltyPoints).toString();
-    String loyaltyPointsString = loyaltyPoints.toString();
+  State<ProfileScreenMiddleSection> createState() =>
+      _ProfileScreenMiddleSectionState();
+}
 
+class _ProfileScreenMiddleSectionState
+    extends State<ProfileScreenMiddleSection> {
+  bool isAdmin = AppConfig().isAdmin;
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            RewardsCardMono(
-              points: 850,
-              goal: 1000,
-              subtitle: "You're doing great! ✨",
-              onTap: () {},
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 20),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Color(0xFFFFF1F4),
+              borderRadius: BorderRadius.circular(15),
             ),
-            const SizedBox(height: 10),
-            ProfileButton(
-              textWidget1: 'Personal Infomation',
-              textWidget2: 'Update your details',
-              icon: Icon(
-                Icons.supervised_user_circle,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PersonalInformation()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Payment Methods',
-              textWidget2: 'Manage cards & payments',
-              icon: Icon(
-                Icons.payment,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PaymentMethods()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Addresses',
-              textWidget2: 'Home, work & other locations',
-              icon: Icon(
-                Icons.add_location_alt,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => Addresses()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Notifications',
-              textWidget2: 'Push notifications & alerts',
-              svg: SvgPicture.asset(
-                'assets/icons/notification_settings.svg',
-                height: 24,
-                width: 24,
-                colorFilter: ColorFilter.mode(
-                  Theme.of(
-                    context,
-                  ).colorScheme.primary, // 🎨 Replace with your desired color
-                  BlendMode.srcIn,
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Discounts and gifts',
+                  textWidget2: 'Enter promo code',
+                  svg: SvgPicture.asset(
+                    'assets/icons/percent_discount.svg',
+                    height: 30,
+                    width: 30,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HelpAndSupport()),
+                    );
+                  },
                 ),
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => Notifications()),
-                );
-              },
+
+                Divider(
+                  color: const Color(0xFF919191),
+                  indent: 40,
+                  endIndent: 20,
+                ),
+                ProfileButton(
+                  textWidget1: 'Payment Methods',
+                  icon2: FontAwesomeIcons.creditCard,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PaymentMethods()),
+                    );
+                  },
+                ),
+              ],
             ),
-            ProfileButton(
-              textWidget1: 'App Settings',
-              textWidget2: 'Language, theme & more',
-              icon: Icon(
-                Icons.settings,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AppSettings()),
-                );
-              },
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Color(0xFFFFF1F4),
+              borderRadius: BorderRadius.circular(15),
             ),
-            ProfileButton(
-              textWidget1: 'Help & Support',
-              textWidget2: 'FAQs & contact us',
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Addresses',
+                  icon: Icon(
+                    Icons.add_location_alt,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const Addresses()),
+                    );
+                  },
+                ),
+                Divider(
+                  color: const Color(0xFF919191),
+                  indent: 40,
+                  endIndent: 20,
+                ),
+                ProfileButton(
+                  textWidget1: 'History',
+                  icon: Icon(
+                    Icons.assignment_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AppSettings()),
+                    );
+                  },
+                ),
+                Divider(
+                  color: const Color(0xFF919191),
+                  indent: 40,
+                  endIndent: 20,
+                ),
+                ProfileButton(
+                  textWidget1: 'Support..',
+                  icon: Icon(
+                    FontAwesomeIcons.headset,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    customRoute(context, LiveChat(isAdmin: isAdmin));
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Color.fromARGB(255, 32, 32, 32),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 15,
+                  child: Icon(
+                    FontAwesomeIcons.cediSign,
+                    color: const Color.fromARGB(255, 255, 217, 0),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                CustomText(text: 'Earn as a rider', textColor: Colors.white),
+                Expanded(child: SizedBox()),
+                Icon(
+                  FontAwesomeIcons.chevronRight,
+                  size: 13,
+                  color: const Color.fromARGB(255, 206, 0, 0),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Color(0xFFFFF1F4),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: ProfileButton(
+              textWidget1: 'Help',
               icon: Icon(
                 Icons.help,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              scale: 1.2,
+              scale: 1,
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => HelpAndSupport()),
+                  MaterialPageRoute(builder: (_) => const HelpAndSupport()),
                 );
               },
             ),
-
-            SignOut(
-              textWidget1: 'Sign Out',
-              textWidget2: 'Sign out of your account',
-              icon: Icon(
-                Icons.logout,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              scale: 1.2,
-              onPressed: () async {
-                await NotificationService().removeToken();
-                await FirebaseService().signOut(context);
-              },
+          ),
+          const SizedBox(height: 15),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Color(0xFFFFF1F4),
+              borderRadius: BorderRadius.circular(15),
             ),
-            const SizedBox(height: 75),
-          ],
-        ),
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Settings',
+                  icon: Icon(
+                    Icons.assignment_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AppSettings()),
+                    );
+                  },
+                ),
+                Divider(
+                  color: const Color(0xFF919191),
+                  indent: 40,
+                  endIndent: 20,
+                ),
+                ProfileButton(
+                  textWidget1: 'Information',
+                  icon: Icon(Icons.info_rounded),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HelpAndSupport()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+          SignOut(
+            textWidget1: 'Sign Out',
+            textWidget2: 'Sign out of your account',
+            icon: Icon(
+              Icons.logout,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            scale: 1,
+            onPressed: () async {
+              await NotificationService().removeToken();
+              if (!context.mounted) return;
+              await FirebaseService().signOut(context);
+            },
+          ),
+          const SizedBox(height: 75),
+        ],
       ),
     );
   }
@@ -391,7 +507,6 @@ class RewardsCardMono extends StatelessWidget {
     final remaining = (goal - points).clamp(0, goal);
     final progress = (points / goal).clamp(0.0, 1.0);
 
-    // Monochrome text on dark
     final textOnDark = Colors.white.withOpacity(.96);
     final textOnDarkSub = Colors.white.withOpacity(.72);
 
@@ -407,22 +522,19 @@ class RewardsCardMono extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Monochrome gradient base
                 Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment(-1.0, -1.0),
                       end: Alignment(1.0, 1.0),
                       colors: [
-                        Color(0xFF0D0D0D), // near-black
-                        Color(0xFF121212), // dark gray
-                        Color(0xFF0A0A0A), // deeper black
+                        Color(0xFF0D0D0D),
+                        Color(0xFF121212),
+                        Color(0xFF0A0A0A),
                       ],
                     ),
                   ),
                 ),
-
-                // Soft grayscale glows
                 Positioned(
                   left: -40,
                   top: -30,
@@ -439,8 +551,6 @@ class RewardsCardMono extends StatelessWidget {
                     color: Colors.white.withOpacity(.08),
                   ),
                 ),
-
-                // Subtle diagonal stripes in white @ low opacity
                 Positioned.fill(
                   child: CustomPaint(
                     painter: _StripesPainter(
@@ -451,14 +561,11 @@ class RewardsCardMono extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                // Content
                 Padding(
                   padding: padding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top: big number on left, title on right
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -518,7 +625,6 @@ class RewardsCardMono extends StatelessWidget {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 6),
                       Text(
                         subtitle,
@@ -528,8 +634,6 @@ class RewardsCardMono extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
-                      // Meta row
                       Row(
                         children: [
                           Expanded(
@@ -545,18 +649,15 @@ class RewardsCardMono extends StatelessWidget {
                           _Pill(label: '${_formatNumber(remaining)} to go'),
                         ],
                       ),
-
                       const SizedBox(height: 10),
-
-                      // Grayscale progress
                       _ProgressBar(
                         value: progress,
                         background: Colors.white.withOpacity(.18),
                         foreground: const LinearGradient(
                           colors: [
-                            Color(0xFFBDBDBD), // light gray
-                            Color(0xFFEDEDED), // very light gray
-                            Color(0xFFFFFFFF), // white center highlight
+                            Color(0xFFBDBDBD),
+                            Color(0xFFEDEDED),
+                            Color(0xFFFFFFFF),
                           ],
                         ),
                       ),
@@ -577,13 +678,13 @@ class RewardsCardMono extends StatelessWidget {
     for (int i = 0; i < s.length; i++) {
       final idxFromEnd = s.length - i;
       buf.write(s[i]);
-      if (idxFromEnd > 1 && idxFromEnd % 3 == 1) buf.write(',');
+      if (idxFromEnd > 1 && idxFromEnd % 3 == 1) {
+        buf.write(',');
+      }
     }
     return buf.toString();
   }
 }
-
-// ==== visual bits (unchanged, but used with grayscale) ====
 
 class _GlowBlob extends StatelessWidget {
   final double size;
@@ -638,17 +739,19 @@ class _StripesPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _StripesPainter oldDelegate) =>
-      oldDelegate.color != color ||
-      oldDelegate.thickness != thickness ||
-      oldDelegate.gap != gap ||
-      oldDelegate.angleDeg != angleDeg;
+  bool shouldRepaint(covariant _StripesPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.thickness != thickness ||
+        oldDelegate.gap != gap ||
+        oldDelegate.angleDeg != angleDeg;
+  }
 }
 
 class _ProgressBar extends StatelessWidget {
-  final double value; // 0..1
+  final double value;
   final LinearGradient foreground;
   final Color background;
+
   const _ProgressBar({
     required this.value,
     required this.foreground,
@@ -663,6 +766,7 @@ class _ProgressBar extends StatelessWidget {
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final filled = (w * value).clamp(0.0, w);
+
           return Stack(
             children: [
               Container(height: 12, width: w, color: background),

@@ -945,9 +945,11 @@ class ProfileButton extends StatelessWidget {
   final String? price;
   final String? stars;
   final Icon? icon;
+  final IconData? icon2;
   final SvgPicture? svg;
   final double? scale;
   final VoidCallback onPressed;
+
   const ProfileButton({
     super.key,
     this.textWidget1,
@@ -960,64 +962,58 @@ class ProfileButton extends StatelessWidget {
     this.animation,
     this.scale,
     this.svg,
+    this.icon2,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget leadingWidget = const SizedBox.shrink();
+
+    if (icon != null) {
+      leadingWidget = icon!;
+    } else if (svg != null) {
+      leadingWidget = svg!;
+    } else if (icon2 != null) {
+      leadingWidget = Icon(icon2, color: Theme.of(context).colorScheme.primary);
+    }
+
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-          color: Theme.of(context).colorScheme.inversePrimary,
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.shadow,
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 6), // x, y
-            ),
-          ],
-        ),
-        padding: EdgeInsets.all(10),
-        margin: EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
         child: Row(
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Transform.scale(
-                    scale: scale,
-                    child: Center(child: icon ?? svg),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 5),
+            Transform.scale(
+              scale: scale ?? 1.0,
+              child: Center(child: leadingWidget),
             ),
             const SizedBox(width: 10),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                textWidget2 == null ? SizedBox(height: 3) : SizedBox(),
                 CustomText(
-                  text: textWidget1!,
+                  text: textWidget1 ?? '',
                   textColor: Theme.of(context).textTheme.bodyLarge?.color,
                   textSize: TextSizes.bodyText1,
                   textWeight: FontWeight.bold,
                 ),
-                SizedBox(height: 1),
-                CustomText(
-                  text: textWidget2!,
-                  textColor: Theme.of(context).textTheme.bodyMedium?.color,
-                  textSize: TextSizes.bodyText1,
-                ),
+                textWidget2 == null
+                    ? SizedBox(height: 3)
+                    : CustomText(
+                        text: textWidget2 ?? '',
+                        textColor: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color,
+                        textSize: TextSizes.bodyText1,
+                      ),
               ],
             ),
+            const Expanded(child: SizedBox()),
+            const Icon(Icons.chevron_right_rounded),
+            const SizedBox(width: 5),
           ],
         ),
       ),

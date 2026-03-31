@@ -1060,11 +1060,14 @@ class FirebaseService {
   Future<void> signOut(BuildContext context) async {
     try {
       await toggleIsOnline(false);
-      await auth.signOut();
 
-      if (await googleSignIn.isSignedIn()) {
+      final wasGoogleSignedIn = await googleSignIn.isSignedIn();
+
+      if (wasGoogleSignedIn) {
         await googleSignIn.signOut();
       }
+
+      await auth.signOut();
 
       if (context.mounted) {
         await context.read<UserProvider>().clearCache();
@@ -1072,6 +1075,13 @@ class FirebaseService {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_logged_in');
+
+      if (!context.mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     } catch (e) {
       debugPrint('Error signing out: $e');
     }
