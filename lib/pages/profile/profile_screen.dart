@@ -9,6 +9,9 @@ import 'package:omeeowash/models/user_model.dart';
 import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/app_settings.dart';
 import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/chat.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/live_chat.dart';
+import 'package:omeeowash/pages/profile/help_and_support/live_chat/methods.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
@@ -17,6 +20,8 @@ import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
+
+import 'help_and_support/live_chat/app.config.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -233,11 +238,19 @@ class ProfileScreenTopBar extends StatelessWidget {
   }
 }
 
-class ProfileScreenMiddleSection extends StatelessWidget {
+class ProfileScreenMiddleSection extends StatefulWidget {
   final int loyaltyPoints;
 
   const ProfileScreenMiddleSection({super.key, required this.loyaltyPoints});
 
+  @override
+  State<ProfileScreenMiddleSection> createState() =>
+      _ProfileScreenMiddleSectionState();
+}
+
+class _ProfileScreenMiddleSectionState
+    extends State<ProfileScreenMiddleSection> {
+  bool isAdmin = AppConfig().isAdmin;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -342,17 +355,14 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                   endIndent: 20,
                 ),
                 ProfileButton(
-                  textWidget1: 'Support',
+                  textWidget1: 'Support..',
                   icon: Icon(
                     FontAwesomeIcons.headset,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   scale: 1,
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const Notifications()),
-                    );
+                    customRoute(context, LiveChat(isAdmin: isAdmin));
                   },
                 ),
               ],
