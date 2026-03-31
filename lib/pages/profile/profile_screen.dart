@@ -10,6 +10,7 @@ import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/app_settings.dart';
 import 'package:omeeowash/pages/profile/discounts_gifts.dart';
 import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
+import 'package:omeeowash/pages/profile/history.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
@@ -348,7 +349,7 @@ class ProfileScreenMiddleSection extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AppSettings()),
+                      MaterialPageRoute(builder: (_) => const History()),
                     );
                   },
                 ),
