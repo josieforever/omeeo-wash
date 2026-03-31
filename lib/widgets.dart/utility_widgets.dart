@@ -950,6 +950,9 @@ class ProfileButton extends StatelessWidget {
   final double? scale;
   final VoidCallback onPressed;
 
+  /// e.g. 'Telecel Cash', 'AirtelTigo Cash', 'MTN MoMo', 'Cash'
+  final String? selectedPaymentMethod;
+
   const ProfileButton({
     super.key,
     this.textWidget1,
@@ -963,7 +966,65 @@ class ProfileButton extends StatelessWidget {
     this.scale,
     this.svg,
     this.icon2,
+    this.selectedPaymentMethod,
   });
+
+  bool get _isPaymentMethodsTile => textWidget1 == 'Payment Methods';
+
+  Widget? _buildSelectedPaymentMethodLogo() {
+    if (!_isPaymentMethodsTile || selectedPaymentMethod == null) return null;
+
+    switch (selectedPaymentMethod!.trim().toLowerCase()) {
+      case 'telecel cash':
+      case 'vodacash':
+      case 'telecel':
+        return SizedBox(
+          width: 58,
+          height: 40,
+          child: Image.asset('assets/images/telecel_logo.png'),
+        );
+
+      case 'airtel':
+      case 'airteltigo':
+      case 'airteltigo cash':
+        return SizedBox(
+          width: 58,
+          height: 40,
+          child: Image.asset('assets/images/airteltigo_logo.png'),
+        );
+
+      case 'mtn':
+      case 'mtn momo':
+      case 'momo':
+        return SizedBox(
+          width: 58,
+          height: 40,
+          child: Image.asset('assets/images/mtn_logo.png'),
+        );
+
+      case 'card':
+      case 'credit card':
+      case 'debit card':
+        return Transform.scale(
+          scale: 2.3,
+          child: SizedBox(
+            width: 58,
+            height: 40,
+            child: Image.asset('assets/images/credit_card.png'),
+          ),
+        );
+
+      case 'cash':
+        return SizedBox(
+          width: 40,
+          height: 25,
+          child: Image.asset('assets/images/cash.png'),
+        );
+
+      default:
+        return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -977,13 +1038,15 @@ class ProfileButton extends StatelessWidget {
       leadingWidget = Icon(icon2, color: Theme.of(context).colorScheme.primary);
     }
 
-    return GestureDetector(
+    final Widget? paymentMethodLogo = _buildSelectedPaymentMethodLogo();
+
+    return InkWell(
       onTap: onPressed,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5),
         child: Row(
           children: [
-            const SizedBox(width: 5),
+            const SizedBox(width: 7),
             Transform.scale(
               scale: scale ?? 1.0,
               child: Center(child: leadingWidget),
@@ -993,7 +1056,9 @@ class ProfileButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                textWidget2 == null ? SizedBox(height: 3) : SizedBox(),
+                textWidget2 == null
+                    ? const SizedBox(height: 3)
+                    : const SizedBox(),
                 CustomText(
                   text: textWidget1 ?? '',
                   textColor: Theme.of(context).textTheme.bodyLarge?.color,
@@ -1001,7 +1066,7 @@ class ProfileButton extends StatelessWidget {
                   textWeight: FontWeight.bold,
                 ),
                 textWidget2 == null
-                    ? SizedBox(height: 3)
+                    ? const SizedBox(height: 3)
                     : CustomText(
                         text: textWidget2 ?? '',
                         textColor: Theme.of(
@@ -1012,6 +1077,12 @@ class ProfileButton extends StatelessWidget {
               ],
             ),
             const Expanded(child: SizedBox()),
+
+            if (paymentMethodLogo != null) ...[
+              paymentMethodLogo,
+              const SizedBox(width: 8),
+            ],
+
             const Icon(Icons.chevron_right_rounded),
             const SizedBox(width: 5),
           ],
@@ -1341,15 +1412,12 @@ class GoBack extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.all(10),
         child: CircleAvatar(
-          backgroundColor: bgColor ?? Theme.of(context).colorScheme.surface,
+          backgroundColor: Colors.transparent,
           // backgroundColor: Colors.red,
           child: Center(
             child: Transform.scale(
-              scale: 0.8,
-              child: Icon(
-                Icons.arrow_back_rounded,
-                color: Theme.of(context).colorScheme.inversePrimary,
-              ),
+              scale: 1,
+              child: Icon(Icons.arrow_back_rounded, color: Colors.black),
             ),
           ),
         ),

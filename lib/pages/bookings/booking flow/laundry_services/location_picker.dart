@@ -4,6 +4,8 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/service_review.dart';
+import 'package:omeeowash/pages/profile/addresses.dart'
+    hide PickedLocationResult;
 
 class GoogleMapLocationPickerScreen extends StatefulWidget {
   const GoogleMapLocationPickerScreen({super.key});
@@ -176,6 +178,29 @@ class _GoogleMapLocationPickerScreenState
       MaterialPageRoute(
         builder: (_) =>
             PickupPreviewScreen(pickupLocation: result, selectedService: ''),
+      ),
+    );
+  }
+
+  void _onDoneAddressDetails() {
+    final result = PickedLocationResult(
+      latitude: _mapCenter.latitude,
+      longitude: _mapCenter.longitude,
+      addressLine: _title,
+      subtitle: _subtitle,
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddressDetailsScreen(
+          addressType: AddressType.other,
+          initialName: '',
+          initialLocation: result.addressLine,
+          initialInstructions: '',
+          initialLatitude: result.latitude,
+          initialLongitude: result.longitude,
+          initialSubtitle: result.subtitle,
+        ),
       ),
     );
   }
