@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -29,13 +30,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    IconButton(
+                    GoBack(
+                      bgColor: Theme.of(context).colorScheme.tertiary,
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 24,
-                        color: primaryText,
-                      ),
                     ),
                   ],
                 ),

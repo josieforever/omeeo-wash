@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 enum AddressType { other, home, work }
 
@@ -169,14 +170,12 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 24,
-                    color: primaryText,
+                  icon: GoBack(
+                    bgColor: Theme.of(context).colorScheme.tertiary,
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ),
               ),
-              const SizedBox(height: 34),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 26),
                 child: Text(
