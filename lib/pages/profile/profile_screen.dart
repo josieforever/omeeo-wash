@@ -13,6 +13,7 @@ import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart'
 import 'package:omeeowash/pages/profile/help_and_support/live_chat/chat.dart';
 import 'package:omeeowash/pages/profile/help_and_support/live_chat/live_chat.dart';
 import 'package:omeeowash/pages/profile/help_and_support/live_chat/methods.dart';
+import 'package:omeeowash/pages/profile/history.dart';
 import 'package:omeeowash/pages/profile/notifications.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
