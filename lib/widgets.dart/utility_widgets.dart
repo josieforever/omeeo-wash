@@ -1051,7 +1051,7 @@ class ProfileButton extends StatelessWidget {
               scale: scale ?? 1.0,
               child: Center(child: leadingWidget),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 20),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1407,21 +1407,9 @@ class GoBack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        margin: EdgeInsets.all(10),
-        child: CircleAvatar(
-          backgroundColor: Colors.transparent,
-          // backgroundColor: Colors.red,
-          child: Center(
-            child: Transform.scale(
-              scale: 1,
-              child: Icon(Icons.arrow_back_rounded, color: Colors.black),
-            ),
-          ),
-        ),
-      ),
+    return IconButton(
+      onPressed: () => Navigator.pop(context),
+      icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
     );
   }
 }

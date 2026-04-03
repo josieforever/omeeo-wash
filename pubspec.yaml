@@ -1,8 +1,5 @@
 name: omeeowash
-description:
-  "Omeeo Wash is a mobile car washing and detailing service in Ghana, offering both
-  onsite and mobile cleaning options. This Flutter app lets customers easily book,
-  schedule, and manage their car wash services."
+description: "Lundri is an on-demand laundry marketplace that automatically matches customer orders with available laundry partners and riders for pickup, processing, payment, and delivery."
 
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 

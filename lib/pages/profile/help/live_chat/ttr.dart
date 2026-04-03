@@ -16,14 +16,14 @@
 // import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 // import 'package:provider/provider.dart';
 
-// class HelpAndSupport extends StatefulWidget {
-//   const HelpAndSupport({super.key});
+// class Help extends StatefulWidget {
+//   const Help({super.key});
 
 //   @override
-//   State<HelpAndSupport> createState() => _HelpAndSupportState();
+//   State<Help> createState() => _HelpState();
 // }
 
-// class _HelpAndSupportState extends State<HelpAndSupport> {
+// class _HelpState extends State<Help> {
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
@@ -61,7 +61,7 @@
 //             child: Center(
 //               child: Column(
 //                 mainAxisSize: MainAxisSize.min,
-//                 children: [HelpAndSupportTopBar(), HelpAndSupportPage()],
+//                 children: [HelpTopBar(), HelpPage()],
 //               ),
 //             ),
 //           ),
@@ -71,14 +71,14 @@
 //   }
 // }
 
-// class HelpAndSupportPage extends StatefulWidget {
-//   const HelpAndSupportPage({super.key});
+// class HelpPage extends StatefulWidget {
+//   const HelpPage({super.key});
 
 //   @override
-//   State<HelpAndSupportPage> createState() => _HelpAndSupportPageState();
+//   State<HelpPage> createState() => _HelpPageState();
 // }
 
-// class _HelpAndSupportPageState extends State<HelpAndSupportPage> {
+// class _HelpPageState extends State<HelpPage> {
 //   late UserProvider userProvider;
 //   late UserModel user;
 
@@ -383,8 +383,8 @@
 //   }
 // }
 
-// class HelpAndSupportTopBar extends StatelessWidget {
-//   const HelpAndSupportTopBar({super.key});
+// class HelpTopBar extends StatelessWidget {
+//   const HelpTopBar({super.key});
 
 //   @override
 //   Widget build(BuildContext context) {

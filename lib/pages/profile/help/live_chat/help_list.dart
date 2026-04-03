@@ -179,7 +179,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:omeeowash/pages/profile/help_and_support/live_chat/methods.dart';
+import 'package:omeeowash/pages/profile/help/live_chat/methods.dart';
 
 import 'chat.dart';
 

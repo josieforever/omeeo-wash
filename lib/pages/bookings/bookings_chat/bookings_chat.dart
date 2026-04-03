@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:omeeowash/pages/bookings/bookings_chat/msg_bubble.dart';
-import 'package:omeeowash/pages/profile/help_and_support/live_chat/app.config.dart';
+import 'package:omeeowash/pages/profile/help/live_chat/app.config.dart';
 
 class BookingsChat extends StatefulWidget {
   final String bookingRecieverId;

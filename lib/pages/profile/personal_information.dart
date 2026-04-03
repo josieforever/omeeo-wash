@@ -71,39 +71,34 @@ class PersonalInformationTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary),
+      padding: EdgeInsets.symmetric(horizontal: 20),
+
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 50),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+          GoBack(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: 'Personal Information',
-                    textColor: Theme.of(context).colorScheme.primary,
-                    textSize: TextSizes.heading2,
-                    textWeight: FontWeight.w900,
-                  ),
-                  CustomText(
-                    text: 'Update your details',
-                    textColor: Theme.of(context).colorScheme.surface,
-                    textSize: TextSizes.subtitle2,
-                  ),
-                ],
+              CustomText(
+                text: 'Personal Information',
+                textColor: Theme.of(context).colorScheme.primary,
+                textSize: TextSizes.heading2,
+                textWeight: FontWeight.w900,
               ),
-              GoBack(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+              CustomText(
+                text: 'Update your details',
+                textColor: Theme.of(context).colorScheme.surface,
+                textSize: TextSizes.subtitle2,
               ),
             ],
           ),
-
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -125,7 +120,7 @@ class ProfilePhotoCard extends StatelessWidget {
     final bool hasPhoto = user.photoUrl.isNotEmpty;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+      margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.inversePrimary,

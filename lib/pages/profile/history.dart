@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class History extends StatefulWidget {
   const History({super.key});
@@ -39,6 +40,51 @@ class _HistoryState extends State<History> {
       'status': 'completed',
     },
     {
+      'date': 'Saturday, October 25, 2025',
+      'service': 'Wash & Fold',
+      'time': '13:18',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
+      'price': '33 GHS',
+      'status': 'completed',
+    },
+    {
+      'date': 'Saturday, October 25, 2025',
+      'service': 'Wash & Fold',
+      'time': '13:18',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
+      'price': '33 GHS',
+      'status': 'completed',
+    },
+    {
+      'date': 'Saturday, October 25, 2025',
+      'service': 'Wash & Fold',
+      'time': '13:18',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
+      'price': '33 GHS',
+      'status': 'completed',
+    },
+    {
+      'date': 'Saturday, October 25, 2025',
+      'service': 'Wash & Fold',
+      'time': '13:18',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
+      'price': '33 GHS',
+      'status': 'completed',
+    },
+    {
+      'date': 'Saturday, October 25, 2025',
+      'service': 'Wash & Fold',
+      'time': '13:18',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
+      'price': '33 GHS',
+      'status': 'completed',
+    },
+    {
       'date': 'Wednesday, September 24, 2025',
       'service': 'Wash & Iron',
       'time': '07:50',
@@ -58,10 +104,10 @@ class _HistoryState extends State<History> {
     String? currentDate;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -70,13 +116,13 @@ class _HistoryState extends State<History> {
               /// Header
               Row(
                 children: [
-                  IconButton(
+                  GoBack(
+                    bgColor: Theme.of(context).colorScheme.tertiary,
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   ),
                   const Expanded(
                     child: Text(
-                      'My washes and orders',
+                      'Wash history',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 24,
@@ -253,18 +299,26 @@ class _OrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 224, 224, 224),
-        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFFE0E0E0),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Icon(
-                service == 'Wash & Fold'
-                    ? Icons.local_laundry_service_rounded
-                    : Icons.iron_rounded,
-                color: const Color.fromARGB(255, 161, 0, 134),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.white,
+                child: Transform.scale(
+                  scale: service == 'Wash & Fold' ? 0.6 : 0.8,
+                  child: Image.asset(
+                    service == 'Wash & Fold'
+                        ? 'assets/images/black_machine.png'
+                        : 'assets/images/black_machine_iron.png',
+                    height: 30,
+                    width: 30,
+                  ),
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -274,7 +328,7 @@ class _OrderCard extends StatelessWidget {
                     Text(
                       '$service,  $time',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.black87,
                       ),
@@ -302,7 +356,7 @@ class _OrderCard extends StatelessWidget {
               Text(
                 price,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
