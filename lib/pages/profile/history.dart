@@ -15,7 +15,8 @@ class _HistoryState extends State<History> {
       'date': 'Tuesday, March 17',
       'service': 'Wash & Fold',
       'time': '13:30',
-      'route': 'Teikofio Street → Gulf Road, 8',
+      'pickupLocation': 'Teikofio Streetargaggegege5gw5gw35gw35g35g35',
+      'laundryService': 'FreshFold Laundry',
       'price': '31 GHS',
       'status': 'completed',
     },
@@ -23,7 +24,8 @@ class _HistoryState extends State<History> {
       'date': 'Monday, November 24, 2025',
       'service': 'Wash & Iron',
       'time': '17:20',
-      'route': 'Teikofio Street → Spintex Road, 86',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'SparkleSpin Wash',
       'price': '47 GHS',
       'status': 'completed',
     },
@@ -31,7 +33,8 @@ class _HistoryState extends State<History> {
       'date': 'Saturday, October 25, 2025',
       'service': 'Wash & Fold',
       'time': '13:18',
-      'route': 'Teikofio Street → Asafoatse Brown Road, 9',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'PurePress Laundry',
       'price': '33 GHS',
       'status': 'completed',
     },
@@ -39,7 +42,8 @@ class _HistoryState extends State<History> {
       'date': 'Wednesday, September 24, 2025',
       'service': 'Wash & Iron',
       'time': '07:50',
-      'route': 'Canceled',
+      'pickupLocation': 'Teikofio Street',
+      'laundryService': 'CloudClean Laundry',
       'price': '0 GHS',
       'status': 'cancelled',
     },
@@ -93,9 +97,9 @@ class _HistoryState extends State<History> {
                 child: Row(
                   children: [
                     _buildFilterChip('All'),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     _buildFilterChip('Wash & Fold'),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     _buildFilterChip('Wash & Iron'),
                   ],
                 ),
@@ -133,7 +137,8 @@ class _HistoryState extends State<History> {
                         _OrderCard(
                           service: item['service'],
                           time: item['time'],
-                          route: item['route'],
+                          pickupLocation: item['pickupLocation'],
+                          laundryService: item['laundryService'],
                           price: item['price'],
                           cancelled: item['status'] == 'cancelled',
                           showActions: index == 0,
@@ -163,10 +168,10 @@ class _HistoryState extends State<History> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color.fromARGB(255, 62, 0, 161)
+              ? const Color.fromARGB(255, 44, 44, 44)
               : Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
@@ -180,13 +185,28 @@ class _HistoryState extends State<History> {
         child: Row(
           children: [
             if (title != 'All') ...[
-              Icon(
-                title == 'Wash & Fold'
-                    ? Icons.local_laundry_service_rounded
-                    : Icons.iron_rounded,
-                size: 20,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
+              title == 'Wash & Fold'
+                  ? Transform.scale(
+                      scale: 0.9,
+                      child: Image.asset(
+                        isSelected
+                            ? 'assets/images/machine.png'
+                            : 'assets/images/black_machine.png',
+                        height: 30,
+                        width: 30,
+                      ),
+                    )
+                  : Transform.scale(
+                      scale: 1.15,
+                      child: Image.asset(
+                        isSelected
+                            ? 'assets/images/machine_iron.png'
+                            : 'assets/images/black_machine_iron.png',
+                        height: 30,
+                        width: 30,
+                      ),
+                    ),
+
               const SizedBox(width: 8),
             ],
             Text(
@@ -207,7 +227,8 @@ class _HistoryState extends State<History> {
 class _OrderCard extends StatelessWidget {
   final String service;
   final String time;
-  final String route;
+  final String pickupLocation;
+  final String laundryService;
   final String price;
   final bool cancelled;
   final bool showActions;
@@ -215,68 +236,62 @@ class _OrderCard extends StatelessWidget {
   const _OrderCard({
     required this.service,
     required this.time,
-    required this.route,
+    required this.pickupLocation,
+    required this.laundryService,
     required this.price,
     this.cancelled = false,
     this.showActions = false,
   });
 
+  String truncateText(String value, {int maxLength = 16}) {
+    if (value.length <= maxLength) return value;
+    return '${value.substring(0, maxLength)}...';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: const Color.fromARGB(255, 224, 224, 224),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(
-                    255,
-                    62,
-                    0,
-                    161,
-                  ).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  service == 'Wash & Fold'
-                      ? Icons.local_laundry_service_rounded
-                      : Icons.iron_rounded,
-                  color: const Color.fromARGB(255, 62, 0, 161),
-                ),
+              Icon(
+                service == 'Wash & Fold'
+                    ? Icons.local_laundry_service_rounded
+                    : Icons.iron_rounded,
+                color: const Color.fromARGB(255, 161, 0, 134),
               ),
-
               const SizedBox(width: 14),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$service, $time',
+                      '$service,  $time',
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Colors.black87,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
                     Text(
-                      route,
+                      '${truncateText(pickupLocation)} → ${truncateText(laundryService)}',
                       style: TextStyle(
-                        fontSize: 17,
+                        fontSize: 15,
                         color: cancelled ? Colors.red : Colors.grey.shade600,
                         fontWeight: cancelled
                             ? FontWeight.w600
                             : FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -287,36 +302,13 @@ class _OrderCard extends StatelessWidget {
               Text(
                 price,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                 ),
               ),
             ],
           ),
-
-          if (showActions && !cancelled) ...[
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.headset_mic_outlined,
-                    title: 'Help',
-                    onTap: () {},
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.refresh_rounded,
-                    title: 'Book again',
-                    onTap: () {},
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );

@@ -324,7 +324,7 @@ class _ProfileScreenMiddleSectionState
           Container(
             padding: EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
-              color: Color(0xFFFFF1F4),
+              color: Color.fromARGB(255, 255, 243, 243),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
