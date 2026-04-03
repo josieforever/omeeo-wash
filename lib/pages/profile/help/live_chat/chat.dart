@@ -20,7 +20,6 @@ import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
-import 'live_chat.dart';
 import 'methods.dart';
 
 class Chat extends StatefulWidget {
