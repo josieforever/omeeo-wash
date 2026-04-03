@@ -2,68 +2,114 @@ import 'package:flutter/material.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class Methods {
-  Future<bool?> showDeleteConfirmationDialog(BuildContext context, onpress) {
+  Future<bool?> showDeleteConfirmationDialog(
+    BuildContext context,
+    VoidCallback onPress,
+  ) {
     return showDialog<bool>(
-      barrierColor: Colors.transparent,
       context: context,
-      builder: (context) {
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (dialogContext) {
         return Dialog(
-          backgroundColor: const Color.fromARGB(255, 223, 223, 223),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1A000000),
+                  blurRadius: 30,
+                  offset: Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 16),
-                const CustomText(
-                  text: "Messages deleted cannot be restored!",
-                  textAlign: TextAlign.left,
-                  textSize: 16,
-                  textWeight: FontWeight.w600,
-                  textColor: Colors.black,
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEFEF),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFE36C9A),
+                    size: 30,
+                  ),
                 ),
-
-                const SizedBox(height: 40),
+                const SizedBox(height: 16),
+                const Text(
+                  'Delete message?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Messages deleted cannot be restored.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color.fromARGB(
-                          255,
-                          210,
-                          179,
-                          179,
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F4F6),
+                          foregroundColor: Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: CustomText(
-                        text: "Cancel",
-                        textWeight: FontWeight.bold,
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(
-                          255,
-                          104,
-                          69,
-                          247,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          onPress();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: const Color(0xFFE36C9A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      onPressed: onpress,
-                      child: CustomText(
-                        text: "Agree",
-                        textWeight: FontWeight.bold,
-                        textColor: Colors.white,
                       ),
                     ),
                   ],
@@ -149,7 +195,7 @@ class Methods {
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFF1F4),
+                      backgroundColor: const Color(0xFFE36C9A),
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
                         horizontal: 24,
@@ -229,8 +275,8 @@ class _MediaOptionTile extends StatelessWidget {
 void customRoute(BuildContext context, pageBuilder) {
   Navigator.of(context).push(
     PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 200),
-      reverseTransitionDuration: const Duration(milliseconds: 200),
+      transitionDuration: const Duration(milliseconds: 400),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) => pageBuilder,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
