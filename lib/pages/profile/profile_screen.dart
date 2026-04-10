@@ -12,7 +12,7 @@ import 'package:omeeowash/pages/profile/all_support.dart';
 import 'package:omeeowash/pages/profile/settings.dart';
 import 'package:omeeowash/pages/profile/discounts_gifts.dart';
 import 'package:omeeowash/pages/profile/help/help.dart';
-import 'package:omeeowash/pages/profile/history.dart';
+import 'package:omeeowash/pages/profile/history/history.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
 import 'package:omeeowash/providers/user_provider.dart';

@@ -376,10 +376,11 @@ class _BottomAddressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 25),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: const [
           BoxShadow(
             color: Color(0x18000000),
             blurRadius: 20,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omeeowash/pages/profile/history/order.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class History extends StatefulWidget {
@@ -187,6 +188,14 @@ class _HistoryState extends State<History> {
                           laundryService: item['laundryService'],
                           price: item['price'],
                           cancelled: item['status'] == 'cancelled',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DeliveryDetailsScreen(),
+                              ),
+                            );
+                          },
                           showActions: index == 0,
                         ),
 
@@ -278,6 +287,7 @@ class _OrderCard extends StatelessWidget {
   final String price;
   final bool cancelled;
   final bool showActions;
+  final VoidCallback onTap;
 
   const _OrderCard({
     required this.service,
@@ -287,6 +297,7 @@ class _OrderCard extends StatelessWidget {
     required this.price,
     this.cancelled = false,
     this.showActions = false,
+    required this.onTap,
   });
 
   String truncateText(String value, {int maxLength = 16}) {
@@ -296,74 +307,77 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.white,
-                child: Transform.scale(
-                  scale: service == 'Wash & Fold' ? 0.6 : 0.8,
-                  child: Image.asset(
-                    service == 'Wash & Fold'
-                        ? 'assets/images/black_machine.png'
-                        : 'assets/images/black_machine_iron.png',
-                    height: 30,
-                    width: 30,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0E0E0),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.white,
+                  child: Transform.scale(
+                    scale: service == 'Wash & Fold' ? 0.6 : 0.8,
+                    child: Image.asset(
+                      service == 'Wash & Fold'
+                          ? 'assets/images/black_machine.png'
+                          : 'assets/images/black_machine_iron.png',
+                      height: 30,
+                      width: 30,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$service,  $time',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$service,  $time',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      '${truncateText(pickupLocation)} → ${truncateText(laundryService)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: cancelled ? Colors.red : Colors.grey.shade600,
-                        fontWeight: cancelled
-                            ? FontWeight.w600
-                            : FontWeight.w500,
+                      Text(
+                        '${truncateText(pickupLocation)} → ${truncateText(laundryService)}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: cancelled ? Colors.red : Colors.grey.shade600,
+                          fontWeight: cancelled
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
 
-              Text(
-                price,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                Text(
+                  price,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -649,22 +649,13 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                     'assets/images/laundry_backdrop.png',
                     fit: BoxFit.cover,
                   ),
-                  Container(color: Colors.black.withOpacity(0.18)),
+                  Container(color: const Color.fromARGB(134, 0, 0, 0)),
                 ],
               ),
             ),
+
             Positioned(
-              top: topInset + 40,
-              right: 0,
-              left: 0,
-              child: Center(
-                child: Column(
-                  children: [CustomText(text: 'Divin Tassel Academy')],
-                ),
-              ),
-            ),
-            Positioned(
-              top: topInset + 40,
+              top: topInset + 10,
               right: 16,
               child: GestureDetector(
                 onTap: () {
