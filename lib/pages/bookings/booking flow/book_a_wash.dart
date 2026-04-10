@@ -87,7 +87,7 @@ class _PersonalInformationState extends State<PersonalInformation> {
                     onUploadTap: () => handleUploadPhoto(context, user!),
                   ),
                   UpdateBasicInformation(user: user!),
-                  const SizedBox(height: 30),
+                  SizedBox(height: context.rh(30, min: 20, max: 34)),
                 ],
               ),
             ),
@@ -102,9 +102,12 @@ class PersonalInformationTopBar extends StatelessWidget {
   const PersonalInformationTopBar({super.key});
   @override
   Widget build(BuildContext context) {
+    final topInset = context.rh(50, min: 24, max: 56);
+    final horizontalPadding = context.rw(10, min: 8, max: 14);
+
     return Container(
       width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(10),
+      padding: EdgeInsets.all(horizontalPadding),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerRight,
@@ -114,7 +117,7 @@ class PersonalInformationTopBar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 50),
+          SizedBox(height: topInset),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -143,8 +146,7 @@ class PersonalInformationTopBar extends StatelessWidget {
               ),
             ],
           ),
-
-          const SizedBox(height: 10),
+          SizedBox(height: context.rh(10, min: 8, max: 12)),
         ],
       ),
     );
@@ -164,10 +166,16 @@ class ProfilePhotoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasPhoto = user.photoUrl.isNotEmpty;
+    final avatarRadius = context.rw(40, min: 32, max: 42);
+    final cameraButtonSize = context.rw(28, min: 24, max: 30);
+    final cameraIconSize = context.rw(14, min: 12, max: 15);
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-      padding: const EdgeInsets.all(15),
+      margin: EdgeInsets.symmetric(
+        vertical: context.rh(15, min: 10, max: 16),
+        horizontal: context.rw(10, min: 8, max: 14),
+      ),
+      padding: EdgeInsets.all(context.rw(15, min: 12, max: 18)),
       decoration: BoxDecoration(
         color: Theme.of(context).textTheme.headlineLarge?.color,
         borderRadius: BorderRadius.circular(7),
@@ -184,14 +192,14 @@ class ProfilePhotoCard extends StatelessWidget {
           Stack(
             children: [
               CircleAvatar(
-                radius: 40,
+                radius: avatarRadius,
                 backgroundColor: const Color.fromARGB(255, 226, 226, 226),
                 backgroundImage: hasPhoto ? NetworkImage(user.photoUrl) : null,
                 child: !hasPhoto
-                    ? const Icon(
+                    ? Icon(
                         Icons.person,
-                        size: 40,
-                        color: Color.fromARGB(94, 65, 0, 149),
+                        size: avatarRadius,
+                        color: const Color.fromARGB(94, 65, 0, 149),
                       )
                     : null,
               ),
@@ -202,8 +210,8 @@ class ProfilePhotoCard extends StatelessWidget {
                   onTap: onUploadTap,
                   borderRadius: BorderRadius.circular(30),
                   child: Container(
-                    width: 28,
-                    height: 28,
+                    width: cameraButtonSize,
+                    height: cameraButtonSize,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -215,7 +223,7 @@ class ProfilePhotoCard extends StatelessWidget {
                     child: Center(
                       child: Icon(
                         FontAwesomeIcons.camera,
-                        size: 14,
+                        size: cameraIconSize,
                         color: Theme.of(context).colorScheme.inversePrimary,
                       ),
                     ),
@@ -224,7 +232,7 @@ class ProfilePhotoCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(width: 20),
+          SizedBox(width: context.rw(20, min: 12, max: 22)),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
