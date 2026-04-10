@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class GiftsAndDiscountsScreen extends StatelessWidget {
@@ -13,16 +14,24 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final horizontalInset = context.rw(10, min: 8, max: 16);
+    final cardInset = context.rw(14, min: 8, max: 18);
+    final heroImageHeight = context.rh(310, min: 200, max: 320);
+    final shareButtonHeight = context.rh(65, min: 52, max: 65);
+    final shareButtonWidth = context.rw(370, min: 220, max: 420);
+    final heroSpacer = context.rh(300, min: 190, max: 310);
+    final iconSize = context.rw(56, min: 44, max: 56);
+
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: EdgeInsets.symmetric(horizontal: horizontalInset),
           child: Column(
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: EdgeInsets.symmetric(horizontal: cardInset),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -46,9 +55,11 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                         title: 'Enter promo code',
                         onTap: () => _showPromoCodeSheet(context),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 78),
-                        child: Divider(
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left: context.rw(78, min: 56, max: 92),
+                        ),
+                        child: const Divider(
                           height: 1,
                           thickness: 1,
                           color: _dividerColor,
@@ -69,8 +80,8 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                           child: Row(
                             children: [
                               Container(
-                                width: 56,
-                                height: 56,
+                                width: iconSize,
+                                height: iconSize,
                                 decoration: BoxDecoration(
                                   color: _disabledIconBg,
                                   borderRadius: BorderRadius.circular(18),
@@ -110,7 +121,7 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                         children: [
                           Image.asset(
                             'assets/images/percentage_man.png',
-                            height: 310,
+                            height: heroImageHeight,
                             fit: BoxFit.contain,
                           ),
                         ],
@@ -120,7 +131,7 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                       alignment: Alignment.bottomCenter,
                       child: Column(
                         children: [
-                          SizedBox(height: 300),
+                          SizedBox(height: heroSpacer),
                           GestureDetector(
                             onTap: () {
                               Navigator.push(
@@ -132,8 +143,8 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                             },
 
                             child: Container(
-                              height: 65,
-                              width: 370,
+                              height: shareButtonHeight,
+                              width: shareButtonWidth,
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE36C9A),
                                 borderRadius: BorderRadius.circular(18),
@@ -274,6 +285,7 @@ class _PromoCodeDialogState extends State<_PromoCodeDialog> {
   @override
   Widget build(BuildContext context) {
     final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    final dialogButtonHeight = context.rh(58, min: 48, max: 58);
 
     return Material(
       color: Colors.transparent,
@@ -377,7 +389,7 @@ class _PromoCodeDialogState extends State<_PromoCodeDialog> {
                             const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
-                              height: 58,
+                              height: dialogButtonHeight,
                               child: ElevatedButton(
                                 onPressed: () {
                                   final code = _controller.text.trim();
@@ -426,11 +438,17 @@ class GetDiscountScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sidePadding = context.rw(18, min: 12, max: 22);
+    final topGap = context.rh(100, min: 28, max: 100);
+    final imageHeight = context.rh(310, min: 190, max: 320);
+    final primaryButtonHeight = context.rh(52, min: 46, max: 56);
+    final promoCodeCardHeight = context.rh(52, min: 46, max: 56);
+
     return Scaffold(
       backgroundColor: _bgColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: EdgeInsets.symmetric(horizontal: sidePadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -444,12 +462,12 @@ class GetDiscountScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 100),
+              SizedBox(height: topGap),
 
               Center(
                 child: Image.asset(
                   'assets/images/discount.png',
-                  height: 310,
+                  height: imageHeight,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -488,7 +506,7 @@ class GetDiscountScreen extends StatelessWidget {
 
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: primaryButtonHeight,
                 child: ElevatedButton(
                   onPressed: () {
                     // TODO: share invite code
@@ -529,8 +547,8 @@ class GetDiscountScreen extends StatelessWidget {
 
               Container(
                 width: double.infinity,
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                height: promoCodeCardHeight,
+                padding: EdgeInsets.symmetric(horizontal: context.rw(18, min: 12, max: 18)),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),

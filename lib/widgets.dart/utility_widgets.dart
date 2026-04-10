@@ -260,6 +260,8 @@ class IconStackTextButton extends StatelessWidget {
       context,
     ).colorScheme.inversePrimary.withOpacity(.12);
     final Color btnFg = Colors.black87;
+    final iconBoxSize = context.rw(50, min: 40, max: 56);
+    final iconPadding = context.rw(5, min: 4, max: 8);
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -283,10 +285,10 @@ class IconStackTextButton extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(5),
-                    margin: EdgeInsets.all(5),
-                    width: 50,
-                    height: 50,
+                    padding: EdgeInsets.all(iconPadding),
+                    margin: EdgeInsets.all(iconPadding),
+                    width: iconBoxSize,
+                    height: iconBoxSize,
                     decoration: BoxDecoration(
                       color: const Color.fromARGB(119, 108, 108, 108),
                       //color: Colors.transparent,
@@ -305,7 +307,7 @@ class IconStackTextButton extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: context.rw(10, min: 6, max: 12)),
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -320,7 +322,7 @@ class IconStackTextButton extends StatelessWidget {
                           size: 15,
                           color: Theme.of(context).colorScheme.secondary,
                         ),
-                        const SizedBox(width: 1),
+                        SizedBox(width: context.rw(1, min: 1, max: 2)),
                       ],
                     ),
                   ),
@@ -971,16 +973,21 @@ class ProfileButton extends StatelessWidget {
 
   bool get _isPaymentMethodsTile => textWidget1 == 'Payment Methods';
 
-  Widget? _buildSelectedPaymentMethodLogo() {
+  Widget? _buildSelectedPaymentMethodLogo(BuildContext context) {
     if (!_isPaymentMethodsTile || selectedPaymentMethod == null) return null;
+
+    final logoWidth = context.rw(58, min: 44, max: 58);
+    final logoHeight = context.rh(40, min: 30, max: 40);
+    final cashWidth = context.rw(40, min: 30, max: 40);
+    final cashHeight = context.rh(25, min: 18, max: 25);
 
     switch (selectedPaymentMethod!.trim().toLowerCase()) {
       case 'telecel cash':
       case 'vodacash':
       case 'telecel':
         return SizedBox(
-          width: 58,
-          height: 40,
+          width: logoWidth,
+          height: logoHeight,
           child: Image.asset('assets/images/telecel_logo.png'),
         );
 
@@ -988,8 +995,8 @@ class ProfileButton extends StatelessWidget {
       case 'airteltigo':
       case 'airteltigo cash':
         return SizedBox(
-          width: 58,
-          height: 40,
+          width: logoWidth,
+          height: logoHeight,
           child: Image.asset('assets/images/airteltigo_logo.png'),
         );
 
@@ -997,8 +1004,8 @@ class ProfileButton extends StatelessWidget {
       case 'mtn momo':
       case 'momo':
         return SizedBox(
-          width: 58,
-          height: 40,
+          width: logoWidth,
+          height: logoHeight,
           child: Image.asset('assets/images/mtn_logo.png'),
         );
 
@@ -1008,16 +1015,16 @@ class ProfileButton extends StatelessWidget {
         return Transform.scale(
           scale: 2.3,
           child: SizedBox(
-            width: 58,
-            height: 40,
+            width: logoWidth,
+            height: logoHeight,
             child: Image.asset('assets/images/credit_card.png'),
           ),
         );
 
       case 'cash':
         return SizedBox(
-          width: 40,
-          height: 25,
+          width: cashWidth,
+          height: cashHeight,
           child: Image.asset('assets/images/cash.png'),
         );
 
@@ -1038,7 +1045,7 @@ class ProfileButton extends StatelessWidget {
       leadingWidget = Icon(icon2, color: Theme.of(context).colorScheme.primary);
     }
 
-    final Widget? paymentMethodLogo = _buildSelectedPaymentMethodLogo();
+    final Widget? paymentMethodLogo = _buildSelectedPaymentMethodLogo(context);
 
     return InkWell(
       onTap: onPressed,
