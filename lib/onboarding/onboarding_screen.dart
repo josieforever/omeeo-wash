@@ -69,6 +69,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final screenWidth = mediaQuery.size.width;
+    final isSmallScreen = screenHeight < 700 || screenWidth < 360;
+    final logoSize = (screenWidth * 0.8).clamp(220.0, 320.0);
+    final topSpacing = (screenHeight * 0.26).clamp(140.0, 220.0);
+    final animationHeight = (screenHeight * 0.32).clamp(180.0, 300.0);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -85,9 +93,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           Positioned(
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width,
-            child: OmeeoLogoWidget(size: 320, showTagline: true),
+            height: screenHeight,
+            width: screenWidth,
+            child: OmeeoLogoWidget(size: logoSize, showTagline: true),
           ),
           Positioned.fill(
             child: PageView.builder(
@@ -98,37 +106,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               itemCount: _pages.length,
               itemBuilder: (_, index) {
                 return Container(
-                  padding: const EdgeInsets.only(
-                    top: 30,
-                    bottom: 30,
+                  padding: EdgeInsets.only(
+                    top: isSmallScreen ? 20 : 30,
+                    bottom: isSmallScreen ? 20 : 30,
                     left: 15,
                     right: 15,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 220),
+                      SizedBox(height: topSpacing),
                       Text(
                         _pages[index]['title']!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 25,
+                          fontSize: isSmallScreen ? 22 : 25,
                           color: Theme.of(context).colorScheme.inversePrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 8),
                       Text(
                         _pages[index]['subtitle']!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: isSmallScreen ? 14 : 16,
                           color: Theme.of(context).colorScheme.inversePrimary,
                         ),
                       ),
                       SizedBox(
                         width: double.infinity,
-                        height: MediaQuery.of(context).size.height * 0.35,
+                        height: animationHeight,
                         child: Align(
                           alignment: Alignment.center,
                           child: Lottie.asset(
@@ -146,54 +154,60 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
 
           Positioned(
-            bottom: 10,
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  TextButton(
-                    onPressed: _skip,
-                    child: Text(
-                      "Skip",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.inversePrimary,
-                      ),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _pages.length,
-                      (index) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentPage == index ? 12 : 8,
-                        height: _currentPage == index ? 12 : 8,
-                        decoration: BoxDecoration(
-                          color: _currentPage == index
-                              ? Theme.of(context).colorScheme.inversePrimary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.inversePrimary.withOpacity(0.4),
-                          shape: BoxShape.circle,
+            bottom: isSmallScreen ? 6 : 10,
+            child: SafeArea(
+              top: false,
+              child: Container(
+                width: screenWidth,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 16.0 : 24.0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: _skip,
+                      child: Text(
+                        "Skip",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.inversePrimary,
                         ),
                       ),
                     ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _nextPage,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.inversePrimary,
-                      foregroundColor: AppColors.primaryPurple,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _pages.length,
+                        (index) => Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: _currentPage == index ? 12 : 8,
+                          height: _currentPage == index ? 12 : 8,
+                          decoration: BoxDecoration(
+                            color: _currentPage == index
+                                ? Theme.of(context).colorScheme.inversePrimary
+                                : Theme.of(context)
+                                      .colorScheme
+                                      .inversePrimary
+                                      .withOpacity(0.4),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      _currentPage == _pages.length - 1 ? "Start" : "Next",
+                    ElevatedButton(
+                      onPressed: _nextPage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.inversePrimary,
+                        foregroundColor: AppColors.primaryPurple,
+                      ),
+                      child: Text(
+                        _currentPage == _pages.length - 1 ? "Start" : "Next",
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

@@ -167,8 +167,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final localeProvider = Provider.of<LocaleProvider>(context);
 
     return MaterialApp(
-      builder: (context, child) =>
-          NetworkListener(child: child ?? const SizedBox()),
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        final clampedTextScaler = mediaQuery.textScaler.clamp(
+          minScaleFactor: 0.9,
+          maxScaleFactor: 1.2,
+        );
+
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: clampedTextScaler),
+          child: NetworkListener(child: child ?? const SizedBox()),
+        );
+      },
       title: 'Omeeo Wash',
       locale: localeProvider.locale, // from Provider or state
       supportedLocales: const [

@@ -11,6 +11,27 @@ class Responsiveness {
   }
 }
 
+extension ResponsiveContext on BuildContext {
+  Size get _size => MediaQuery.of(this).size;
+  double get screenWidth => _size.width;
+  double get screenHeight => _size.height;
+
+  bool get isSmallPhone => screenWidth < 360 || screenHeight < 700;
+  bool get isTablet => screenWidth >= 600;
+
+  /// Scale from a 390px wide design baseline.
+  double rw(double size, {double min = 0, double max = double.infinity}) {
+    final scaled = size * (screenWidth / 390);
+    return scaled.clamp(min, max);
+  }
+
+  /// Scale from an 844px high design baseline.
+  double rh(double size, {double min = 0, double max = double.infinity}) {
+    final scaled = size * (screenHeight / 844);
+    return scaled.clamp(min, max);
+  }
+}
+
 class TextSizes {
   static const double heading1 = 25.0;
   static const double heading2 = 20.0;
