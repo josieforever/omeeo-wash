@@ -43,6 +43,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final screenWidth = mediaQuery.size.width;
+    final isSmallScreen = screenHeight < 700 || screenWidth < 360;
+
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 244, 248, 255),
       body: Stack(
@@ -58,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           Positioned.fill(
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
+              height: screenHeight * 0.9,
               color: const Color.fromARGB(213, 255, 255, 255),
             ),
           ),
@@ -70,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           Positioned.fill(
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
+              height: screenHeight * 0.9,
               color: const Color.fromARGB(100, 255, 255, 255),
             ),
           ),
@@ -79,55 +84,57 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: EdgeInsets.only(
                 left: 15,
                 right: 15,
-                top: 70,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                top: isSmallScreen ? 24 : 48,
+                bottom: mediaQuery.viewInsets.bottom + 20,
               ),
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow,
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 10,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GradientText(
-                            text: 'omeeo wash',
-                            style: TextStyle(
-                              fontSize: TextSizes.heading1,
-                              fontWeight: FontWeight.w900,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Theme.of(context).textTheme.headlineLarge?.color,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 6),
                             ),
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerRight,
-                              end: Alignment.centerLeft,
-                              colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+                          ],
+                        ),
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          vertical: isSmallScreen ? 16 : 20,
+                          horizontal: isSmallScreen ? 8 : 10,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GradientText(
+                              text: 'omeeo wash',
+                              style: TextStyle(
+                                fontSize: TextSizes.heading1,
+                                fontWeight: FontWeight.w900,
+                              ),
+                              gradient: const LinearGradient(
+                                begin: Alignment.centerRight,
+                                end: Alignment.centerLeft,
+                                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          CustomText(
-                            text: 'Sign in to your omeeo wash account',
-                            textColor: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.color,
-                            textSize: TextSizes.bodyText1,
-                          ),
-                          const SizedBox(height: 10),
+                            const SizedBox(height: 10),
+                            CustomText(
+                              text: 'Sign in to your omeeo wash account',
+                              textColor: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color,
+                              textSize: TextSizes.bodyText1,
+                            ),
+                            const SizedBox(height: 10),
 
                           // GOOGLE SIGN IN
                           ContinueSignInButton(
