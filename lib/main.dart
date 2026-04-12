@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
@@ -42,24 +43,20 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // ✅ FIX ADDED: Activate App Check Main Instance
-  // This explicitly installs the provider, solving the "No AppCheckProvider" error.
   await FirebaseAppCheck.instance.activate(
-    // 'debug' allows it to work on emulators/simulators without Play Store signing
     androidProvider: AndroidProvider.debug,
     appleProvider: AppleProvider.appAttest,
   );
 
-  // ✅ Initialize local notifications (for background display)
   await LocalNotificationService.initialize();
 
-  // ✅ Register background handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // 🧠 Load user prefs
-  final prefs = await SharedPreferences.getInstance(); ///////
+  final prefs = await SharedPreferences.getInstance();
   final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
   final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
 
@@ -72,7 +69,6 @@ Future<void> main() async {
     startScreen = const LaundryServicesScreen();
   }
 
-  // 🗃️ Initialize local DB (Isar)
   final dir = await getApplicationDocumentsDirectory();
   final isar = await Isar.open([MessageSchema], directory: dir.path);
 
@@ -199,7 +195,5 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 }
-
-
 
 /* z4hv1hkOurULBfK0LWM0rxcpkOw2 */

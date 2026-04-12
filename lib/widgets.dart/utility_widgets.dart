@@ -532,182 +532,6 @@ class ServiceButtonExpanded extends StatelessWidget {
   }
 }
 
-class ServiceButtonExpanded2 extends StatelessWidget {
-  final String textWidget1;
-  final String? textWidget2;
-  final String textWidget3;
-  final bool? position;
-  final List<String>? serviceItems;
-  final List<String>? addOns;
-
-  final Image? image;
-  final Color deepColor;
-  final Color backgroundColor;
-  final Color? boxShadowColor;
-
-  final bool isSelected;
-  final bool isExpanded;
-
-  final Set<String> selectedAddOns;
-  final Function(String) onAddOnToggle;
-
-  final VoidCallback onTap;
-
-  const ServiceButtonExpanded2({
-    super.key,
-    required this.textWidget1,
-    this.textWidget2,
-    required this.textWidget3,
-    this.serviceItems,
-    this.addOns,
-    required this.deepColor,
-    required this.backgroundColor,
-    this.boxShadowColor,
-    required this.isSelected,
-    required this.isExpanded,
-    required this.onTap,
-    required this.selectedAddOns,
-    required this.onAddOnToggle,
-    this.image,
-    this.position,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: backgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: boxShadowColor!,
-                  blurRadius: 25,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _PinkCirclesPainter(
-                        color: const Color(0xFFE88AAF).withOpacity(0.16),
-                        lightColor: const Color(0xFFFFC1D6).withOpacity(0.22),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              textWidget1,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: deepColor,
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (image != null) Positioned(top: 11, left: 10, child: image!),
-        ],
-      ),
-    );
-  }
-}
-
-class _PinkCirclesPainter extends CustomPainter {
-  final Color color;
-  final Color lightColor;
-
-  const _PinkCirclesPainter({required this.color, required this.lightColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fillPaint = Paint()..style = PaintingStyle.fill;
-    final strokePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    void drawFilledCircle(double x, double y, double r, Color c) {
-      fillPaint.color = c;
-      canvas.drawCircle(Offset(x, y), r, fillPaint);
-    }
-
-    void drawStrokeCircle(double x, double y, double r, Color c) {
-      strokePaint.color = c;
-      canvas.drawCircle(Offset(x, y), r, strokePaint);
-    }
-
-    // scattered filled circles
-    drawFilledCircle(size.width * 0.18, size.height * 0.20, 10, lightColor);
-    drawFilledCircle(size.width * 0.32, size.height * 0.68, 6, color);
-    drawFilledCircle(size.width * 0.48, size.height * 0.28, 8, lightColor);
-    drawFilledCircle(size.width * 0.62, size.height * 0.76, 12, color);
-    drawFilledCircle(size.width * 0.78, size.height * 0.22, 9, lightColor);
-    drawFilledCircle(size.width * 0.88, size.height * 0.58, 7, color);
-
-    drawFilledCircle(size.width * 0.12, size.height * 0.82, 5, color);
-    drawFilledCircle(size.width * 0.26, size.height * 0.42, 4, lightColor);
-    drawFilledCircle(size.width * 0.56, size.height * 0.54, 5, color);
-    drawFilledCircle(size.width * 0.70, size.height * 0.40, 4, lightColor);
-    drawFilledCircle(size.width * 0.92, size.height * 0.18, 5, color);
-
-    // scattered outlined circles
-    drawStrokeCircle(
-      size.width * 0.22,
-      size.height * 0.52,
-      16,
-      color.withOpacity(0.22),
-    );
-    drawStrokeCircle(
-      size.width * 0.42,
-      size.height * 0.14,
-      12,
-      lightColor.withOpacity(0.26),
-    );
-    drawStrokeCircle(
-      size.width * 0.66,
-      size.height * 0.18,
-      18,
-      color.withOpacity(0.20),
-    );
-    drawStrokeCircle(
-      size.width * 0.82,
-      size.height * 0.78,
-      14,
-      lightColor.withOpacity(0.24),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _PinkCirclesPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.lightColor != lightColor;
-  }
-}
-
 class PromoButtom extends StatefulWidget {
   final dynamic textWidget1;
   final dynamic textWidget2;
@@ -1689,8 +1513,9 @@ List<WashStageVM> _vmFromFirestoreList(
   for (final item in raw) {
     if (item is String) {
       final key = item.trim();
-      if (key.isNotEmpty)
+      if (key.isNotEmpty) {
         out.add(WashStageVM(key, _labelFromKey(key), 'pending'));
+      }
       continue;
     }
     if (item is Map) {
@@ -2420,7 +2245,7 @@ class BookingsServiceButton extends StatelessWidget {
     }
 
     // NEW — build a human-friendly decision summary
-    String _decisionSummary() {
+    String decisionSummary() {
       final t = (decisionType ?? '').trim().toLowerCase();
       if (t.isEmpty) return '';
       final who = (decisionByName?.trim().isNotEmpty ?? false)
@@ -2429,7 +2254,7 @@ class BookingsServiceButton extends StatelessWidget {
           ? 'Driver ${decisionByUid!.substring(0, 6)}'
           : 'Assigned driver';
       final when = (decisionAt != null)
-          ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt!)}'
+          ? ' • ${DateFormat('MMM d • h:mm a').format(decisionAt)}'
           : '';
       final label = t == 'confirm'
           ? 'Confirmed'
@@ -2562,7 +2387,7 @@ class BookingsServiceButton extends StatelessWidget {
           initialChildSize: 0.70,
           minChildSize: 0.70,
           builder: (context, controller) {
-            final decisionLine = _decisionSummary();
+            final decisionLine = decisionSummary();
 
             return SingleChildScrollView(
               controller: controller,
@@ -3015,16 +2840,13 @@ class CurrentlyWashingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // LIVE: stream the booking doc
-    if (bookingId != null) {
-      final docRef = FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(bookingId);
-      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: docRef.snapshots(),
-        builder: (context, snap) =>
-            _shell(child: _innerFromSnap(context, snap)),
-      );
-    }
+    final docRef = FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId);
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: docRef.snapshots(),
+      builder: (context, snap) => _shell(child: _innerFromSnap(context, snap)),
+    );
 
     // STATIC: build from props
     final items =
@@ -3128,7 +2950,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
       m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
     }
 
-    String _norm(dynamic s) {
+    String norm(dynamic s) {
       final v = '${s ?? ''}'.trim().toLowerCase();
       if (v == 'done' || v == 'completed') return 'done';
       if (v == 'in_progress' ||
@@ -3143,7 +2965,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
     int activeIndex = -1;
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      if (_norm(m[key]?['status']) == 'in_progress') {
+      if (norm(m[key]?['status']) == 'in_progress') {
         activeIndex = i;
         break;
       }
@@ -3152,7 +2974,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
     final List<WashStageVM> list = [];
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      String status = _norm(m[key]?['status']);
+      String status = norm(m[key]?['status']);
 
       if (activeIndex >= 0) {
         if ((m[key] == null || m[key]!['status'] == null) && i < activeIndex) {
@@ -3205,8 +3027,8 @@ class CurrentlyWashingPanel extends StatelessWidget {
   }) {
     final baseName = (decisionByName?.trim().isNotEmpty ?? false)
         ? decisionByName!.trim()
-        : (decisionByUid?.trim().isNotEmpty ?? false)
-        ? 'Driver ${decisionByUid!.substring(0, 6)}'
+        : (decisionByUid.trim().isNotEmpty ?? false)
+        ? 'Driver ${decisionByUid.substring(0, 6)}'
         : 'Assigned Driver';
 
     final decTypeLabel = _prettyDecisionType(decisionType);
@@ -3292,18 +3114,18 @@ class CurrentlyWashingPanel extends StatelessWidget {
     );
 
     // ---------- driver card (uses photoUrl when available; initials fallback) ----------
-    Widget _driverCard({required String name, String? photoUrl}) {
+    Widget driverCard({required String name, String? photoUrl}) {
       final initials = _initialsFrom(name);
 
       // Only create an ImageProvider if the URL is non-empty.
-      ImageProvider? _netIfValid(String? url) {
+      ImageProvider? netIfValid(String? url) {
         if (url == null) return null;
         final u = url.trim();
         if (u.isEmpty) return null;
         return NetworkImage(u);
       }
 
-      final img = _netIfValid(photoUrl);
+      final img = netIfValid(photoUrl);
 
       return Container(
         width: double.infinity,
@@ -3417,8 +3239,8 @@ class CurrentlyWashingPanel extends StatelessWidget {
     }
 
     // ---------- if we have a uid, stream user doc to read photoUrl ----------
-    if (decisionByUid != null && decisionByUid!.trim().isNotEmpty) {
-      final uid = decisionByUid!.trim();
+    if (decisionByUid.trim().isNotEmpty) {
+      final uid = decisionByUid.trim();
       final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
 
       return Column(
@@ -3449,7 +3271,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
                 }
               }
 
-              return _driverCard(name: name, photoUrl: photoUrl);
+              return driverCard(name: name, photoUrl: photoUrl);
             },
           ),
         ],
@@ -3460,7 +3282,7 @@ class CurrentlyWashingPanel extends StatelessWidget {
     return Column(
       children: [
         stagesRow,
-        _driverCard(name: baseName, photoUrl: null),
+        driverCard(name: baseName, photoUrl: null),
       ],
     );
   }
@@ -3532,16 +3354,13 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // LIVE: stream the booking doc
-    if (bookingId != null) {
-      final docRef = FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(bookingId);
-      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: docRef.snapshots(),
-        builder: (context, snap) =>
-            _shell(child: _innerFromSnap(context, snap)),
-      );
-    }
+    final docRef = FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(bookingId);
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: docRef.snapshots(),
+      builder: (context, snap) => _shell(child: _innerFromSnap(context, snap)),
+    );
 
     // STATIC: build from props
     final items =
@@ -3645,7 +3464,7 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
       m[entry.key] = Map<String, dynamic>.from(entry.value ?? const {});
     }
 
-    String _norm(dynamic s) {
+    String norm(dynamic s) {
       final v = '${s ?? ''}'.trim().toLowerCase();
       if (v == 'done' || v == 'completed') return 'done';
       if (v == 'in_progress' ||
@@ -3660,7 +3479,7 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
     int activeIndex = -1;
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      if (_norm(m[key]?['status']) == 'in_progress') {
+      if (norm(m[key]?['status']) == 'in_progress') {
         activeIndex = i;
         break;
       }
@@ -3669,7 +3488,7 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
     final List<WashStageVM> list = [];
     for (int i = 0; i < o.length; i++) {
       final key = o[i];
-      String status = _norm(m[key]?['status']);
+      String status = norm(m[key]?['status']);
 
       if (activeIndex >= 0) {
         if ((m[key] == null || m[key]!['status'] == null) && i < activeIndex) {
@@ -3751,7 +3570,7 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
             clipBehavior: Clip.antiAlias, // ensure image respects radius
             child: hasUrl
                 ? Image.network(
-                    photoUrl!.trim(),
+                    photoUrl.trim(),
                     fit: BoxFit.cover,
                     // Fallback to initials if the image fails to load
                     errorBuilder: (_, __, ___) => Center(
@@ -3959,8 +3778,8 @@ class CurrentlyWashingPanelModalSheet extends StatelessWidget {
     );
 
     // ---------- if we have a uid, stream user doc to read photoUrl ----------
-    if (decisionByUid != null && decisionByUid!.trim().isNotEmpty) {
-      final uid = decisionByUid!.trim();
+    if (decisionByUid != null && decisionByUid.trim().isNotEmpty) {
+      final uid = decisionByUid.trim();
       final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
 
       return Column(
@@ -4136,14 +3955,14 @@ class ConfirmedPanel extends StatelessWidget {
     final initials = _initialsFrom(name);
 
     // Only create an ImageProvider if the URL is non-empty.
-    ImageProvider? _netIfValid(String? url) {
+    ImageProvider? netIfValid(String? url) {
       if (url == null) return null;
       final u = url.trim();
       if (u.isEmpty) return null;
       return NetworkImage(u);
     }
 
-    final img = _netIfValid(photoUrl);
+    final img = netIfValid(photoUrl);
 
     return Container(
       width: double.infinity,
@@ -4740,7 +4559,7 @@ class _NoGlowScroll extends ScrollBehavior {
 }
 
 class _ListLoading extends StatelessWidget {
-  const _ListLoading({super.key});
+  const _ListLoading();
   @override
   Widget build(BuildContext context) => const Center(
     child: Padding(
@@ -4752,7 +4571,7 @@ class _ListLoading extends StatelessWidget {
 
 class _ErrorState extends StatelessWidget {
   final String message;
-  const _ErrorState({super.key, required this.message});
+  const _ErrorState({required this.message});
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(padding: const EdgeInsets.all(24), child: Text(message)),
@@ -4764,7 +4583,6 @@ class _EmptyState extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   const _EmptyState({
-    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,

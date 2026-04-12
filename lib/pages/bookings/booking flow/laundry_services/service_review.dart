@@ -104,7 +104,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   Future<void> _toggleSheet() async {
     if (!_sheetController.isAttached) return;
 
-    final target = _isExpanded ? 0.45 : 0.94;
+    final target = _isExpanded ? 0.45 : 1.0;
     await _sheetController.animateTo(
       target,
       duration: const Duration(milliseconds: 280),
@@ -184,7 +184,8 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               child: Row(
                 children: [
                   _RoundMapButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
+                    small: true,
+                    icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.pop(context),
                   ),
                   const Spacer(),
@@ -197,38 +198,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               ),
             ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      displayTitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    if (displaySubtitle.trim().isNotEmpty)
-                      Text(
-                        displaySubtitle,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+
           Center(
             child: IgnorePointer(
               child: Transform.translate(
@@ -237,10 +207,10 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 54,
-                      height: 54,
+                      width: 45,
+                      height: 45,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF5B3A),
+                        color: const Color(0xFFE67E22),
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: const [
                           BoxShadow(
@@ -251,9 +221,9 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                         ],
                       ),
                       child: const Icon(
-                        Icons.local_laundry_service_outlined,
+                        Icons.moped,
                         size: 26,
-                        color: Colors.white,
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -283,9 +253,9 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
             controller: _sheetController,
             initialChildSize: 0.45,
             minChildSize: 0.45,
-            maxChildSize: 0.94,
+            maxChildSize: 1.0,
             snap: true,
-            snapSizes: const [0.45, 0.94],
+            snapSizes: const [0.45, 1.0],
             builder: (context, scrollController) {
               return Container(
                 decoration: const BoxDecoration(
@@ -335,6 +305,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                                   onToggleAddOn: _toggleAddOn,
                                   totalPrice: _totalPrice,
                                   addOnPrices: addOnPrices,
+                                  onCollapseTap: _toggleSheet,
                                 )
                               : _CollapsedPickupSheet(
                                   key: const ValueKey('collapsed'),
@@ -346,6 +317,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                                   selectedServiceType: selectedServiceType,
                                   onServiceTypeChanged: _changeServiceType,
                                   onRequestTap: _toggleSheet,
+                                  onTuneTap: _toggleSheet,
                                 ),
                         ),
                       ),
@@ -370,6 +342,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
   final String selectedServiceType;
   final ValueChanged<String> onServiceTypeChanged;
   final VoidCallback onRequestTap;
+  final VoidCallback onTuneTap;
 
   const _CollapsedPickupSheet({
     super.key,
@@ -381,6 +354,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
     required this.selectedServiceType,
     required this.onServiceTypeChanged,
     required this.onRequestTap,
+    required this.onTuneTap,
   });
 
   @override
@@ -388,10 +362,9 @@ class _CollapsedPickupSheet extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 10),
         Row(
           children: [
-            const Icon(Icons.moped, size: 35),
+            const Icon(Icons.location_on, size: 30, color: Color(0xFFE67E22)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -399,7 +372,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'Poppins',
                 ),
@@ -407,27 +380,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 5),
-        Padding(
-          padding: const EdgeInsets.only(left: 32),
-          child: Text(
-            pickupSubtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.black54,
-              fontFamily: 'Poppins',
-            ),
-          ),
-        ),
-        const SizedBox(height: 5),
-        const Divider(
-          color: Color.fromARGB(255, 171, 171, 171),
-          indent: 20,
-          endIndent: 20,
-          thickness: 1,
-        ),
+
         const SizedBox(height: 10),
         PricePerKgCard(
           pricePerKg: pricePerKg,
@@ -489,7 +442,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Color(0xFFE67E22),
                       fontFamily: 'Poppins',
                     ),
                   ),
@@ -497,14 +450,17 @@ class _CollapsedPickupSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+            GestureDetector(
+              onTap: onTuneTap,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.tune_rounded),
               ),
-              child: const Icon(Icons.tune_rounded),
             ),
           ],
         ),
@@ -520,6 +476,7 @@ class _ExpandedServiceSheet extends StatelessWidget {
   final ValueChanged<String> onToggleAddOn;
   final int totalPrice;
   final Map<String, int> addOnPrices;
+  final VoidCallback onCollapseTap;
 
   const _ExpandedServiceSheet({
     super.key,
@@ -529,6 +486,7 @@ class _ExpandedServiceSheet extends StatelessWidget {
     required this.onToggleAddOn,
     required this.totalPrice,
     required this.addOnPrices,
+    required this.onCollapseTap,
   });
 
   @override
@@ -554,7 +512,7 @@ class _ExpandedServiceSheet extends StatelessWidget {
               _OptionRow(title: 'Washer instructions'),
               Divider(
                 height: 1,
-                color: Color.fromARGB(255, 129, 129, 129),
+                color: Color.fromARGB(255, 185, 185, 185),
                 endIndent: 20,
                 indent: 20,
               ),
@@ -571,6 +529,7 @@ class _ExpandedServiceSheet extends StatelessWidget {
         _ExpandedRequestBar(
           selectedService: selectedService,
           totalPrice: totalPrice,
+          onCollapseTap: onCollapseTap,
         ),
         const SizedBox(height: 10),
       ],
@@ -598,7 +557,7 @@ class _ExpandedServiceHeroCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: Container(
-        height: 360,
+        height: 300,
         width: double.infinity,
         color: const Color(0xFFEDEDED),
         child: Stack(
@@ -660,7 +619,7 @@ class _ExpandedServiceHeroCard extends StatelessWidget {
                       Text(
                         'GH₵$totalPrice',
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'Poppins',
                           color: Colors.white,
@@ -717,14 +676,14 @@ class _OptionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
       child: Row(
         children: [
           Expanded(
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'Poppins',
                 color: Colors.black,
@@ -751,7 +710,7 @@ class _ExpandedAddOnCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ExpandedOptionCard(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -764,36 +723,41 @@ class _ExpandedAddOnCard extends StatelessWidget {
                 color: Colors.black,
               ),
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 SelectablePill(
                   text: 'Express Wash',
                   assetPath: 'assets/images/express_wash.png',
-                  trailingSize: 28,
+                  trailingSize: 25,
                   isSelected: selectedAddOns.contains('Express Wash'),
                   onTap: () => onToggleAddOn('Express Wash'),
                 ),
                 SelectablePill(
                   text: 'Fragrance Booster',
                   assetPath: 'assets/images/fragrance_booster.png',
-                  trailingSize: 28,
+                  trailingSize: 25,
                   isSelected: selectedAddOns.contains('Fragrance Booster'),
                   onTap: () => onToggleAddOn('Fragrance Booster'),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 SelectablePill(
                   text: 'Whites Bleach',
                   assetPath: 'assets/images/bleach_whites.png',
-                  trailingSize: 28,
+                  trailingSize: 25,
                   isSelected: selectedAddOns.contains('Whites Bleach'),
                   onTap: () => onToggleAddOn('Whites Bleach'),
                 ),
                 SelectablePill(
                   text: 'Delicate Wash',
                   assetPath: 'assets/images/delicate_wash.png',
-                  trailingSize: 28,
+                  trailingSize: 25,
                   isSelected: selectedAddOns.contains('Delicate Wash'),
                   onTap: () => onToggleAddOn('Delicate Wash'),
                 ),
@@ -809,10 +773,12 @@ class _ExpandedAddOnCard extends StatelessWidget {
 class _ExpandedRequestBar extends StatelessWidget {
   final String selectedService;
   final int totalPrice;
+  final VoidCallback onCollapseTap;
 
   const _ExpandedRequestBar({
     required this.selectedService,
     required this.totalPrice,
+    required this.onCollapseTap,
   });
 
   @override
@@ -846,7 +812,7 @@ class _ExpandedRequestBar extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Color(0xFFE67E22),
                   fontFamily: 'Poppins',
                 ),
               ),
@@ -854,14 +820,17 @@ class _ExpandedRequestBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+        GestureDetector(
+          onTap: onCollapseTap,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
           ),
-          child: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
         ),
       ],
     );
@@ -872,7 +841,7 @@ class _SimpleActionRow extends StatelessWidget {
   final String title;
   final bool showDivider;
 
-  const _SimpleActionRow({required this.title, this.showDivider = true});
+  const _SimpleActionRow({required this.title, required this.showDivider});
 
   @override
   Widget build(BuildContext context) {
@@ -954,7 +923,7 @@ class SelectedService extends StatelessWidget {
             AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
               decoration: BoxDecoration(
                 color: isSelected
                     ? const Color.fromARGB(255, 245, 245, 245)
@@ -1073,9 +1042,9 @@ class PricePerKgCard extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 245, 245, 245),
+        color: const Color(0xFFFFECDB),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1113,7 +1082,7 @@ class PricePerKgCard extends StatelessWidget {
                 Text(
                   'Total rate: GH₵$pricePerKg / kg',
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'Poppins',
                     color: Colors.black,
@@ -1163,7 +1132,7 @@ class SelectablePill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        width: 160,
+        width: 175,
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
         padding: padding,
@@ -1187,7 +1156,7 @@ class SelectablePill extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Poppins',
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
                 ),

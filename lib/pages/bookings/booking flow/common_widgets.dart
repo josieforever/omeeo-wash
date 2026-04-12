@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/select_date_screen.dart';
 import 'package:omeeowash/widgets.dart/colors.dart';
-import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class LnProgressIndicator extends StatelessWidget {
   final double value;

@@ -110,7 +110,7 @@ class GiftsAndDiscountsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
+              SizedBox(
                 width: double.infinity,
                 child: Stack(
                   children: [
@@ -480,7 +480,7 @@ class GetDiscountScreen extends StatelessWidget {
                   fontSize: 23,
                   height: 1.0,
                   fontWeight: FontWeight.w900,
-                  color: const Color(0xFFE36C9A),
+                  color: Color(0xFFE36C9A),
                 ),
               ),
 
@@ -548,7 +548,9 @@ class GetDiscountScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 height: promoCodeCardHeight,
-                padding: EdgeInsets.symmetric(horizontal: context.rw(18, min: 12, max: 18)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.rw(18, min: 12, max: 18),
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
