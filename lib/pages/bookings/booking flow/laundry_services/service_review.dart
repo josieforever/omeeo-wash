@@ -1,17 +1,25 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/finding_laundry_screen.dart'
+    show FindingLaundryScreen;
+
+import 'closest_laundries_screen.dart';
 
 class PickedLocationResult {
   final double latitude;
   final double longitude;
   final String addressLine;
   final String subtitle;
+  final String serviceType;
 
   const PickedLocationResult({
     required this.latitude,
     required this.longitude,
     required this.addressLine,
     required this.subtitle,
+    required this.serviceType,
   });
 }
 
@@ -35,20 +43,23 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
       DraggableScrollableController();
 
   bool _isExpanded = false;
+  bool isManualSelection = false;
+  bool _isSubmitting = false;
 
   late String selectedService;
-  String selectedPickupSpeed = 'Standard Pickup';
+  late String selectedServiceType;
+
   final Set<String> selectedAddOns = {};
 
-  final Map<String, int> pickupPrices = {
-    'Express Pickup': 20,
-    'Standard Pickup': 12,
-  };
+  static const int _baseWashFoldPricePerKg = 18;
+  static const int _washIronExtraPerKg = 2;
+  static const int _pickupFee = 0;
+  static const int _deliveryFee = 0;
+  static const int _estimatedWeightKg = 1;
 
   final Map<String, int> addOnPrices = {
     'Express Wash': 18,
     'Fragrance Booster': 6,
-    'Whites Brightening Soak': 12,
     'Whites Bleach': 10,
     'Color Sorted Wash': 8,
     'Delicate Wash': 9,
@@ -56,15 +67,27 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
 
   late final LatLng _pickupLatLng;
 
+  final _bookingRepository = _BookingRepository.instance;
+
   @override
   void initState() {
     super.initState();
+
     _pickupLatLng = LatLng(
       widget.pickupLocation.latitude,
       widget.pickupLocation.longitude,
     );
+
     selectedService = widget.selectedService.trim();
+    selectedServiceType = _mapSelectedServiceType(widget.selectedService);
+
     _sheetController.addListener(_sheetListener);
+  }
+
+  String _mapSelectedServiceType(String service) {
+    final value = service.toLowerCase().trim();
+    if (value.contains('iron')) return 'wash_iron';
+    return 'wash_fold';
   }
 
   @override
@@ -97,12 +120,25 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   Future<void> _toggleSheet() async {
     if (!_sheetController.isAttached) return;
 
-    final target = _isExpanded ? 0.45 : 0.82;
+    final target = _isExpanded ? 0.51 : 1.0;
     await _sheetController.animateTo(
       target,
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeInOut,
     );
+  }
+
+  void _changeServiceType(String value) {
+    setState(() {
+      selectedServiceType = value;
+      selectedService = value == 'wash_iron' ? 'Wash & Iron' : 'Wash & Fold';
+    });
+  }
+
+  void _toggleManualSelection(bool? value) {
+    setState(() {
+      isManualSelection = value ?? false;
+    });
   }
 
   Set<Marker> _markers() {
@@ -111,11 +147,19 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
         markerId: const MarkerId('pickup'),
         position: _pickupLatLng,
         infoWindow: InfoWindow(title: widget.pickupLocation.addressLine),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
       ),
     };
   }
 
-  int get _basePrice => pickupPrices[selectedPickupSpeed] ?? 0;
+  int get _serviceExtraPerKg =>
+      selectedServiceType == 'wash_iron' ? _washIronExtraPerKg : 0;
+
+  int get _baseServiceRatePerKg => _baseWashFoldPricePerKg + _serviceExtraPerKg;
+
+  int get _addOnRatePerKg => _addOnTotal ~/ _estimatedWeightKg;
+
+  int get _pricePerKg => _baseServiceRatePerKg + _addOnRatePerKg;
 
   int get _addOnTotal {
     return selectedAddOns.fold(
@@ -124,8 +168,10 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     );
   }
 
-  int get _totalPrice => _basePrice + _addOnTotal;
+  int get _estimatedLaundrySubtotal =>
+      _baseServiceRatePerKg * _estimatedWeightKg + _addOnTotal;
 
+  int get _totalPrice => _estimatedLaundrySubtotal + _pickupFee + _deliveryFee;
   void _toggleAddOn(String value) {
     setState(() {
       if (selectedAddOns.contains(value)) {
@@ -136,10 +182,115 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     });
   }
 
-  void _selectPickupSpeed(String value) {
-    setState(() {
-      selectedPickupSpeed = value;
-    });
+  Future<void> _handlePrimaryAction() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        _showSnackBar('Please sign in first.');
+        return;
+      }
+
+      final userData = await _bookingRepository.getCustomerProfile(user.uid);
+
+      final bookingDraft = _BookingDraft(
+        customerId: user.uid,
+        customerName: _readString(
+          userData,
+          keys: const ['name', 'fullName', 'displayName'],
+          fallback: user.displayName ?? 'Customer',
+        ),
+        customerPhone: _readString(
+          userData,
+          keys: const ['phoneNumber', 'phone'],
+          fallback: user.phoneNumber ?? '',
+        ),
+        customerPhotoUrl: _readString(
+          userData,
+          keys: const ['photoUrl', 'avatarUrl', 'imageUrl'],
+          fallback: user.photoURL ?? '',
+        ),
+        estimatedWeightKg: 1,
+        serviceType: selectedServiceType,
+        selectedAddOns: selectedAddOns.toList()..sort(),
+        pickupAddress: widget.pickupLocation.addressLine,
+        pickupLatitude: widget.pickupLocation.latitude,
+        pickupLongitude: widget.pickupLocation.longitude,
+        pickupSubtitle: widget.pickupLocation.subtitle,
+        pricingBasePrice: _baseServiceRatePerKg * _estimatedWeightKg,
+        pricingAddOnsPrice: _addOnTotal,
+        pricingPickupFee: _pickupFee,
+        pricingDeliveryFee: _deliveryFee,
+        pricingTotalPrice: _totalPrice,
+        status: isManualSelection ? 'awaiting_laundry_selection' : 'pending',
+      );
+      final bookingId = await _bookingRepository.createBooking(bookingDraft);
+
+      if (!mounted) return;
+
+      if (isManualSelection) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => ClosestLaundriesScreen(
+              bookingId: bookingId,
+              pickupTitle: widget.pickupLocation.addressLine,
+              pickupLatitude: widget.pickupLocation.latitude,
+              pickupLongitude: widget.pickupLocation.longitude,
+              selectedServiceType: selectedServiceType,
+              selectedAddOns: selectedAddOns.toList(),
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => FindingLaundryScreen(
+              bookingId: bookingId,
+              selectedAddOns: selectedAddOns.toList(),
+              serviceType: selectedServiceType,
+              pickupTitle: widget.pickupLocation.addressLine,
+              latitude: widget.pickupLocation.latitude,
+              longitude: widget.pickupLocation.longitude,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      _showSnackBar('Failed to create booking. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _readString(
+    Map<String, dynamic>? map, {
+    required List<String> keys,
+    required String fallback,
+  }) {
+    if (map == null) return fallback;
+
+    for (final key in keys) {
+      final value = map[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+
+    return fallback;
   }
 
   @override
@@ -148,33 +299,38 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     final displaySubtitle = widget.pickupLocation.subtitle;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           Positioned.fill(
+            bottom: 200,
             child: GoogleMap(
               initialCameraPosition: CameraPosition(
                 target: _pickupLatLng,
-                zoom: 16.8,
+                zoom: 16,
               ),
               markers: _markers(),
-              zoomControlsEnabled: false,
+              zoomControlsEnabled: true,
               myLocationButtonEnabled: false,
               mapToolbarEnabled: false,
               compassEnabled: false,
+              scrollGesturesEnabled: false,
+              zoomGesturesEnabled: false,
+              rotateGesturesEnabled: false,
+              tiltGesturesEnabled: false,
               onMapCreated: (controller) {
                 _mapController = controller;
               },
             ),
           ),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Row(
                 children: [
                   _RoundMapButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
+                    small: true,
+                    icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.pop(context),
                   ),
                   const Spacer(),
@@ -187,81 +343,6 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               ),
             ),
           ),
-
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 20),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      displayTitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    if (displaySubtitle.trim().isNotEmpty)
-                      Text(
-                        displaySubtitle,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          Center(
-            child: IgnorePointer(
-              child: Transform.translate(
-                offset: const Offset(0, -85),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF5B3A),
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x22000000),
-                            blurRadius: 16,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.local_laundry_service_outlined,
-                        size: 26,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black54, width: 2.4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
           Positioned(
             right: 16,
             bottom: 300,
@@ -270,18 +351,17 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               onTap: _goToPickup,
             ),
           ),
-
           DraggableScrollableSheet(
             controller: _sheetController,
-            initialChildSize: 0.45,
-            minChildSize: 0.45,
-            maxChildSize: 0.82,
+            initialChildSize: 0.51,
+            minChildSize: 0.51,
+            maxChildSize: 1.0,
             snap: true,
-            snapSizes: const [0.45, 0.82],
+            snapSizes: const [0.51, 1.0],
             builder: (context, scrollController) {
               return Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF7F7F7),
+                  color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                   boxShadow: [
                     BoxShadow(
@@ -323,21 +403,39 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                                   key: const ValueKey('expanded'),
                                   pickupTitle: displayTitle,
                                   selectedService: selectedService,
-                                  selectedPickupSpeed: selectedPickupSpeed,
                                   selectedAddOns: selectedAddOns,
-                                  onPickupSpeedSelected: _selectPickupSpeed,
                                   onToggleAddOn: _toggleAddOn,
                                   totalPrice: _totalPrice,
                                   addOnPrices: addOnPrices,
+                                  onCollapseTap: _toggleSheet,
+                                  onPrimaryTap: _handlePrimaryAction,
+                                  actionText: isManualSelection
+                                      ? 'Browse Laundries'
+                                      : 'Request',
+                                  isSubmitting: _isSubmitting,
                                 )
                               : _CollapsedPickupSheet(
                                   key: const ValueKey('collapsed'),
                                   pickupTitle: displayTitle,
                                   pickupSubtitle: displaySubtitle,
-                                  selectedService: selectedService,
-                                  selectedPickupSpeed: selectedPickupSpeed,
+                                  pickupLatitude:
+                                      widget.pickupLocation.latitude,
+                                  pickupLongitude:
+                                      widget.pickupLocation.longitude,
                                   totalPrice: _totalPrice,
-                                  onRequestTap: _toggleSheet,
+                                  pricePerKg: _pricePerKg,
+                                  serviceExtraPerKg: _serviceExtraPerKg,
+                                  selectedServiceType: selectedServiceType,
+                                  isManualSelection: isManualSelection,
+                                  selectedAddOns: selectedAddOns,
+                                  onManualSelectionChanged:
+                                      _toggleManualSelection,
+                                  onServiceTypeChanged: _changeServiceType,
+                                  onTuneTap: _toggleSheet,
+                                  onPrimaryTap: _handlePrimaryAction,
+                                  isSubmitting: _isSubmitting,
+                                  addOnTotal: _addOnTotal,
+                                  estimatedWeightKg: _estimatedWeightKg,
                                 ),
                         ),
                       ),
@@ -353,116 +451,356 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   }
 }
 
+class _BookingDraft {
+  final String customerId;
+  final String customerName;
+  final String customerPhone;
+  final String customerPhotoUrl;
+  final int estimatedWeightKg;
+
+  final String serviceType;
+  final List<String> selectedAddOns;
+
+  final String pickupAddress;
+  final double pickupLatitude;
+  final double pickupLongitude;
+  final String pickupSubtitle;
+
+  final int pricingBasePrice;
+  final int pricingAddOnsPrice;
+  final int pricingPickupFee;
+  final int pricingDeliveryFee;
+  final int pricingTotalPrice;
+
+  final String status;
+
+  const _BookingDraft({
+    required this.customerId,
+    required this.customerName,
+    required this.customerPhone,
+    required this.customerPhotoUrl,
+    required this.estimatedWeightKg,
+    required this.serviceType,
+    required this.selectedAddOns,
+    required this.pickupAddress,
+    required this.pickupLatitude,
+    required this.pickupLongitude,
+    required this.pickupSubtitle,
+    required this.pricingBasePrice,
+    required this.pricingAddOnsPrice,
+    required this.pricingPickupFee,
+    required this.pricingDeliveryFee,
+    required this.pricingTotalPrice,
+    required this.status,
+  });
+
+  Map<String, dynamic> toMap(String bookingId) {
+    return {
+      'id': bookingId,
+      'bookingCode': _buildBookingCode(bookingId),
+
+      'customerId': customerId,
+      'customerName': customerName,
+      'customerPhone': customerPhone,
+      'customerPhotoUrl': customerPhotoUrl,
+
+      'laundryId': null,
+      'laundryName': null,
+      'laundryPhone': null,
+      'laundryPhotoUrl': null,
+
+      'serviceType': serviceType,
+      'selectedAddOns': selectedAddOns,
+
+      'items': [
+        {
+          'name': 'Laundry Load',
+          'estimatedWeightKg': estimatedWeightKg,
+          'actualWeightKg': null,
+        },
+      ],
+
+      'customerNotes': null,
+
+      'pickupAddress': {
+        'address': pickupAddress,
+        'latitude': pickupLatitude,
+        'longitude': pickupLongitude,
+        'subtitle': pickupSubtitle,
+      },
+
+      'deliveryAddress': {
+        'address': pickupAddress,
+        'latitude': pickupLatitude,
+        'longitude': pickupLongitude,
+        'subtitle': pickupSubtitle,
+        'isSameAsPickup': true,
+      },
+
+      'pricing': {
+        'basePrice': pricingBasePrice,
+        'addOnsPrice': pricingAddOnsPrice,
+        'pickupFee': pricingPickupFee,
+        'deliveryFee': pricingDeliveryFee,
+        'totalPrice': pricingTotalPrice,
+        'currency': 'GHS',
+      },
+
+      'status': status,
+
+      'pickupRider': {
+        'riderId': null,
+        'fullName': null,
+        'phoneNumber': null,
+        'photoUrl': null,
+        'vehicleType': null,
+        'plateNumber': null,
+        'assignedAt': null,
+        'pickedUpAt': null,
+      },
+
+      'deliveryRider': {
+        'riderId': null,
+        'fullName': null,
+        'phoneNumber': null,
+        'photoUrl': null,
+        'vehicleType': null,
+        'plateNumber': null,
+        'assignedAt': null,
+        'deliveredAt': null,
+      },
+
+      'payment': {
+        'method': 'cash',
+        'status': 'pending',
+        'transactionRef': null,
+        'paidAt': null,
+      },
+
+      'chat': {
+        'hasUnreadForCustomer': false,
+        'hasUnreadForLaundry': false,
+        'lastMessage': '',
+        'lastMessageAt': null,
+      },
+
+      'timeline': {
+        'requestedAt': FieldValue.serverTimestamp(),
+        'acceptedAt': null,
+        'pickedUpAt': null,
+        'arrivedAtLaundryAt': null,
+        'washingStartedAt': null,
+        'washingCompletedAt': null,
+        'outForDeliveryAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  String _buildBookingCode(String bookingId) {
+    final safe = bookingId.replaceAll('-', '').toUpperCase();
+    final end = safe.length >= 6 ? safe.substring(0, 6) : safe;
+    return 'LND-$end';
+  }
+}
+
+class _BookingRepository {
+  _BookingRepository._();
+
+  static final _BookingRepository instance = _BookingRepository._();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _bookings =>
+      _firestore.collection('bookings');
+
+  static String generateBookingCode() {
+    final now = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'LND-${now.substring(now.length - 6)}';
+  }
+
+  Future<Map<String, dynamic>> getCustomerProfile(String userId) async {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    return doc.data() ?? <String, dynamic>{};
+  }
+
+  Future<String> createBooking(_BookingDraft draft) async {
+    final doc = _bookings.doc();
+    final batch = _firestore.batch();
+
+    batch.set(doc, draft.toMap(doc.id));
+
+    final historyRef = doc.collection('status_history').doc();
+    batch.set(historyRef, {
+      'status': draft.status,
+      'title': draft.status == 'choosing_laundry'
+          ? 'Choosing Laundry'
+          : 'Booking Requested',
+      'description': draft.status == 'choosing_laundry'
+          ? 'Customer started booking and is selecting a laundry.'
+          : 'Customer submitted a laundry request.',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+    return doc.id;
+  }
+}
+
 class _CollapsedPickupSheet extends StatelessWidget {
   final String pickupTitle;
   final String pickupSubtitle;
-  final String selectedService;
-  final String selectedPickupSpeed;
+  final double pickupLatitude;
+  final double pickupLongitude;
   final int totalPrice;
-  final VoidCallback onRequestTap;
+  final int pricePerKg;
+  final int serviceExtraPerKg;
+  final String selectedServiceType;
+  final bool isManualSelection;
+  final ValueChanged<bool?> onManualSelectionChanged;
+  final ValueChanged<String> onServiceTypeChanged;
+  final VoidCallback onTuneTap;
+  final Set<String> selectedAddOns;
+  final VoidCallback onPrimaryTap;
+  final bool isSubmitting;
+  final int addOnTotal;
+  final int estimatedWeightKg;
 
   const _CollapsedPickupSheet({
     super.key,
     required this.pickupTitle,
     required this.pickupSubtitle,
-    required this.selectedService,
-    required this.selectedPickupSpeed,
+    required this.pickupLatitude,
+    required this.pickupLongitude,
     required this.totalPrice,
-    required this.onRequestTap,
+    required this.pricePerKg,
+    required this.serviceExtraPerKg,
+    required this.selectedServiceType,
+    required this.isManualSelection,
+    required this.onManualSelectionChanged,
+    required this.onServiceTypeChanged,
+    required this.onTuneTap,
+    required this.selectedAddOns,
+    required this.onPrimaryTap,
+    required this.isSubmitting,
+    required this.addOnTotal,
+    required this.estimatedWeightKg,
   });
 
   @override
   Widget build(BuildContext context) {
+    final actionText = isManualSelection ? 'Browse Laundries' : 'Request';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.moped, size: 22),
+            const Icon(Icons.location_on, size: 30, color: Color(0xFFE67E22)),
             const SizedBox(width: 10),
-
             Expanded(
               child: Text(
-                pickupTitle,
+                '$pickupTitle -  $pickupSubtitle',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w600,
+                  fontFamily: 'Poppins',
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 5),
-        Padding(
-          padding: const EdgeInsets.only(left: 32),
-          child: Text(
-            pickupSubtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
+        const SizedBox(height: 10),
+        PricePerKgCard(
+          pricePerKg: pricePerKg,
+          washIronExtra: serviceExtraPerKg,
+          addOnTotal: addOnTotal,
+          estimatedWeightKg: estimatedWeightKg,
+          isWashIron: selectedServiceType == 'wash_iron',
         ),
-        const SizedBox(height: 5),
-        Divider(
-          color: const Color.fromARGB(255, 122, 122, 122),
-          indent: 20,
-          endIndent: 20,
-          thickness: 1,
-        ),
-
-        const SizedBox(height: 5),
+        const SizedBox(height: 20),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            LocationResultTile(
-              title: 'Wash & Fold',
-              serviceType: 'wash_fold',
-              onTap: () {},
+            Expanded(
+              child: SelectedService(
+                title: 'Wash & Fold',
+                serviceType: 'wash_fold',
+                isSelected: selectedServiceType == 'wash_fold',
+                onTap: () => onServiceTypeChanged('wash_fold'),
+              ),
             ),
-
-            LocationResultTile(
-              title: 'Wash & Iron',
-              serviceType: 'wash_iron',
-              onTap: () {},
+            const SizedBox(width: 12),
+            Expanded(
+              child: SelectedService(
+                title: 'Wash & Iron',
+                serviceType: 'wash_iron',
+                isSelected: selectedServiceType == 'wash_iron',
+                onTap: () => onServiceTypeChanged('wash_iron'),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 14),
-
-        Row(
-          children: [
-            _VehicleOptionCard(
-              title: 'Express',
-              eta: '4 min',
-              /* selected: selectedPickupSpeed == 'Express Pickup', */
-              selected: true,
+        GestureDetector(
+          onTap: () {
+            onManualSelectionChanged(!isManualSelection);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F7F7),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isManualSelection
+                    ? const Color(0xFFFFD6A5)
+                    : Colors.transparent,
+              ),
             ),
-            const SizedBox(width: 10),
-            _VehicleOptionCard(
-              title: 'Standard',
-              eta: '4 min',
-              /* selected: selectedPickupSpeed == 'Standard Pickup', */
-              selected: true,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: const [
+                    CircleAvatar(
+                      backgroundColor: Color(0xFFFFD6A5),
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Icon(Icons.touch_app, color: Colors.black),
+                      ),
+                    ),
+                    SizedBox(width: 7),
+                    Text(
+                      'Select laundry myself',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Poppins',
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                Checkbox(
+                  value: isManualSelection,
+                  onChanged: onManualSelectionChanged,
+                  activeColor: const Color(0xFFE67E22),
+                  checkColor: Colors.black,
+                  side: const BorderSide(color: Colors.black26, width: 1.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-
-        const SizedBox(height: 14),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Text(
-            '$selectedService • $selectedPickupSpeed',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Row(
           children: [
             Container(
@@ -477,39 +815,54 @@ class _CollapsedPickupSheet extends StatelessWidget {
                 color: Color(0xFF3D8B2D),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 20),
             Expanded(
               child: SizedBox(
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: onRequestTap,
+                  onPressed: isSubmitting ? null : onPrimaryTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF4B36),
+                    backgroundColor: const Color.fromARGB(255, 33, 33, 33),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  child: Text(
-                    'Request • GH₵$totalPrice',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFE67E22),
+                            ),
+                          ),
+                        )
+                      : Text(
+                          actionText,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFE67E22),
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+            GestureDetector(
+              onTap: onTuneTap,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.tune_rounded),
               ),
-              child: const Icon(Icons.tune_rounded),
             ),
           ],
         ),
@@ -521,459 +874,394 @@ class _CollapsedPickupSheet extends StatelessWidget {
 class _ExpandedServiceSheet extends StatelessWidget {
   final String pickupTitle;
   final String selectedService;
-  final String selectedPickupSpeed;
   final Set<String> selectedAddOns;
-  final ValueChanged<String> onPickupSpeedSelected;
   final ValueChanged<String> onToggleAddOn;
   final int totalPrice;
   final Map<String, int> addOnPrices;
+  final VoidCallback onCollapseTap;
+  final VoidCallback onPrimaryTap;
+  final String actionText;
+  final bool isSubmitting;
 
   const _ExpandedServiceSheet({
     super.key,
     required this.pickupTitle,
     required this.selectedService,
-    required this.selectedPickupSpeed,
     required this.selectedAddOns,
-    required this.onPickupSpeedSelected,
     required this.onToggleAddOn,
     required this.totalPrice,
     required this.addOnPrices,
+    required this.onCollapseTap,
+    required this.onPrimaryTap,
+    required this.actionText,
+    required this.isSubmitting,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isWashIron = selectedService.toLowerCase().contains('iron');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 4),
-        Center(
-          child: Text(
-            pickupTitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
+        _ExpandedServiceHeroCard(
+          pickupTitle: pickupTitle,
+          selectedService: selectedService,
+          totalPrice: totalPrice,
+          imagePath: isWashIron
+              ? 'assets/images/wash_iron_backdropp.png'
+              : 'assets/images/wash_fold_backdropp.png',
         ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                selectedService,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '$selectedPickupSpeed • Add-ons available',
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'from GH₵$totalPrice',
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 18),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
+        const SizedBox(height: 16),
+        _ExpandedOptionCard(
           child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Select add-ons for this laundry service',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                  ),
-                ),
+            children: const [
+              _OptionRow(title: 'Washer instructions'),
+              Divider(
+                height: 1,
+                color: Color.fromARGB(255, 185, 185, 185),
+                endIndent: 20,
+                indent: 20,
               ),
-              const Divider(height: 1),
-              _ServiceClassTile(
-                title: 'Express Pickup',
-                subtitle: 'Priority collection',
-                price: 'GH₵20',
-                eta: 'Fast',
-                selected: selectedPickupSpeed == 'Express Pickup',
-                onTap: () => onPickupSpeedSelected('Express Pickup'),
-              ),
-              _ServiceClassTile(
-                title: 'Standard Pickup',
-                subtitle: 'Regular timing',
-                price: 'GH₵12',
-                eta: 'Normal',
-                selected: selectedPickupSpeed == 'Standard Pickup',
-                onTap: () => onPickupSpeedSelected('Standard Pickup'),
-              ),
-              const Divider(height: 1),
-              ...addOnPrices.entries.map(
-                (entry) => _ServiceClassTile(
-                  title: entry.key,
-                  subtitle: '',
-                  price: 'GH₵${entry.value}',
-                  eta: '',
-                  selected: selectedAddOns.contains(entry.key),
-                  onTap: () => onToggleAddOn(entry.key),
-                  showDivider: entry.key != addOnPrices.keys.last,
-                ),
-              ),
+              _OptionRow(title: 'Schedule pickup'),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+        _ExpandedAddOnCard(
+          selectedAddOns: selectedAddOns,
+          onToggleAddOn: onToggleAddOn,
         ),
         const SizedBox(height: 18),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: const Column(
-            children: [
-              _SimpleActionRow(
-                title: 'Washer instructions',
-                showDivider: false,
-              ),
-            ],
-          ),
+        _ExpandedRequestBar(
+          selectedService: selectedService,
+          totalPrice: totalPrice,
+          onCollapseTap: onCollapseTap,
+          onPrimaryTap: onPrimaryTap,
+          actionText: actionText,
+          isSubmitting: isSubmitting,
         ),
-        const SizedBox(height: 28),
-        Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE4F7D8),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.payments_outlined,
-                color: Color(0xFF3D8B2D),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF4B36),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        selectedService,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'Total • GH₵$totalPrice',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const SizedBox(
-              width: 24,
-              child: Icon(Icons.keyboard_arrow_down_rounded),
-            ),
-          ],
-        ),
+        const SizedBox(height: 10),
       ],
     );
   }
 }
 
-class _ServiceClassTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String price;
-  final String eta;
-  final bool selected;
-  final bool disabled;
-  final bool showDivider;
-  final VoidCallback onTap;
-  final IconData? icon;
+class _ExpandedServiceHeroCard extends StatelessWidget {
+  final String pickupTitle;
+  final String selectedService;
+  final int totalPrice;
+  final String imagePath;
 
-  const _ServiceClassTile({
-    required this.title,
-    required this.subtitle,
-    required this.price,
-    required this.eta,
-    required this.selected,
-    required this.onTap,
-    this.disabled = false,
-    this.showDivider = true,
-    this.icon,
+  const _ExpandedServiceHeroCard({
+    required this.pickupTitle,
+    required this.selectedService,
+    required this.totalPrice,
+    required this.imagePath,
   });
 
   @override
   Widget build(BuildContext context) {
-    final opacity = disabled ? 0.55 : 1.0;
-
-    return Opacity(
-      opacity: opacity,
-      child: Column(
-        children: [
-          InkWell(
-            onTap: disabled ? null : onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        height: 300,
+        width: double.infinity,
+        color: const Color(0xFFEDEDED),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(imagePath, fit: BoxFit.cover),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.10),
+                    Colors.black.withOpacity(0.06),
+                    Colors.black.withOpacity(0.38),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: 18,
+              left: 18,
+              right: 18,
               child: Row(
                 children: [
-                  Icon(icon, size: 26),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F3F3),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: Text(
-                        eta,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  Expanded(
+                    child: Text(
+                      pickupTitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Poppins',
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (subtitle.isNotEmpty)
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 14),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFFE36C9A)
-                          : const Color(0xFFF0F0F0),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: selected
-                        ? const Icon(Icons.check, size: 18, color: Colors.white)
-                        : null,
                   ),
                 ],
               ),
             ),
-          ),
-          if (showDivider) const Divider(height: 1),
-        ],
+            Positioned(
+              left: 22,
+              right: 22,
+              bottom: 22,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selectedService,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        'GH₵$totalPrice',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Poppins',
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SimpleActionRow extends StatelessWidget {
-  final String title;
-  final bool showDivider;
+class _ExpandedOptionCard extends StatelessWidget {
+  final Widget child;
 
-  const _SimpleActionRow({required this.title, this.showDivider = true});
+  const _ExpandedOptionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _OptionRow extends StatelessWidget {
+  final String title;
+
+  const _OptionRow({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
       child: Row(
         children: [
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'Poppins',
+                color: Colors.black,
+              ),
             ),
           ),
-          const Icon(Icons.chevron_right_rounded),
+          const Icon(Icons.chevron_right_rounded, color: Colors.black87),
         ],
       ),
     );
   }
 }
 
-class _MiniTab extends StatelessWidget {
-  final String label;
-  final bool selected;
+class _ExpandedAddOnCard extends StatelessWidget {
+  final Set<String> selectedAddOns;
+  final ValueChanged<String> onToggleAddOn;
 
-  const _MiniTab({required this.label, this.selected = false});
+  const _ExpandedAddOnCard({
+    required this.selectedAddOns,
+    required this.onToggleAddOn,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: selected ? const Color(0xFFEAEAEA) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          color: Colors.black87,
+    final addOns1 = [
+      {'label': 'Express Wash', 'asset': 'assets/images/express_wash.png'},
+      {
+        'label': 'Fragrance Booster',
+        'asset': 'assets/images/fragrance_booster.png',
+      },
+    ];
+    final addOns2 = [
+      {'label': 'Whites Bleach', 'asset': 'assets/images/bleach_whites.png'},
+      {'label': 'Delicate Wash', 'asset': 'assets/images/delicate_wash.png'},
+    ];
+
+    return _ExpandedOptionCard(
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Laundry add-ons',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: addOns1.map((item) {
+                final label = item['label'] as String;
+                final asset = item['asset'] as String;
+
+                return SelectablePill(
+                  text: label,
+                  assetPath: asset,
+                  trailingSize: 22,
+                  isSelected: selectedAddOns.contains(label),
+                  onTap: () => onToggleAddOn(label),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: addOns2.map((item) {
+                final label = item['label'] as String;
+                final asset = item['asset'] as String;
+
+                return SelectablePill(
+                  text: label,
+                  assetPath: asset,
+                  trailingSize: 22,
+                  isSelected: selectedAddOns.contains(label),
+                  onTap: () => onToggleAddOn(label),
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _VehicleOptionCard extends StatelessWidget {
-  final String title;
-  final String eta;
-  final bool selected;
-  final bool disabled;
-  final VoidCallback? onTap;
+class _ExpandedRequestBar extends StatelessWidget {
+  final String selectedService;
+  final int totalPrice;
+  final VoidCallback onCollapseTap;
+  final VoidCallback onPrimaryTap;
+  final String actionText;
+  final bool isSubmitting;
 
-  const _VehicleOptionCard({
-    required this.title,
-    required this.eta,
-    this.selected = false,
-    this.disabled = false,
-    this.onTap,
+  const _ExpandedRequestBar({
+    required this.selectedService,
+    required this.totalPrice,
+    required this.onCollapseTap,
+    required this.onPrimaryTap,
+    required this.actionText,
+    required this.isSubmitting,
   });
 
   @override
   Widget build(BuildContext context) {
-    final Color selectedBg = const Color(0xFFE36C9A);
-    final Color unselectedBg = const Color(0xFFF4F4F4);
-
-    final Color selectedLabelBg = Colors.white.withOpacity(0.18);
-    final Color unselectedLabelBg = Colors.white;
-
-    final Color selectedTextColor = Colors.white;
-    final Color unselectedTextColor = Colors.black;
-
-    return GestureDetector(
-      onTap: disabled ? null : onTap,
-      child: Opacity(
-        opacity: disabled ? 0.45 : 1,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.97, end: 1).animate(animation),
-                child: child,
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE4F7D8),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.payments_outlined, color: Color(0xFF3D8B2D)),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: SizedBox(
+            height: 60,
+            child: ElevatedButton(
+              onPressed: isSubmitting ? null : onPrimaryTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 33, 33, 33),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
-            );
-          },
-          child: Container(
-            key: ValueKey(selected),
-            height: 80,
-            width: 120,
-            decoration: BoxDecoration(
-              color: selected ? selectedBg : unselectedBg,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(selected ? 0.10 : 0.05),
-                  blurRadius: selected ? 14 : 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  right: 10,
-                  bottom: 10,
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 280),
-                    scale: selected ? 1.05 : 1.0,
-                    child: Image.asset(
-                      title == 'Express' && selected == false
-                          ? 'assets/images/grey_fast_moped.png'
-                          : title == 'Express' && selected == true
-                          ? 'assets/images/color_fast_moped.png'
-                          : title == 'Standard' && selected == false
-                          ? 'assets/images/grey_moped.png'
-                          : 'assets/images/color_moped.png',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.contain,
-                      color: selected ? Colors.white : null,
-                      colorBlendMode: selected ? BlendMode.modulate : null,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 10,
-                  left: 8,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 280),
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: selected ? selectedLabelBg : unselectedLabelBg,
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: selected
-                                ? selectedTextColor
-                                : unselectedTextColor,
-                          ),
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFFE67E22),
                         ),
-                      ],
+                      ),
+                    )
+                  : Text(
+                      actionText,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFE67E22),
+                        fontFamily: 'Poppins',
+                      ),
                     ),
-                  ),
-                ),
-              ],
             ),
           ),
         ),
-      ),
+        const SizedBox(width: 12),
+        GestureDetector(
+          onTap: onCollapseTap,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1006,61 +1294,331 @@ class _RoundMapButton extends StatelessWidget {
   }
 }
 
-class LocationResultTile extends StatelessWidget {
+class SelectedService extends StatelessWidget {
   final String title;
   final String serviceType;
   final VoidCallback? onTap;
   final IconData icon;
+  final bool isSelected;
 
-  const LocationResultTile({
+  const SelectedService({
     super.key,
     required this.title,
     this.onTap,
     this.icon = Icons.location_on_outlined,
     required this.serviceType,
+    required this.isSelected,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 196, 196, 196),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              serviceType == 'wash_iron'
-                  ? const SizedBox(width: 5)
-                  : const SizedBox(width: 0),
-              Transform.scale(
-                scale: serviceType == 'wash_fold' ? 0.7 : 0.85,
-                child: Image.asset(
-                  serviceType == 'wash_fold'
-                      ? 'assets/images/machine.png'
-                      : 'assets/images/machine_iron.png',
-                  height: 50,
-                  width: 50,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        scale: isSelected ? 1.0 : 0.96,
+        child: Stack(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFFFFECDB)
+                    : const Color.fromARGB(255, 240, 240, 240),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color.fromARGB(54, 230, 125, 34)
+                      : Colors.transparent,
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isSelected ? 0.08 : 0.02),
+                    blurRadius: isSelected ? 12 : 4,
+                    offset: Offset(0, isSelected ? 5 : 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  if (serviceType == 'wash_iron') const SizedBox(width: 5),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: Center(
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutBack,
+                        scale: isSelected ? 1.1 : 0.9,
+                        child: Image.asset(
+                          serviceType == 'wash_fold'
+                              ? 'assets/images/wash_foldd.png'
+                              : 'assets/images/wash_ironn.png',
+                          height: 60,
+                          width: 60,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: Colors.black.withOpacity(isSelected ? 1 : 0.9),
+                        height: 1.1,
+                      ),
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  opacity: isSelected ? 0.0 : 1.0,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(165, 255, 255, 255),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 5),
-              Text(
-                title,
-                maxLines: 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PricePerKgCard extends StatelessWidget {
+  final int pricePerKg;
+  final int washIronExtra;
+  final bool isWashIron;
+  final int addOnTotal;
+  final int estimatedWeightKg;
+
+  const PricePerKgCard({
+    super.key,
+    required this.pricePerKg,
+    required this.washIronExtra,
+    required this.addOnTotal,
+    required this.estimatedWeightKg,
+    required this.isWashIron,
+  });
+
+  String _buildRateBreakdownText() {
+    final parts = <String>['GH₵18'];
+
+    if (isWashIron) {
+      parts.add('GH₵$washIronExtra');
+    }
+
+    if (addOnTotal > 0) {
+      parts.add('GH₵$addOnTotal add-ons');
+    }
+
+    return '$estimatedWeightKg kg = ${parts.join(' + ')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFECDB),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 43,
+            height: 43,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.scale_outlined,
+              size: 22,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _buildRateBreakdownText(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Poppins',
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Average rate: GH₵$pricePerKg / kg',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                    color: Colors.black,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SelectablePill extends StatelessWidget {
+  final String text;
+  final IconData? icon;
+  final String? assetPath;
+  final bool isSelected;
+  final VoidCallback? onTap;
+  final Color backgroundColor;
+  final Color selectedBackgroundColor;
+  final double borderRadius;
+  final EdgeInsetsGeometry padding;
+  final double trailingSize;
+
+  const SelectablePill({
+    super.key,
+    required this.text,
+    required this.isSelected,
+    this.onTap,
+    this.icon,
+    this.assetPath,
+    this.backgroundColor = const Color(0xFFF3F3F3),
+    this.selectedBackgroundColor = const Color(0xFFFFECDB),
+    this.borderRadius = 30,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    this.trailingSize = 22,
+  }) : assert(
+         icon != null || assetPath != null,
+         'Provide either an icon or an assetPath.',
+       );
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        width: 170,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: isSelected ? selectedBackgroundColor : backgroundColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isSelected ? 0.08 : 0.03),
+              blurRadius: isSelected ? 10 : 5,
+              offset: Offset(0, isSelected ? 4 : 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: Colors.black,
-                  height: 1.1,
                 ),
               ),
-              const SizedBox(width: 10),
-            ],
-          ),
+            ),
+            const SizedBox(width: 10),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeOut,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.9,
+                      end: 1.0,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: isSelected
+                  ? Container(
+                      key: const ValueKey('selected_check'),
+                      width: 24,
+                      height: 24,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE67E22),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        size: 16,
+                        color: Colors.black,
+                      ),
+                    )
+                  : Image.asset(
+                      assetPath!,
+                      key: const ValueKey('asset_trailing'),
+                      width: trailingSize,
+                      height: trailingSize,
+                      fit: BoxFit.contain,
+                    ),
+            ),
+          ],
         ),
       ),
     );

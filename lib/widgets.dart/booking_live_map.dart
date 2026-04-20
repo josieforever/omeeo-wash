@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:omeeowash/widgets.dart/responsiveness.dart';
 
 class BookingLiveMap extends StatefulWidget {
   final String bookingId;
@@ -52,8 +53,10 @@ class _BookingLiveMapState extends State<BookingLiveMap> {
 
   @override
   Widget build(BuildContext context) {
+    final mapHeight = context.rh(260, min: 190, max: 320);
+
     return SizedBox(
-      height: 260,
+      height: mapHeight,
       child: GoogleMap(
         initialCameraPosition: const CameraPosition(
           target: LatLng(5.6037, -0.1870), // Accra default

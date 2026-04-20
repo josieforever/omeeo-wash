@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:omeeowash/pages/bookings/bookings_chat/msg_bubble.dart';
-import 'package:omeeowash/pages/profile/help_and_support/live_chat/app.config.dart';
+import 'package:omeeowash/pages/profile/help/live_chat/app.config.dart';
+import 'package:omeeowash/widgets.dart/responsiveness.dart';
 
 class BookingsChat extends StatefulWidget {
   final String bookingRecieverId;
@@ -189,6 +190,17 @@ class _BookingsChatState extends State<BookingsChat> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final avatarRadius = context.rw(18, min: 14, max: 18);
+    final avatarDiameter = avatarRadius * 2;
+    final avatarLoader = context.rw(16, min: 12, max: 16);
+    final usernameLoader = context.rw(25, min: 18, max: 25);
+    final messageInputMaxHeight = context.rh(120, min: 88, max: 140);
+    final composerPaddingH = context.rw(12, min: 10, max: 16);
+    final composerPaddingV = context.rh(8, min: 6, max: 10);
+    final sendIconSize = context.rw(20, min: 16, max: 22);
+    final sendPadding = context.rw(12, min: 10, max: 14);
+    final sendRadius = context.rw(12, min: 10, max: 14);
+    final avatarGap = context.rw(10, min: 6, max: 10);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.inversePrimary,
@@ -216,44 +228,46 @@ class _BookingsChatState extends State<BookingsChat> {
             : Row(
                 children: [
                   CircleAvatar(
-                    radius: 18,
+                    radius: avatarRadius,
                     backgroundColor: theme.colorScheme.secondary,
                     child: profilePhoto != "Unknown"
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(avatarRadius),
                             child: CachedNetworkImage(
                               imageUrl: profilePhoto,
-                              width: 36, // 2 * radius
-                              height: 36,
+                              width: avatarDiameter,
+                              height: avatarDiameter,
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => const SizedBox(
-                                width: 36,
-                                height: 36,
+                              placeholder: (_, __) => SizedBox(
+                                width: avatarDiameter,
+                                height: avatarDiameter,
                                 child: Center(
                                   child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
+                                    width: avatarLoader,
+                                    height: avatarLoader,
+                                    child: const CircularProgressIndicator(
                                       strokeWidth: 2,
                                     ),
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => const SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: Icon(Icons.error),
+                              errorWidget: (_, __, ___) => SizedBox(
+                                width: avatarDiameter,
+                                height: avatarDiameter,
+                                child: const Icon(Icons.error),
                               ),
                             ),
                           )
                         : Icon(Icons.person, color: theme.colorScheme.primary),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: avatarGap),
                   username == ""
                       ? SizedBox(
-                          width: 25,
-                          height: 25,
-                          child: CircularProgressIndicator(color: Colors.black),
+                          width: usernameLoader,
+                          height: usernameLoader,
+                          child: const CircularProgressIndicator(
+                            color: Colors.black,
+                          ),
                         )
                       : Text(
                           username,
@@ -276,7 +290,7 @@ class _BookingsChatState extends State<BookingsChat> {
       ),
       body: Column(
         children: [
-          const SizedBox(height: 8),
+          SizedBox(height: context.rh(8, min: 6, max: 10)),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _msgsRef
@@ -303,9 +317,9 @@ class _BookingsChatState extends State<BookingsChat> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: composerPaddingH,
+                    vertical: composerPaddingV,
                   ),
                   itemCount: docs.length,
                   itemBuilder: (context, i) {
@@ -366,7 +380,13 @@ class _BookingsChatState extends State<BookingsChat> {
           SafeArea(
             top: false,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              padding: EdgeInsets.fromLTRB(
+                composerPaddingH,
+                composerPaddingV,
+                composerPaddingH,
+                context.rh(12, min: 10, max: 14),
+              ),
+              // keep composer comfortable on compact devices
               color: theme.colorScheme.inversePrimary,
               child: Row(
                 children: [
@@ -381,7 +401,9 @@ class _BookingsChatState extends State<BookingsChat> {
                         borderRadius: BorderRadius.circular(7),
                       ),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 120),
+                        constraints: BoxConstraints(
+                          maxHeight: messageInputMaxHeight,
+                        ),
                         child: TextField(
                           style: const TextStyle(
                             color: Colors.black,
@@ -423,20 +445,20 @@ class _BookingsChatState extends State<BookingsChat> {
                     //   ),
                     // ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: context.rw(8, min: 6, max: 10)),
                   InkWell(
                     onTap: _send,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(sendRadius),
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(sendPadding),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(sendRadius),
                       ),
                       child: Icon(
                         Icons.send,
                         color: theme.colorScheme.onPrimary,
-                        size: 20,
+                        size: sendIconSize,
                       ),
                     ),
                   ),

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../pages/profile/help_and_support/live_chat/app.config.dart';
+import '../pages/profile/help/live_chat/app.config.dart';
 
 class NotificationService {
   final _messaging = FirebaseMessaging.instance;
