@@ -1,11 +1,9 @@
-import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/notifications/notification_service.dart';
 import 'package:omeeowash/pages/profile/about.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
 import 'package:omeeowash/pages/profile/all_support.dart';
@@ -132,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ProfileScreenTopBar(user: user),
                           const SizedBox(height: 8),
                           ProfileScreenMiddleSection(
-                            loyaltyPoints: user.loyaltyPoints,
+                            loyalty: (user.loyalty['points'] ?? 0) as int,
                           ),
                         ],
                       ),
@@ -203,8 +201,8 @@ class ProfileScreenTopBar extends StatelessWidget {
     final avatarBg = _avatarColor(user.uid);
 
     final avatarRadius = isSmallPhone ? 38.0 : 45.0;
-    final nameFontSize = isSmallPhone ? 22.0 : TextSizes.heading2.toDouble();
-    final emailFontSize = isSmallPhone ? 13.0 : TextSizes.bodyText1.toDouble();
+    final nameFontSize = isSmallPhone ? 20.0 : TextSizes.heading2.toDouble();
+    final emailFontSize = isSmallPhone ? 12.0 : TextSizes.bodyText1.toDouble();
 
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 8),
@@ -217,7 +215,7 @@ class ProfileScreenTopBar extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(height: 8),
+
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -284,9 +282,9 @@ class ProfileScreenTopBar extends StatelessWidget {
 }
 
 class ProfileScreenMiddleSection extends StatefulWidget {
-  final int loyaltyPoints;
+  final int loyalty;
 
-  const ProfileScreenMiddleSection({super.key, required this.loyaltyPoints});
+  const ProfileScreenMiddleSection({super.key, required this.loyalty});
 
   @override
   State<ProfileScreenMiddleSection> createState() =>
@@ -308,7 +306,7 @@ class _ProfileScreenMiddleSectionState
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
+        color: const Color.fromARGB(106, 255, 236, 219),
         borderRadius: BorderRadius.circular(15),
       ),
       child: child,

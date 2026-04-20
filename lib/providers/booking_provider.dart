@@ -52,9 +52,7 @@ class BookingProvider with ChangeNotifier {
         .snapshots()
         .map((snapshot) {
           final list = snapshot.docs
-              .map(
-                (d) => Booking.fromMap(d.data() as Map<String, dynamic>, d.id),
-              )
+              .map((d) => Booking.fromMap(d.data(), d.id))
               .toList();
           _bookings = list;
           notifyListeners();

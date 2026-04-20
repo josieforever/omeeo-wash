@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:omeeowash/pages/profile/about/licence_agreement.dart';
 import 'package:omeeowash/pages/profile/about/privacy_policy.dart';
 import 'package:omeeowash/pages/profile/about/user_data.dart';
+import 'package:omeeowash/widgets.dart/responsiveness.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final logoWidth = context.rw(170, min: 130, max: 190);
+    final logoHeight = context.rh(150, min: 120, max: 170);
+    final sectionGap = context.rh(28, min: 16, max: 32);
+    final detailsBottomGap = context.rh(100, min: 40, max: 100);
+    final dividerBandHeight = context.rh(10, min: 6, max: 10);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -19,12 +26,12 @@ class AboutScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const SizedBox(height: 28),
+                    SizedBox(height: sectionGap),
 
                     Container(
                       padding: const EdgeInsets.all(5),
-                      width: 170,
-                      height: 150,
+                      width: logoWidth,
+                      height: logoHeight,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(32),
@@ -36,7 +43,7 @@ class AboutScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    SizedBox(height: sectionGap),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -52,10 +59,10 @@ class AboutScreen extends StatelessWidget {
                       ),
                     ),
 
-                    const SizedBox(height: 40),
+                    SizedBox(height: context.rh(40, min: 24, max: 44)),
 
                     Container(
-                      height: 10,
+                      height: dividerBandHeight,
                       width: double.infinity,
                       color: const Color(0xFFF3F3F3),
                     ),
@@ -99,7 +106,7 @@ class AboutScreen extends StatelessWidget {
                     ),
                     const _DividerLine(),
 
-                    const SizedBox(height: 100),
+                    SizedBox(height: detailsBottomGap),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -157,7 +164,7 @@ class _AboutTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 56,
+      height: context.rh(56, min: 48, max: 60),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Stack(

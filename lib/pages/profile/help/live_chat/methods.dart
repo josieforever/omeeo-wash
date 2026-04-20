@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class Methods {
   Future<bool?> showDeleteConfirmationDialog(

@@ -6,9 +6,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/service_review.dart';
 import 'package:omeeowash/pages/profile/addresses.dart'
     hide PickedLocationResult;
+import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class GoogleMapLocationPickerScreen extends StatefulWidget {
-  const GoogleMapLocationPickerScreen({super.key});
+  final String serviceType;
+
+  const GoogleMapLocationPickerScreen({super.key, required this.serviceType});
 
   @override
   State<GoogleMapLocationPickerScreen> createState() =>
@@ -172,6 +175,7 @@ class _GoogleMapLocationPickerScreenState
       longitude: _mapCenter.longitude,
       addressLine: _title,
       subtitle: _subtitle,
+      serviceType: widget.serviceType,
     );
 
     Navigator.of(context).push(
@@ -188,6 +192,7 @@ class _GoogleMapLocationPickerScreenState
       longitude: _mapCenter.longitude,
       addressLine: _title,
       subtitle: _subtitle,
+      serviceType: widget.serviceType,
     );
 
     Navigator.of(context).push(
@@ -214,7 +219,7 @@ class _GoogleMapLocationPickerScreenState
             child: GoogleMap(
               initialCameraPosition: const CameraPosition(
                 target: _defaultCenter,
-                zoom: 17,
+                zoom: 16,
               ),
               myLocationEnabled: false,
               myLocationButtonEnabled: false,
@@ -239,26 +244,10 @@ class _GoogleMapLocationPickerScreenState
             ),
           ),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 18),
-              child: Center(
-                child: Text(
-                  'Swipe to move map',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black.withOpacity(0.80),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
           Center(
             child: IgnorePointer(
               child: Transform.translate(
-                offset: const Offset(0, -70),
+                offset: const Offset(0, 0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -266,7 +255,7 @@ class _GoogleMapLocationPickerScreenState
                       width: 43,
                       height: 43,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFE67E22),
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: const [
                           BoxShadow(
@@ -279,38 +268,16 @@ class _GoogleMapLocationPickerScreenState
                       child: const Icon(
                         Icons.moped,
                         size: 26,
-                        color: Color.fromARGB(255, 0, 0, 0),
+                        color: Color(0xFF000000),
                       ),
                     ),
-                    Container(width: 3, height: 36, color: Colors.black87),
+                    Container(width: 3, height: 16, color: Colors.black87),
                     Container(
                       width: 10,
                       height: 10,
                       decoration: BoxDecoration(
                         color: const Color.fromARGB(255, 0, 0, 0),
                         shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 220),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.70),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _isResolvingAddress ? 'Locating...' : _title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
                       ),
                     ),
                   ],
@@ -321,9 +288,9 @@ class _GoogleMapLocationPickerScreenState
 
           Positioned(
             left: 16,
-            bottom: 230,
-            child: _RoundMapButton2(
-              icon: Icons.arrow_back_ios_new_rounded,
+            top: 40,
+            child: _RoundMapButton(
+              icon: Icons.arrow_back_rounded,
               onTap: () => Navigator.of(context).maybePop(),
             ),
           ),
@@ -378,7 +345,7 @@ class _BottomAddressCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       margin: const EdgeInsets.fromLTRB(20, 20, 20, 25),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: const Color.fromARGB(255, 255, 255, 255),
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
           BoxShadow(
@@ -395,7 +362,7 @@ class _BottomAddressCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: Colors.black87,
             ),
@@ -407,9 +374,9 @@ class _BottomAddressCard extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(top: 3),
                 child: Icon(
-                  Icons.local_laundry_service_outlined,
+                  Icons.location_on,
                   size: 20,
-                  color: Colors.black87,
+                  color: Color(0xFFE67E22),
                 ),
               ),
               const SizedBox(width: 10),
@@ -451,8 +418,8 @@ class _BottomAddressCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onDoneTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFE36C9A),
-                disabledBackgroundColor: const Color(0xFFFFB4AA),
+                backgroundColor: const Color.fromARGB(255, 33, 33, 33),
+                disabledBackgroundColor: const Color.fromARGB(255, 33, 33, 33),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -461,9 +428,9 @@ class _BottomAddressCard extends StatelessWidget {
               child: const Text(
                 'Done',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Color(0xFFE67E22),
                 ),
               ),
             ),
@@ -492,7 +459,11 @@ class _RoundMapButton extends StatelessWidget {
         child: SizedBox(
           width: 42,
           height: 42,
-          child: Icon(icon, color: const Color(0xFFFF4B36), size: 22),
+          child: Icon(
+            icon,
+            color: const Color.fromARGB(255, 0, 0, 0),
+            size: 22,
+          ),
         ),
       ),
     );
