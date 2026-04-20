@@ -306,7 +306,7 @@ class _ProfileScreenMiddleSectionState
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
+        color: const Color.fromARGB(106, 255, 236, 219),
         borderRadius: BorderRadius.circular(15),
       ),
       child: child,

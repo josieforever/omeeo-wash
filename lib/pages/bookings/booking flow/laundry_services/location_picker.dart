@@ -9,7 +9,9 @@ import 'package:omeeowash/pages/profile/addresses.dart'
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
 class GoogleMapLocationPickerScreen extends StatefulWidget {
-  const GoogleMapLocationPickerScreen({super.key});
+  final String serviceType;
+
+  const GoogleMapLocationPickerScreen({super.key, required this.serviceType});
 
   @override
   State<GoogleMapLocationPickerScreen> createState() =>
@@ -173,6 +175,7 @@ class _GoogleMapLocationPickerScreenState
       longitude: _mapCenter.longitude,
       addressLine: _title,
       subtitle: _subtitle,
+      serviceType: widget.serviceType,
     );
 
     Navigator.of(context).push(
@@ -189,6 +192,7 @@ class _GoogleMapLocationPickerScreenState
       longitude: _mapCenter.longitude,
       addressLine: _title,
       subtitle: _subtitle,
+      serviceType: widget.serviceType,
     );
 
     Navigator.of(context).push(
@@ -215,7 +219,7 @@ class _GoogleMapLocationPickerScreenState
             child: GoogleMap(
               initialCameraPosition: const CameraPosition(
                 target: _defaultCenter,
-                zoom: 17,
+                zoom: 16,
               ),
               myLocationEnabled: false,
               myLocationButtonEnabled: false,
@@ -243,7 +247,7 @@ class _GoogleMapLocationPickerScreenState
           Center(
             child: IgnorePointer(
               child: Transform.translate(
-                offset: const Offset(0, -20),
+                offset: const Offset(0, 0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

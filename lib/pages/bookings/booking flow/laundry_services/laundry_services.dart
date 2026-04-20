@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart'
+    show FirebaseFirestore, FieldValue, SetOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -262,7 +264,9 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
     }
 
     final result = await Navigator.of(context).push<PickedLocationResult>(
-      MaterialPageRoute(builder: (_) => const GoogleMapLocationPickerScreen()),
+      MaterialPageRoute(
+        builder: (_) => GoogleMapLocationPickerScreen(serviceType: serviceType),
+      ),
     );
 
     if (!mounted) return;
@@ -279,9 +283,20 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
   Widget _buildSearchSection(BuildContext modalContext) {
     return Stack(
       children: [
+        Align(
+          alignment: Alignment.center,
+          child: Container(
+            child: Lottie.asset(
+              'assets/animations/washing_machine_icon.json',
+              width: 400,
+              height: MediaQuery.of(context).size.height * 0.7,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
         Container(
-          height: MediaQuery.of(context).size.height * 0.65,
-          color: Colors.amber,
+          height: MediaQuery.of(context).size.height * 0.7,
+          color: Colors.transparent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -560,7 +575,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                           style: TextStyle(
                             fontSize: 23,
                             fontWeight: FontWeight.w700,
-                            color: Color.fromARGB(255, 101, 56, 0),
+                            color: Color.fromARGB(255, 188, 113, 0),
                           ),
                         ),
                       ],
@@ -653,6 +668,13 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                   onTap: () {},
                 ),
 
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    await seedBookingsDummy();
+                  },
+                  child: const Text('press me'),
+                ),
                 const SizedBox(height: 20),
               ],
             ),
@@ -797,7 +819,7 @@ class SearchEventsBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color.fromARGB(40, 0, 0, 0),
+              color: const Color.fromARGB(50, 230, 125, 34),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1408,4 +1430,825 @@ class _MetaItem extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> seedNearbyLaundriesDummy() async {
+  final firestore = FirebaseFirestore.instance;
+  final batch = firestore.batch();
+  final now = FieldValue.serverTimestamp();
+
+  final laundries = <Map<String, dynamic>>[
+    {
+      'id': 'quick_wash_east_legon',
+      'ownerUid': '',
+      'name': 'Quick Wash Laundry East Legon',
+      'description': 'Laundry and dry cleaning service in East Legon.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '+233502774789',
+      'email': '',
+      'addressLine':
+          'Nii Osae Ntiful Avenue, Otinshie, East Legon, Accra, Ghana',
+      'latitude': 5.6408,
+      'longitude': -0.1492,
+      'serviceRadiusKm': 8,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'rating': 4.6,
+      'totalReviews': 32,
+      'estimatedTurnaroundText': 'Same day',
+      'availabilityStatus': 'available',
+      'isOpenNow': true,
+      'acceptingOrders': true,
+      'isApproved': true,
+      'isFeatured': false,
+      'currentOrderCount': 2,
+      'maxConcurrentOrders': 10,
+      'openingHours': {
+        'monday': {'open': '08:00', 'close': '20:00'},
+        'tuesday': {'open': '08:00', 'close': '20:00'},
+        'wednesday': {'open': '08:00', 'close': '20:00'},
+        'thursday': {'open': '08:00', 'close': '20:00'},
+        'friday': {'open': '08:00', 'close': '20:00'},
+        'saturday': {'open': '09:00', 'close': '18:00'},
+        'sunday': {'open': '09:00', 'close': '16:00'},
+      },
+      'stats': {
+        'totalOrders': 140,
+        'completedOrders': 132,
+        'cancelledOrders': 8,
+      },
+    },
+    {
+      'id': 'laundry_chief_east_legon_shop',
+      'ownerUid': '',
+      'name': 'Laundry Chief - East Legon Shop',
+      'description': 'Pickup and delivery laundry and dry cleaning.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '',
+      'email': '',
+      'addressLine': '19 Boundary Road, East Legon, Accra, Ghana',
+      'latitude': 5.6396,
+      'longitude': -0.1468,
+      'serviceRadiusKm': 8,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'rating': 4.4,
+      'totalReviews': 21,
+      'estimatedTurnaroundText': 'Same day',
+      'availabilityStatus': 'available',
+      'isOpenNow': true,
+      'acceptingOrders': true,
+      'isApproved': true,
+      'isFeatured': true,
+      'currentOrderCount': 3,
+      'maxConcurrentOrders': 12,
+      'openingHours': {
+        'monday': {'open': '09:00', 'close': '20:00'},
+        'tuesday': {'open': '09:00', 'close': '20:00'},
+        'wednesday': {'open': '09:00', 'close': '20:00'},
+        'thursday': {'open': '09:00', 'close': '20:00'},
+        'friday': {'open': '09:00', 'close': '20:00'},
+        'saturday': {'open': '09:00', 'close': '20:00'},
+        'sunday': {'open': '12:00', 'close': '18:30'},
+      },
+      'stats': {
+        'totalOrders': 116,
+        'completedOrders': 111,
+        'cancelledOrders': 5,
+      },
+    },
+    {
+      'id': 'smile_laundry_east_legon',
+      'ownerUid': '',
+      'name': 'Smile Laundry East Legon',
+      'description': 'Specialist laundry and dry cleaning with pickup.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '+233208232788',
+      'email': '',
+      'addressLine': 'East Legon, Accra, Ghana',
+      'latitude': 5.6421,
+      'longitude': -0.1510,
+      'serviceRadiusKm': 8,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 17,
+      'washIronExtraPerKg': 2,
+      'rating': 4.2,
+      'totalReviews': 14,
+      'estimatedTurnaroundText': '3–5 hrs',
+      'availabilityStatus': 'busy',
+      'isOpenNow': true,
+      'acceptingOrders': true,
+      'isApproved': true,
+      'isFeatured': false,
+      'currentOrderCount': 7,
+      'maxConcurrentOrders': 10,
+      'openingHours': {
+        'monday': {'open': '08:00', 'close': '18:00'},
+        'tuesday': {'open': '08:00', 'close': '18:00'},
+        'wednesday': {'open': '08:00', 'close': '18:00'},
+        'thursday': {'open': '08:00', 'close': '18:00'},
+        'friday': {'open': '08:00', 'close': '18:00'},
+        'saturday': {'open': '09:00', 'close': '17:00'},
+        'sunday': {'open': 'closed', 'close': 'closed'},
+      },
+      'stats': {'totalOrders': 74, 'completedOrders': 69, 'cancelledOrders': 5},
+    },
+    {
+      'id': 'kabell_east_legon',
+      'ownerUid': '',
+      'name': 'Ka-Bell Laundry & Dry Cleaning',
+      'description': 'Laundry and dry cleaning with pickup and delivery.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '+233501394548',
+      'email': '',
+      'addressLine':
+          'East Legon-American House, Agbogba Junction, Shia-shi, Agbogba, Accra, Ghana',
+      'latitude': 5.6440,
+      'longitude': -0.1449,
+      'serviceRadiusKm': 9,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 20,
+      'washIronExtraPerKg': 3,
+      'rating': 4.5,
+      'totalReviews': 27,
+      'estimatedTurnaroundText': 'Next day',
+      'availabilityStatus': 'available',
+      'isOpenNow': true,
+      'acceptingOrders': true,
+      'isApproved': true,
+      'isFeatured': false,
+      'currentOrderCount': 4,
+      'maxConcurrentOrders': 10,
+      'openingHours': {
+        'monday': {'open': '07:00', 'close': '19:30'},
+        'tuesday': {'open': '07:00', 'close': '19:30'},
+        'wednesday': {'open': '07:00', 'close': '19:30'},
+        'thursday': {'open': '07:00', 'close': '19:30'},
+        'friday': {'open': '07:00', 'close': '19:30'},
+        'saturday': {'open': '07:00', 'close': '18:30'},
+        'sunday': {'open': 'closed', 'close': 'closed'},
+      },
+      'stats': {
+        'totalOrders': 102,
+        'completedOrders': 97,
+        'cancelledOrders': 5,
+      },
+    },
+    {
+      'id': 'dirttobright_east_legon',
+      'ownerUid': '',
+      'name': 'DirtToBright East Legon',
+      'description': 'Laundry and dry cleaning branch in East Legon.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '+233559324211',
+      'email': 'info@dirttobright.com',
+      'addressLine': 'Nii Sai Rd, East Legon, Accra, Ghana',
+      'latitude': 5.6387,
+      'longitude': -0.1523,
+      'serviceRadiusKm': 8,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'rating': 4.8,
+      'totalReviews': 41,
+      'estimatedTurnaroundText': 'Same day',
+      'availabilityStatus': 'available',
+      'isOpenNow': true,
+      'acceptingOrders': true,
+      'isApproved': true,
+      'isFeatured': true,
+      'currentOrderCount': 1,
+      'maxConcurrentOrders': 12,
+      'openingHours': {
+        'monday': {'open': '08:00', 'close': '18:00'},
+        'tuesday': {'open': '08:00', 'close': '18:00'},
+        'wednesday': {'open': '08:00', 'close': '18:00'},
+        'thursday': {'open': '08:00', 'close': '18:00'},
+        'friday': {'open': '08:00', 'close': '18:00'},
+        'saturday': {'open': '08:00', 'close': '18:00'},
+        'sunday': {'open': 'closed', 'close': 'closed'},
+      },
+      'stats': {
+        'totalOrders': 160,
+        'completedOrders': 153,
+        'cancelledOrders': 7,
+      },
+    },
+    {
+      'id': 'e_laundry_east_legon',
+      'ownerUid': '',
+      'name': 'E-Laundry & General Cleaning Services',
+      'description': 'Laundry and general cleaning service in East Legon.',
+      'photoUrl': '',
+      'logoUrl': '',
+      'phoneNumber': '+233241995917',
+      'email': '',
+      'addressLine': 'East Legon American, Accra, Ghana',
+      'latitude': 5.6415,
+      'longitude': -0.1477,
+      'serviceRadiusKm': 8,
+      'supportedServices': ['wash_fold', 'wash_iron'],
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'rating': 4.1,
+      'totalReviews': 11,
+      'estimatedTurnaroundText': 'Same day',
+      'availabilityStatus': 'offline',
+      'isOpenNow': false,
+      'acceptingOrders': false,
+      'isApproved': true,
+      'isFeatured': false,
+      'currentOrderCount': 0,
+      'maxConcurrentOrders': 10,
+      'openingHours': {
+        'monday': {'open': '08:00', 'close': '18:00'},
+        'tuesday': {'open': '08:00', 'close': '18:00'},
+        'wednesday': {'open': '08:00', 'close': '18:00'},
+        'thursday': {'open': '08:00', 'close': '18:00'},
+        'friday': {'open': '08:00', 'close': '18:00'},
+        'saturday': {'open': '09:00', 'close': '16:00'},
+        'sunday': {'open': 'closed', 'close': 'closed'},
+      },
+      'stats': {'totalOrders': 58, 'completedOrders': 54, 'cancelledOrders': 4},
+    },
+  ];
+
+  for (final laundry in laundries) {
+    final docRef = firestore
+        .collection('laundries')
+        .doc(laundry['id'] as String);
+    batch.set(docRef, {
+      ...laundry,
+      'createdAt': now,
+      'updatedAt': now,
+    }, SetOptions(merge: true));
+  }
+
+  await batch.commit();
+}
+
+Future<void> seedBookingsDummy() async {
+  final firestore = FirebaseFirestore.instance;
+  final batch = firestore.batch();
+  final now = FieldValue.serverTimestamp();
+
+  final bookings = <Map<String, dynamic>>[
+    {
+      'id': 'booking_001',
+      'customerId': 'user_001',
+      'laundryId': 'quick_wash_east_legon',
+      'pickupRiderId': 'rider_001',
+      'deliveryRiderId': null,
+
+      'serviceType': 'wash_fold',
+      'supportedAddOns': ['express_delivery', 'scent_booster'],
+
+      'weightRange': '3-5kg',
+      'estimatedWeightKg': 4,
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'addOnTotal': 6,
+      'subtotal': 78,
+      'deliveryFee': 10,
+      'totalAmount': 88,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'East Legon, Accra',
+        'latitude': 5.6402,
+        'longitude': -0.1480,
+        'contactName': 'Josiah Commey',
+        'contactPhone': '+233240000001',
+        'pickupDate': '2026-04-20',
+        'pickupTimeSlot': '10:00 AM - 11:00 AM',
+        'pickupNotes': 'Call when you arrive.',
+      },
+
+      'dropoff': {
+        'addressLine': 'East Legon, Accra',
+        'latitude': 5.6402,
+        'longitude': -0.1480,
+        'contactName': 'Josiah Commey',
+        'contactPhone': '+233240000001',
+        'dropoffNotes': '',
+      },
+
+      'laundrySnapshot': {
+        'name': 'Quick Wash Laundry East Legon',
+        'phoneNumber': '+233502774789',
+        'photoUrl': '',
+        'addressLine':
+            'Nii Osae Ntiful Avenue, Otinshie, East Legon, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Josiah Commey',
+        'phoneNumber': '+233240000001',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': {
+        'name': 'Kwame Mensah',
+        'phoneNumber': '+233240000101',
+        'photoUrl': '',
+        'vehicleType': 'motorbike',
+        'plateNumber': 'GR-1234-24',
+      },
+
+      'deliveryRiderSnapshot': null,
+
+      'status': 'pickup_rider_assigned',
+      'paymentStatus': 'unpaid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': null,
+        'pickupRiderAssignedAt': now,
+        'pickupStartedAt': null,
+        'pickedUpAt': null,
+        'arrivedAtLaundryAt': null,
+        'processingStartedAt': null,
+        'readyForDropoffAt': null,
+        'deliveryRiderAssignedAt': null,
+        'deliveryStartedAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {'cancelledBy': null, 'reason': null},
+
+      'notes': {
+        'customer': 'Please handle white shirts carefully.',
+        'laundry': '',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+    {
+      'id': 'booking_002',
+      'customerId': 'user_002',
+      'laundryId': 'laundry_chief_east_legon_shop',
+      'pickupRiderId': 'rider_002',
+      'deliveryRiderId': 'rider_003',
+
+      'serviceType': 'wash_iron',
+      'supportedAddOns': ['starch_treatment'],
+
+      'weightRange': '1-3kg',
+      'estimatedWeightKg': 2,
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'addOnTotal': 4,
+      'subtotal': 40,
+      'deliveryFee': 10,
+      'totalAmount': 50,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'Adjiringanor, Accra',
+        'latitude': 5.6418,
+        'longitude': -0.1459,
+        'contactName': 'Ama Boateng',
+        'contactPhone': '+233240000002',
+        'pickupDate': '2026-04-20',
+        'pickupTimeSlot': '1:00 PM - 2:00 PM',
+        'pickupNotes': '',
+      },
+
+      'dropoff': {
+        'addressLine': 'Adjiringanor, Accra',
+        'latitude': 5.6418,
+        'longitude': -0.1459,
+        'contactName': 'Ama Boateng',
+        'contactPhone': '+233240000002',
+        'dropoffNotes': 'Leave at reception if unavailable.',
+      },
+
+      'laundrySnapshot': {
+        'name': 'Laundry Chief - East Legon Shop',
+        'phoneNumber': '',
+        'photoUrl': '',
+        'addressLine': '19 Boundary Road, East Legon, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Ama Boateng',
+        'phoneNumber': '+233240000002',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': {
+        'name': 'Yaw Tetteh',
+        'phoneNumber': '+233240000102',
+        'photoUrl': '',
+        'vehicleType': 'motorbike',
+        'plateNumber': 'GT-2231-24',
+      },
+
+      'deliveryRiderSnapshot': {
+        'name': 'Kojo Asare',
+        'phoneNumber': '+233240000103',
+        'photoUrl': '',
+        'vehicleType': 'motorbike',
+        'plateNumber': 'GX-8831-24',
+      },
+
+      'status': 'processing',
+      'paymentStatus': 'paid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': now,
+        'pickupRiderAssignedAt': now,
+        'pickupStartedAt': now,
+        'pickedUpAt': now,
+        'arrivedAtLaundryAt': now,
+        'processingStartedAt': now,
+        'readyForDropoffAt': null,
+        'deliveryRiderAssignedAt': now,
+        'deliveryStartedAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {'cancelledBy': null, 'reason': null},
+
+      'notes': {
+        'customer': '',
+        'laundry': 'Prioritize office wear.',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+    {
+      'id': 'booking_003',
+      'customerId': 'user_003',
+      'laundryId': 'dirttobright_east_legon',
+      'pickupRiderId': 'rider_004',
+      'deliveryRiderId': 'rider_004',
+
+      'serviceType': 'wash_fold',
+      'supportedAddOns': [],
+
+      'weightRange': '5-8kg',
+      'estimatedWeightKg': 6,
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'addOnTotal': 0,
+      'subtotal': 108,
+      'deliveryFee': 12,
+      'totalAmount': 120,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'Shiashie, Accra',
+        'latitude': 5.6389,
+        'longitude': -0.1511,
+        'contactName': 'Nana Adjei',
+        'contactPhone': '+233240000003',
+        'pickupDate': '2026-04-21',
+        'pickupTimeSlot': '9:00 AM - 10:00 AM',
+        'pickupNotes': '',
+      },
+
+      'dropoff': {
+        'addressLine': 'Shiashie, Accra',
+        'latitude': 5.6389,
+        'longitude': -0.1511,
+        'contactName': 'Nana Adjei',
+        'contactPhone': '+233240000003',
+        'dropoffNotes': '',
+      },
+
+      'laundrySnapshot': {
+        'name': 'DirtToBright East Legon',
+        'phoneNumber': '+233559324211',
+        'photoUrl': '',
+        'addressLine': 'Nii Sai Rd, East Legon, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Nana Adjei',
+        'phoneNumber': '+233240000003',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': {
+        'name': 'Eric Osei',
+        'phoneNumber': '+233240000104',
+        'photoUrl': '',
+        'vehicleType': 'motorbike',
+        'plateNumber': 'GW-4401-24',
+      },
+
+      'deliveryRiderSnapshot': {
+        'name': 'Eric Osei',
+        'phoneNumber': '+233240000104',
+        'photoUrl': '',
+        'vehicleType': 'motorbike',
+        'plateNumber': 'GW-4401-24',
+      },
+
+      'status': 'delivered',
+      'paymentStatus': 'paid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': now,
+        'pickupRiderAssignedAt': now,
+        'pickupStartedAt': now,
+        'pickedUpAt': now,
+        'arrivedAtLaundryAt': now,
+        'processingStartedAt': now,
+        'readyForDropoffAt': now,
+        'deliveryRiderAssignedAt': now,
+        'deliveryStartedAt': now,
+        'deliveredAt': now,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {'cancelledBy': null, 'reason': null},
+
+      'notes': {
+        'customer': '',
+        'laundry': '',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+    {
+      'id': 'booking_004',
+      'customerId': 'user_004',
+      'laundryId': 'kabell_east_legon',
+      'pickupRiderId': null,
+      'deliveryRiderId': null,
+
+      'serviceType': 'wash_iron',
+      'supportedAddOns': ['express_delivery', 'starch_treatment'],
+
+      'weightRange': '3-5kg',
+      'estimatedWeightKg': 5,
+      'basePricePerKg': 20,
+      'washIronExtraPerKg': 3,
+      'addOnTotal': 8,
+      'subtotal': 123,
+      'deliveryFee': 12,
+      'totalAmount': 135,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'American House, Accra',
+        'latitude': 5.6441,
+        'longitude': -0.1453,
+        'contactName': 'Efua Mensima',
+        'contactPhone': '+233240000004',
+        'pickupDate': '2026-04-21',
+        'pickupTimeSlot': '4:00 PM - 5:00 PM',
+        'pickupNotes': 'Ring bell twice.',
+      },
+
+      'dropoff': {
+        'addressLine': 'American House, Accra',
+        'latitude': 5.6441,
+        'longitude': -0.1453,
+        'contactName': 'Efua Mensima',
+        'contactPhone': '+233240000004',
+        'dropoffNotes': '',
+      },
+
+      'laundrySnapshot': {
+        'name': 'Ka-Bell Laundry & Dry Cleaning',
+        'phoneNumber': '+233501394548',
+        'photoUrl': '',
+        'addressLine':
+            'East Legon-American House, Agbogba Junction, Shia-shi, Agbogba, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Efua Mensima',
+        'phoneNumber': '+233240000004',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': null,
+      'deliveryRiderSnapshot': null,
+
+      'status': 'awaiting_pickup_rider_assignment',
+      'paymentStatus': 'unpaid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': now,
+        'pickupRiderAssignedAt': null,
+        'pickupStartedAt': null,
+        'pickedUpAt': null,
+        'arrivedAtLaundryAt': null,
+        'processingStartedAt': null,
+        'readyForDropoffAt': null,
+        'deliveryRiderAssignedAt': null,
+        'deliveryStartedAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {'cancelledBy': null, 'reason': null},
+
+      'notes': {
+        'customer': 'Mostly formal wear.',
+        'laundry': '',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+    {
+      'id': 'booking_005',
+      'customerId': 'user_005',
+      'laundryId': 'smile_laundry_east_legon',
+      'pickupRiderId': null,
+      'deliveryRiderId': null,
+
+      'serviceType': 'wash_fold',
+      'supportedAddOns': ['scent_booster'],
+
+      'weightRange': '1-3kg',
+      'estimatedWeightKg': 3,
+      'basePricePerKg': 17,
+      'washIronExtraPerKg': 2,
+      'addOnTotal': 3,
+      'subtotal': 54,
+      'deliveryFee': 10,
+      'totalAmount': 64,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'East Legon Hills, Accra',
+        'latitude': 5.6450,
+        'longitude': -0.1530,
+        'contactName': 'Linda Owusu',
+        'contactPhone': '+233240000005',
+        'pickupDate': '2026-04-22',
+        'pickupTimeSlot': '11:00 AM - 12:00 PM',
+        'pickupNotes': '',
+      },
+
+      'dropoff': {
+        'addressLine': 'East Legon Hills, Accra',
+        'latitude': 5.6450,
+        'longitude': -0.1530,
+        'contactName': 'Linda Owusu',
+        'contactPhone': '+233240000005',
+        'dropoffNotes': '',
+      },
+
+      'laundrySnapshot': {
+        'name': 'Smile Laundry East Legon',
+        'phoneNumber': '+233208232788',
+        'photoUrl': '',
+        'addressLine': 'East Legon, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Linda Owusu',
+        'phoneNumber': '+233240000005',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': null,
+      'deliveryRiderSnapshot': null,
+
+      'status': 'pending_laundry_acceptance',
+      'paymentStatus': 'unpaid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': null,
+        'pickupRiderAssignedAt': null,
+        'pickupStartedAt': null,
+        'pickedUpAt': null,
+        'arrivedAtLaundryAt': null,
+        'processingStartedAt': null,
+        'readyForDropoffAt': null,
+        'deliveryRiderAssignedAt': null,
+        'deliveryStartedAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {'cancelledBy': null, 'reason': null},
+
+      'notes': {
+        'customer': '',
+        'laundry': '',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+    {
+      'id': 'booking_006',
+      'customerId': 'user_006',
+      'laundryId': 'e_laundry_east_legon',
+      'pickupRiderId': null,
+      'deliveryRiderId': null,
+
+      'serviceType': 'wash_fold',
+      'supportedAddOns': [],
+
+      'weightRange': '3-5kg',
+      'estimatedWeightKg': 4,
+      'basePricePerKg': 18,
+      'washIronExtraPerKg': 2,
+      'addOnTotal': 0,
+      'subtotal': 72,
+      'deliveryFee': 10,
+      'totalAmount': 82,
+      'currency': 'GHS',
+
+      'pickup': {
+        'addressLine': 'East Legon American House, Accra',
+        'latitude': 5.6416,
+        'longitude': -0.1478,
+        'contactName': 'Bernice Aidoo',
+        'contactPhone': '+233240000006',
+        'pickupDate': '2026-04-23',
+        'pickupTimeSlot': '2:00 PM - 3:00 PM',
+        'pickupNotes': '',
+      },
+
+      'dropoff': {
+        'addressLine': 'East Legon American House, Accra',
+        'latitude': 5.6416,
+        'longitude': -0.1478,
+        'contactName': 'Bernice Aidoo',
+        'contactPhone': '+233240000006',
+        'dropoffNotes': '',
+      },
+
+      'laundrySnapshot': {
+        'name': 'E-Laundry & General Cleaning Services',
+        'phoneNumber': '+233241995917',
+        'photoUrl': '',
+        'addressLine': 'East Legon American, Accra, Ghana',
+      },
+
+      'customerSnapshot': {
+        'name': 'Bernice Aidoo',
+        'phoneNumber': '+233240000006',
+        'photoUrl': '',
+      },
+
+      'pickupRiderSnapshot': null,
+      'deliveryRiderSnapshot': null,
+
+      'status': 'laundry_rejected',
+      'paymentStatus': 'unpaid',
+
+      'timeline': {
+        'requestedAt': now,
+        'laundryAcceptedAt': null,
+        'pickupRiderAssignedAt': null,
+        'pickupStartedAt': null,
+        'pickedUpAt': null,
+        'arrivedAtLaundryAt': null,
+        'processingStartedAt': null,
+        'readyForDropoffAt': null,
+        'deliveryRiderAssignedAt': null,
+        'deliveryStartedAt': null,
+        'deliveredAt': null,
+        'cancelledAt': null,
+      },
+
+      'cancellation': {
+        'cancelledBy': 'laundry',
+        'reason': 'Laundry currently unavailable.',
+      },
+
+      'notes': {
+        'customer': '',
+        'laundry': 'Store closed for maintenance.',
+        'pickupRider': '',
+        'deliveryRider': '',
+      },
+    },
+  ];
+
+  for (final booking in bookings) {
+    final docRef = firestore
+        .collection('bookings')
+        .doc(booking['id'] as String);
+
+    batch.set(docRef, {
+      ...booking,
+      'createdAt': now,
+      'updatedAt': now,
+    }, SetOptions(merge: true));
+  }
+
+  await batch.commit();
 }
