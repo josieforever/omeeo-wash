@@ -1,9 +1,10 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lottie/lottie.dart' hide Marker;
+import 'active_laundry_order_stage.dart';
+import 'closest_laundries_screen.dart';
 
 class FindingLaundryScreen extends StatefulWidget {
   final String bookingId;
@@ -29,6 +30,25 @@ class FindingLaundryScreen extends StatefulWidget {
 
 class _FindingLaundryScreenState extends State<FindingLaundryScreen>
     with TickerProviderStateMixin {
+  static const List<String> _findingStatuses = [
+    'pending',
+    'awaiting_laundry_assignment',
+    'offered_to_laundry',
+    'awaiting_laundry_acceptance',
+  ];
+
+  static const List<String> _activeStatuses = [
+    'looking_for_pickup_rider',
+    'pickup_rider_assigned',
+    'pickup_started',
+    'arrived_at_pickup',
+    'arrived_at_laundry',
+    'processing',
+    'ready_for_dropoff',
+    'delivery_in_progress',
+    'completed',
+  ];
+
   GoogleMapController? _mapController;
 
   late final AnimationController _pulseController;
@@ -43,8 +63,8 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
   bool _showingDetails = false;
   bool _isCancelling = false;
 
-  /// Keep this false until a laundry actually accepts.
   bool _hasLaundryAccepted = false;
+  bool _hasNavigatedToActiveOrder = false;
 
   Map<String, dynamic>? _bookingData;
   String? _bookingStatus;
@@ -76,10 +96,11 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
   }
 
   void _startFindingTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
 
-      if (_hasLaundryAccepted || _bookingStatus == 'cancelled') {
+      if (_hasMovedIntoActiveFlow || _bookingStatus == 'cancelled') {
         timer.cancel();
         return;
       }
@@ -90,35 +111,62 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
     });
   }
 
+  bool get _isStillFindingLaundry {
+    final status = _bookingStatus;
+    return status == null || status.isEmpty || _isFindingFlowStatus(status);
+  }
+
+  bool get _hasMovedIntoActiveFlow => _isActiveFlowStatus(_bookingStatus);
+
+  Future<void> _tryAgain() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _secondsElapsed = 0;
+        _hasLaundryAccepted = false;
+        _hasNavigatedToActiveOrder = false;
+      });
+
+      _startFindingTimer();
+
+      await _repo.updateBookingStatus(
+        bookingId: widget.bookingId,
+        status: 'awaiting_laundry_assignment',
+        title: 'Retrying Search',
+        description: 'Trying again to find a suitable laundry.',
+      );
+    } catch (e, st) {
+      debugPrint('Retry search error: $e');
+      debugPrintStack(stackTrace: st);
+      _showSnackBar('Failed to retry search. Please try again.');
+    }
+  }
+
+  void _selectLaundryManually() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClosestLaundriesScreen(
+          bookingId: widget.bookingId,
+          pickupTitle: widget.pickupTitle,
+          pickupLatitude: widget.latitude,
+          pickupLongitude: widget.longitude,
+          selectedServiceType: widget.serviceType,
+          selectedAddOns: widget.selectedAddOns,
+        ),
+      ),
+    );
+  }
+
   Future<void> _setFindingStatusIfNeeded() async {
     try {
       final booking = await _repo.getBooking(widget.bookingId);
       final data = booking.data();
 
-      if (data == null) {
-        return;
-      }
+      if (data == null) return;
 
-      final status = _readString(data['status']);
+      final currentStatus = _readString(data['status']);
 
-      const terminalStatuses = {
-        'cancelled',
-        'accepted',
-        'looking_for_pickup_rider',
-        'pickup_rider_assigned',
-        'rider_arrived_for_pickup',
-        'picked_up',
-        'arrived_at_laundry',
-        'washing',
-        'ready_for_delivery',
-        'looking_for_delivery_rider',
-        'delivery_rider_assigned',
-        'out_for_delivery',
-        'delivered',
-      };
-
-      if (!terminalStatuses.contains(status) &&
-          status != 'awaiting_laundry_assignment') {
+      if (currentStatus.isEmpty || currentStatus == 'pending') {
         await _repo.updateBookingStatus(
           bookingId: widget.bookingId,
           status: 'awaiting_laundry_assignment',
@@ -127,60 +175,61 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
         );
       }
     } catch (e, st) {
-      debugPrint('Failed to set finding status: $e');
+      debugPrint('Failed to initialize laundry finding status: $e');
       debugPrintStack(stackTrace: st);
     }
   }
 
   void _watchBooking() {
-    _bookingSub = _repo
-        .watchBooking(widget.bookingId)
+    _bookingSub?.cancel();
+
+    _bookingSub = FirebaseFirestore.instance
+        .collection('bookings')
+        .doc(widget.bookingId)
+        .snapshots()
         .listen(
           (snapshot) {
-            final data = snapshot.data();
-            if (!mounted) return;
+            if (!snapshot.exists || !mounted) return;
 
-            if (data == null) {
-              setState(() {
-                _bookingData = null;
-                _isLoadingInfo = false;
-                _isLoading = false;
-              });
-              return;
-            }
-
+            final data = snapshot.data() ?? <String, dynamic>{};
             final status = _readString(data['status']);
-            final laundryId = _readString(data['laundryId']);
-            final laundryName = _readString(data['laundryName']);
-            final laundryPhone = _readString(data['laundryPhone']);
-            final laundryPhotoUrl = _readString(data['laundryPhotoUrl']);
-
-            final hasAccepted = _isAcceptedFlowStatus(status);
-
-            if (hasAccepted) {
-              _timer?.cancel();
-            }
+            final laundrySnapshot = _readMap(data['laundrySnapshot']);
 
             setState(() {
               _bookingData = data;
               _bookingStatus = status;
-              _assignedLaundryId = laundryId.isEmpty ? null : laundryId;
-              _assignedLaundryName = laundryName.isEmpty ? null : laundryName;
-              _assignedLaundryPhone = laundryPhone.isEmpty
-                  ? null
-                  : laundryPhone;
-              _assignedLaundryPhotoUrl = laundryPhotoUrl.isEmpty
-                  ? null
-                  : laundryPhotoUrl;
 
-              _hasLaundryAccepted = hasAccepted;
+              _assignedLaundryId = _firstNonEmpty([
+                _readString(laundrySnapshot['id']),
+                _readString(data['laundryId']),
+              ]);
 
-              /// The map pulse stops only when a laundry truly accepts.
-              _isLoading = !_hasLaundryAccepted;
+              _assignedLaundryName = _firstNonEmpty([
+                _readString(laundrySnapshot['name']),
+                _readString(data['laundryName']),
+              ]);
 
-              /// Bottom sheet info should show once we have the booking loaded.
+              _assignedLaundryPhone = _firstNonEmpty([
+                _readString(laundrySnapshot['phoneNumber']),
+                _readString(data['laundryPhoneNumber']),
+                _readString(data['laundryPhone']),
+              ]);
+
+              _assignedLaundryPhotoUrl = _firstNonEmpty([
+                _readString(laundrySnapshot['photoUrl']),
+                _readString(data['laundryPhotoUrl']),
+              ]);
+
+              _isLoading = false;
               _isLoadingInfo = false;
+              _hasLaundryAccepted = _hasMovedIntoActiveFlow;
             });
+
+            if (status == 'cancelled') {
+              _timer?.cancel();
+            }
+
+            _maybeRouteToActiveOrder(status);
           },
           onError: (error, stackTrace) {
             debugPrint('Booking stream error: $error');
@@ -197,29 +246,50 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
         );
   }
 
-  bool _isAcceptedFlowStatus(String? status) {
-    switch (status) {
-      case 'accepted':
-      case 'looking_for_pickup_rider':
-      case 'pickup_rider_assigned':
-      case 'rider_arrived_for_pickup':
-      case 'picked_up':
-      case 'arrived_at_laundry':
-      case 'washing':
-      case 'ready_for_delivery':
-      case 'looking_for_delivery_rider':
-      case 'delivery_rider_assigned':
-      case 'out_for_delivery':
-      case 'delivered':
-        return true;
-      default:
-        return false;
+  void _maybeRouteToActiveOrder(String status) {
+    if (!mounted || _hasNavigatedToActiveOrder) return;
+    if (!_isActiveFlowStatus(status)) return;
+
+    _hasNavigatedToActiveOrder = true;
+    _timer?.cancel();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ActiveLaundryOrderScreen(bookingId: widget.bookingId),
+        ),
+      );
+    });
+  }
+
+  bool _isFindingFlowStatus(String? status) {
+    return _findingStatuses.contains(status);
+  }
+
+  bool _isActiveFlowStatus(String? status) {
+    return _activeStatuses.contains(status);
+  }
+
+  Map<String, dynamic> _readMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
     }
+    return <String, dynamic>{};
   }
 
   String _readString(dynamic value) {
     if (value is String) {
       return value.trim();
+    }
+    return '';
+  }
+
+  String _firstNonEmpty(List<String> values) {
+    for (final value in values) {
+      if (value.trim().isNotEmpty) return value.trim();
     }
     return '';
   }
@@ -303,32 +373,98 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
   }
 
   String get _statusHeadline {
-    if (_bookingStatus == 'cancelled') return 'Request cancelled';
-    if (_hasLaundryAccepted) return 'Laundry accepted';
-    if ((_assignedLaundryId ?? '').isNotEmpty) return 'Laundry found';
-    return 'Finding laundries';
+    switch (_bookingStatus) {
+      case 'cancelled':
+        return 'Request cancelled';
+      case 'no_laundry_found':
+        return 'No laundry found';
+      case 'awaiting_laundry_assignment':
+        return 'Finding laundries';
+      case 'offered_to_laundry':
+        return 'Offer sent to laundry';
+      case 'awaiting_laundry_acceptance':
+        return 'Waiting for acceptance';
+      case 'pending':
+        return 'Pending in new orders';
+      case 'looking_for_pickup_rider':
+        return 'Laundry accepted your request';
+      case 'pickup_rider_assigned':
+        return 'Pickup rider assigned';
+      case 'pickup_started':
+        return 'Pickup started';
+      case 'arrived_at_pickup':
+        return 'Rider arrived at pickup';
+      case 'arrived_at_laundry':
+        return 'Arrived at laundry';
+      case 'processing':
+        return 'Processing';
+      case 'ready_for_dropoff':
+        return 'Ready for dropoff';
+      case 'delivery_in_progress':
+        return 'Delivery in progress';
+      case 'completed':
+        return 'Completed';
+      default:
+        return 'Finding laundries';
+    }
   }
 
   String get _statusSubtitle {
-    if (_bookingStatus == 'cancelled') {
-      return 'This booking was cancelled.';
-    }
+    switch (_bookingStatus) {
+      case 'cancelled':
+        return 'This booking was cancelled.';
 
-    if (_hasLaundryAccepted) {
-      if ((_assignedLaundryName ?? '').isNotEmpty) {
-        return '${_assignedLaundryName!} accepted your request';
-      }
-      return 'A laundry has accepted your request';
-    }
+      case 'no_laundry_found':
+        return 'No suitable laundry was found yet.';
 
-    if ((_assignedLaundryId ?? '').isNotEmpty) {
-      if ((_assignedLaundryName ?? '').isNotEmpty) {
-        return '${_assignedLaundryName!} has been matched';
-      }
-      return 'A nearby laundry has been matched';
-    }
+      case 'awaiting_laundry_assignment':
+        return 'We are checking nearby laundries that match your service.';
 
-    return 'Finding the best laundries nearby';
+      case 'offered_to_laundry':
+        if ((_assignedLaundryName ?? '').isNotEmpty) {
+          return 'Offer has been sent to ${_assignedLaundryName!}.';
+        }
+        return 'Your request has been offered to a laundry.';
+
+      case 'awaiting_laundry_acceptance':
+        if ((_assignedLaundryName ?? '').isNotEmpty) {
+          return 'Waiting for ${_assignedLaundryName!} to accept.';
+        }
+        return 'Waiting for a laundry to accept your request.';
+
+      case 'pending':
+        return 'Your request is still in the new orders queue.';
+
+      case 'looking_for_pickup_rider':
+        return 'A laundry accepted your request. We are now looking for a pickup rider.';
+
+      case 'pickup_rider_assigned':
+        return 'A pickup rider has been assigned.';
+
+      case 'pickup_started':
+        return 'Your clothes are being picked up.';
+
+      case 'arrived_at_pickup':
+        return 'The rider has arrived at the pickup location.';
+
+      case 'arrived_at_laundry':
+        return 'Your clothes arrived at the laundry.';
+
+      case 'processing':
+        return 'Your clothes are being processed.';
+
+      case 'ready_for_dropoff':
+        return 'Your order is ready for delivery.';
+
+      case 'delivery_in_progress':
+        return 'Your order is on the way.';
+
+      case 'completed':
+        return 'Your booking has been completed.';
+
+      default:
+        return 'Finding the best laundries nearby.';
+    }
   }
 
   @override
@@ -402,7 +538,7 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
               child: IgnorePointer(
                 child: Transform.translate(
                   offset: const Offset(0, 0),
-                  child: _isLoading
+                  child: _isStillFindingLaundry
                       ? AnimatedBuilder(
                           animation: _pulseController,
                           builder: (context, child) {
@@ -484,6 +620,10 @@ class _FindingLaundryScreenState extends State<FindingLaundryScreen>
                         onCancelTap: _cancelRequest,
                         onDetailsTap: _showDetails,
                         onCollapseTap: _hideDetails,
+                        isStillFinding: _isStillFindingLaundry,
+                        isNoLaundryFound: _bookingStatus == 'no_laundry_found',
+                        onTryAgainTap: _tryAgain,
+                        onSelectLaundryTap: _selectLaundryManually,
                       ),
               ),
             ),
@@ -533,13 +673,19 @@ class _FindingLaundryRepository {
     final booking = bookingRef(bookingId);
     final batch = _firestore.batch();
 
-    batch.update(booking, {
+    final updateData = <String, dynamic>{
       'status': status,
       'updatedAt': FieldValue.serverTimestamp(),
-      'timeline.cancelledAt': status == 'cancelled'
-          ? FieldValue.serverTimestamp()
-          : null,
-    });
+    };
+
+    if (status == 'cancelled') {
+      updateData['timeline.cancelledAt'] = FieldValue.serverTimestamp();
+      updateData['laundryOffer.offeredLaundryId'] = null;
+      updateData['laundryOffer.offeredAt'] = null;
+      updateData['laundryOffer.offerExpiresAt'] = null;
+    }
+
+    batch.update(booking, updateData);
 
     batch.set(booking.collection('status_history').doc(), {
       'status': status,
@@ -665,6 +811,10 @@ class _LoadedBottomSheet extends StatefulWidget {
   final VoidCallback onCancelTap;
   final VoidCallback onDetailsTap;
   final VoidCallback onCollapseTap;
+  final bool isStillFinding;
+  final bool isNoLaundryFound;
+  final VoidCallback onTryAgainTap;
+  final VoidCallback onSelectLaundryTap;
 
   const _LoadedBottomSheet({
     super.key,
@@ -682,6 +832,10 @@ class _LoadedBottomSheet extends StatefulWidget {
     required this.onCancelTap,
     required this.onDetailsTap,
     required this.onCollapseTap,
+    required this.isStillFinding,
+    required this.isNoLaundryFound,
+    required this.onTryAgainTap,
+    required this.onSelectLaundryTap,
   });
 
   @override
@@ -769,7 +923,7 @@ class _LoadedBottomSheetState extends State<_LoadedBottomSheet>
                 const SizedBox(height: 14),
                 _FindingStatusCard(
                   timerText: widget.timerText,
-                  isStillFinding: !widget.hasLaundryAccepted,
+                  isStillFinding: widget.isStillFinding,
                   headline: widget.statusHeadline,
                   subtitle: widget.statusSubtitle,
                 ),
@@ -830,7 +984,7 @@ class _LoadedBottomSheetState extends State<_LoadedBottomSheet>
                                   _DetailTile(
                                     title: 'Matched laundry',
                                     subtitle: widget.assignedLaundryName!,
-                                    icon: Icons.storefront_outlined,
+                                    icon: Icons.store,
                                   ),
                                   const SizedBox(height: 12),
                                 ],
@@ -869,8 +1023,29 @@ class _LoadedBottomSheetState extends State<_LoadedBottomSheet>
                       ? const SizedBox.shrink(
                           key: ValueKey('no_button_when_expanded'),
                         )
+                      : widget.isNoLaundryFound
+                      ? Row(
+                          key: const ValueKey('no_laundry_found_actions'),
+                          children: [
+                            Expanded(
+                              child: _ActionButton(
+                                icon: Icons.refresh_rounded,
+                                label: 'Try again',
+                                onTap: widget.onTryAgainTap,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _ActionButton(
+                                icon: Icons.store,
+                                label: 'Select manually',
+                                onTap: widget.onSelectLaundryTap,
+                              ),
+                            ),
+                          ],
+                        )
                       : Row(
-                          key: const ValueKey('two_buttons_row'),
+                          key: const ValueKey('default_actions'),
                           children: [
                             Expanded(
                               child: _ActionButton(

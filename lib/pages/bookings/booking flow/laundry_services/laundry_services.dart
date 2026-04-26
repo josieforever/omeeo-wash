@@ -1,16 +1,27 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart'
-    show FirebaseFirestore, FieldValue, SetOptions;
+    show
+        FirebaseFirestore,
+        FieldValue,
+        SetOptions,
+        QuerySnapshot,
+        Timestamp,
+        GeoPoint,
+        DocumentSnapshot;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:lottie/lottie.dart';
-import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services_date_time.dart'
-    show LaundryServicestDateScreen;
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/location_picker.dart';
 import 'package:omeeowash/pages/profile/profile_screen.dart';
-import 'service_review.dart' show PickedLocationResult;
+import 'active_booking_screen.dart';
+import 'active_laundry_order_stage.dart';
+import 'closest_laundries_screen.dart';
+import 'laundry_services_date_time.dart';
+import 'package:geolocator/geolocator.dart';
+import 'service_review.dart' show PickedLocationResult, PickupPreviewScreen;
 
 class LaundryServicesScreen extends StatefulWidget {
   final String? serviceType;
@@ -32,7 +43,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
   static const String washFold = ' Wash & Fold  ';
   static const String ironingPressing = ' Wash & Iron  ';
 
-  static const String _googleApiKey = 'YOUR_GOOGLE_API_KEY_HERE';
+  static const String _googleApiKey = 'AIzaSyABK1eJNZmo0VNvGabx4JZDTQvPppSpnA0';
 
   final TextEditingController _locationController = TextEditingController();
   final FocusNode _locationFocusNode = FocusNode();
@@ -110,6 +121,78 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
     );
   }
 
+  Future<void> _openClosestLaundriesScreen() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please sign in first.')));
+      return;
+    }
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final userData = userDoc.data() ?? <String, dynamic>{};
+    final lastLocation = userData['lastCurrentLocation'];
+
+    double? latitude;
+    double? longitude;
+
+    if (lastLocation is Map) {
+      final map = Map<String, dynamic>.from(lastLocation);
+
+      final lat = map['latitude'];
+      final lng = map['longitude'];
+
+      if (lat is num && lng is num) {
+        latitude = lat.toDouble();
+        longitude = lng.toDouble();
+      } else {
+        final geopoint = map['geopoint'];
+        if (geopoint is GeoPoint) {
+          latitude = geopoint.latitude;
+          longitude = geopoint.longitude;
+        }
+      }
+    }
+
+    if (latitude == null || longitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get your current location.')),
+      );
+      return;
+    }
+
+    final selectedServiceType = _normalizeServiceType(serviceType);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClosestLaundriesScreen(
+          bookingId: '',
+          pickupTitle: _selectedPickupAddress ?? 'Current location',
+          pickupLatitude: latitude!,
+          pickupLongitude: longitude!,
+          selectedServiceType: selectedServiceType,
+          selectedAddOns: selectedAddOns.toList(),
+        ),
+      ),
+    );
+  }
+
+  String _normalizeServiceType(String value) {
+    final normalized = value.trim().toLowerCase();
+
+    if (normalized.contains('iron')) return 'wash_iron';
+    if (normalized.contains('fold')) return 'wash_fold';
+
+    return 'wash_fold';
+  }
+
   Future<void> _showLocationSheet() async {
     if (!mounted) return;
 
@@ -119,70 +202,156 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withOpacity(0.18),
       builder: (sheetContext) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _locationFocusNode.requestFocus();
-          }
-        });
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> searchPlacesInSheet(String input) async {
+              final query = input.trim();
 
-        return SafeArea(
-          top: false,
-          child: DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.91,
-            minChildSize: 0.91,
-            maxChildSize: 0.91,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x22000000),
-                      blurRadius: 24,
-                      offset: Offset(0, -6),
-                    ),
-                  ],
-                ),
-                child: CustomScrollView(
-                  controller: scrollController,
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 10),
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => Navigator.of(sheetContext).pop(),
-                            child: Lottie.asset(
-                              'assets/animations/breathing_pill.json',
-                              width: 50,
-                              height: 30,
-                              fit: BoxFit.contain,
-                            ),
+              if (query.isEmpty) {
+                setModalState(() {
+                  _predictions = [];
+                  _isSearchingLocations = false;
+                });
+                return;
+              }
+
+              setModalState(() {
+                _isSearchingLocations = true;
+              });
+
+              try {
+                final uri = Uri.parse(
+                  'https://maps.googleapis.com/maps/api/place/autocomplete/json'
+                  '?input=${Uri.encodeQueryComponent(query)}'
+                  '&key=$_googleApiKey'
+                  '&components=country:gh',
+                );
+
+                final response = await http.get(uri);
+                final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+                debugPrint('Places response: $data');
+
+                final status = (data['status'] ?? '').toString();
+                final errorMessage = (data['error_message'] ?? '').toString();
+
+                if (response.statusCode != 200) {
+                  throw Exception('HTTP ${response.statusCode}');
+                }
+
+                if (status != 'OK' && status != 'ZERO_RESULTS') {
+                  throw Exception(
+                    errorMessage.isNotEmpty ? '$status: $errorMessage' : status,
+                  );
+                }
+
+                final predictions =
+                    (data['predictions'] as List<dynamic>? ?? [])
+                        .map(
+                          (e) => PlaceSuggestion.fromJson(
+                            e as Map<String, dynamic>,
                           ),
-                        ],
+                        )
+                        .toList();
+
+                if (!mounted) return;
+
+                setModalState(() {
+                  _predictions = predictions;
+                  _isSearchingLocations = false;
+                });
+              } catch (e) {
+                debugPrint('Places autocomplete failed: $e');
+
+                if (!mounted) return;
+
+                setModalState(() {
+                  _predictions = [];
+                  _isSearchingLocations = false;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Could not fetch locations: $e')),
+                );
+              }
+            }
+
+            void clearSearchInSheet() {
+              _locationController.clear();
+              setModalState(() {
+                _selectedPickupAddress = null;
+                _predictions = [];
+                _isSearchingLocations = false;
+              });
+            }
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _locationFocusNode.requestFocus();
+              }
+            });
+
+            return SafeArea(
+              top: false,
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.91,
+                minChildSize: 0.91,
+                maxChildSize: 0.91,
+                builder: (context, scrollController) {
+                  return Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(30),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x22000000),
+                          blurRadius: 24,
+                          offset: Offset(0, -6),
+                        ),
+                      ],
                     ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(12, 50, 12, 24),
-                      sliver: SliverToBoxAdapter(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: Container(
-                            key: const ValueKey('searchOnly'),
-                            child: _buildSearchSection(sheetContext),
+                    child: CustomScrollView(
+                      controller: scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 10),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => Navigator.of(sheetContext).pop(),
+                                child: Lottie.asset(
+                                  'assets/animations/breathing_pill.json',
+                                  width: 50,
+                                  height: 30,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(12, 50, 12, 24),
+                          sliver: SliverToBoxAdapter(
+                            child: _buildSearchSection(
+                              sheetContext,
+                              onSearchChanged: searchPlacesInSheet,
+                              onClearSearch: clearSearchInSheet,
+                              rebuildSheet: setModalState,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -213,11 +382,22 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
 
       final response = await http.get(uri);
 
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      debugPrint('Places response: $data');
+
+      final status = (data['status'] ?? '').toString();
+      final errorMessage = (data['error_message'] ?? '').toString();
+
       if (response.statusCode != 200) {
-        throw Exception('Places request failed');
+        throw Exception('HTTP ${response.statusCode}');
       }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (status != 'OK' && status != 'ZERO_RESULTS') {
+        throw Exception(
+          errorMessage.isNotEmpty ? '$status: $errorMessage' : status,
+        );
+      }
+
       final predictions = (data['predictions'] as List<dynamic>? ?? [])
           .map((e) => PlaceSuggestion.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -228,7 +408,9 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
         _predictions = predictions;
         _isSearchingLocations = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Places autocomplete failed: $e');
+
       if (!mounted) return;
 
       setState(() {
@@ -236,11 +418,9 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
         _isSearchingLocations = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not fetch locations. Check your API key.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not fetch locations: $e')));
     }
   }
 
@@ -255,6 +435,90 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
 
     if (modalContext != null && Navigator.of(modalContext).canPop()) {
       Navigator.of(modalContext).pop();
+    }
+  }
+
+  Future<void> _openPickupPreviewFromSuggestion(
+    PlaceSuggestion place, {
+    BuildContext? modalContext,
+  }) async {
+    try {
+      final detailsUri = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/details/json'
+        '?place_id=${Uri.encodeQueryComponent(place.placeId)}'
+        '&fields=formatted_address,geometry,name'
+        '&key=$_googleApiKey',
+      );
+
+      final response = await http.get(detailsUri);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      debugPrint('Place details response: $data');
+
+      final status = (data['status'] ?? '').toString();
+      final errorMessage = (data['error_message'] ?? '').toString();
+
+      if (response.statusCode != 200) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+
+      if (status != 'OK') {
+        throw Exception(
+          errorMessage.isNotEmpty ? '$status: $errorMessage' : status,
+        );
+      }
+
+      final result = data['result'] as Map<String, dynamic>? ?? {};
+      final geometry = result['geometry'] as Map<String, dynamic>? ?? {};
+      final location = geometry['location'] as Map<String, dynamic>? ?? {};
+
+      final double latitude = (location['lat'] as num?)?.toDouble() ?? 0.0;
+      final double longitude = (location['lng'] as num?)?.toDouble() ?? 0.0;
+      final String addressLine =
+          (result['formatted_address'] ?? place.description).toString();
+
+      if (latitude == 0.0 && longitude == 0.0) {
+        throw Exception('Could not resolve coordinates for this location.');
+      }
+
+      setState(() {
+        _selectedPickupAddress = addressLine;
+        _locationController.clear();
+        _predictions = [];
+      });
+
+      _locationFocusNode.unfocus();
+
+      if (modalContext != null && Navigator.of(modalContext).canPop()) {
+        Navigator.of(modalContext).pop();
+      }
+
+      if (!mounted) return;
+
+      final pickedLocation = PickedLocationResult(
+        addressLine: addressLine,
+        latitude: latitude,
+        longitude: longitude,
+        subtitle: place.secondaryText,
+        serviceType: '',
+      );
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PickupPreviewScreen(
+            pickupLocation: pickedLocation,
+            selectedService: serviceType,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to open pickup preview from suggestion: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open selected location: $e')),
+      );
     }
   }
 
@@ -280,12 +544,17 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
     }
   }
 
-  Widget _buildSearchSection(BuildContext modalContext) {
+  Widget _buildSearchSection(
+    BuildContext modalContext, {
+    required ValueChanged<String> onSearchChanged,
+    required VoidCallback onClearSearch,
+    required void Function(VoidCallback fn) rebuildSheet,
+  }) {
     return Stack(
       children: [
         Align(
           alignment: Alignment.center,
-          child: Container(
+          child: SizedBox(
             child: Lottie.asset(
               'assets/animations/washing_machine_icon.json',
               width: 400,
@@ -319,7 +588,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                       child: TextField(
                         controller: _locationController,
                         focusNode: _locationFocusNode,
-                        onChanged: _searchPlaces,
+                        onChanged: onSearchChanged,
                         decoration: InputDecoration(
                           hintText: 'Pickup location',
                           hintStyle: const TextStyle(fontSize: 12),
@@ -351,13 +620,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                                 )
                               : (_locationController.text.isNotEmpty
                                     ? IconButton(
-                                        onPressed: () {
-                                          _locationController.clear();
-                                          setState(() {
-                                            _selectedPickupAddress = null;
-                                            _predictions = [];
-                                          });
-                                        },
+                                        onPressed: onClearSearch,
                                         icon: const Icon(Icons.close_rounded),
                                       )
                                     : null),
@@ -413,26 +676,28 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                   ),
                 ],
               ),
-
               if (_predictions.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.94),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF1C9D8)),
                   ),
                   child: ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _predictions.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, __) => const Divider(
+                      height: 0.5,
+                      endIndent: 20,
+                      indent: 20,
+                      color: Color.fromARGB(255, 211, 211, 211),
+                    ),
                     itemBuilder: (context, index) {
                       final place = _predictions[index];
                       return ListTile(
                         leading: const Icon(
                           Icons.location_on_outlined,
-                          color: Color(0xFFE36C9A),
+                          color: Color(0xFFE67E22),
                         ),
                         title: Text(
                           place.mainText,
@@ -444,7 +709,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        onTap: () => _selectPrediction(
+                        onTap: () => _openPickupPreviewFromSuggestion(
                           place,
                           modalContext: modalContext,
                         ),
@@ -561,23 +826,30 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Hello, ',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        Row(
+                          children: const [
+                            Text(
+                              'Hello, ',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Chris',
+                              style: TextStyle(
+                                fontSize: 23,
+                                fontWeight: FontWeight.w700,
+                                color: Color.fromARGB(255, 188, 113, 0),
+                              ),
+                            ),
+                          ],
                         ),
-                        const Text(
-                          'Chris',
-                          style: TextStyle(
-                            fontSize: 23,
-                            fontWeight: FontWeight.w700,
-                            color: Color.fromARGB(255, 188, 113, 0),
-                          ),
-                        ),
+                        const SizedBox(height: 4),
+                        const CurrentUserLocationText(),
                       ],
                     ),
                     GestureDetector(
@@ -607,8 +879,7 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                   onTap: _showLocationSheet,
                 ),
 
-                const SizedBox(height: 25),
-
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -624,8 +895,10 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                const CustomerActiveBookingsPreview(),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
                 PromoImageCarousel(
                   imagePaths: const [
@@ -637,44 +910,27 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
                     debugPrint('Tapped banner $index');
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const Text(
-                      'See all',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    GestureDetector(
+                      onTap: _openClosestLaundriesScreen,
+                      child: const Text(
+                        'See all',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 20),
                   ],
                 ),
 
-                const SizedBox(height: 10),
-
-                LaundryCard(
-                  name: 'Sparkle Wash',
-                  imageUrl: 'https://example.com/laundry.jpg',
-                  distanceKm: 2.4,
-                  rating: 4.7,
-                  availabilityStatus: 'available',
-                  isOpenNow: true,
-                  supportedServices: const ['wash_fold', 'wash_iron'],
-                  basePricePerKg: 18,
-                  washIronExtraPerKg: 2,
-                  turnaroundText: 'Same day',
-                  onTap: () {},
-                ),
-
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () async {
-                    await seedBookingsDummy();
-                  },
-                  child: const Text('press me'),
-                ),
+
+                ClosestLaundrySinglePreview(),
                 const SizedBox(height: 20),
               ],
             ),
@@ -685,15 +941,77 @@ class _LaundryServicesScreenState extends State<LaundryServicesScreen> {
   }
 }
 
+class CurrentUserLocationText extends StatelessWidget {
+  const CurrentUserLocationText({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() ?? {};
+        final lastLocation = data['lastCurrentLocation'];
+
+        String locationText = 'Getting your location...';
+
+        if (lastLocation is Map) {
+          final map = Map<String, dynamic>.from(lastLocation);
+          final addressLine = map['addressLine']?.toString().trim();
+
+          if (addressLine != null && addressLine.isNotEmpty) {
+            locationText = addressLine;
+          } else {
+            locationText = 'Location unavailable';
+          }
+        }
+
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.location_on_rounded,
+              size: 15,
+              color: Color(0xFFE67E22),
+            ),
+            const SizedBox(width: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 230),
+              child: Text(
+                locationText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class PlaceSuggestion {
   final String description;
   final String mainText;
   final String secondaryText;
+  final String placeId;
 
   const PlaceSuggestion({
     required this.description,
     required this.mainText,
     required this.secondaryText,
+    required this.placeId,
   });
 
   factory PlaceSuggestion.fromJson(Map<String, dynamic> json) {
@@ -704,6 +1022,7 @@ class PlaceSuggestion {
       description: (json['description'] ?? '') as String,
       mainText: (formatting['main_text'] ?? '') as String,
       secondaryText: (formatting['secondary_text'] ?? '') as String,
+      placeId: (json['place_id'] ?? '') as String,
     );
   }
 }
@@ -1432,823 +1751,1388 @@ class _MetaItem extends StatelessWidget {
   }
 }
 
-Future<void> seedNearbyLaundriesDummy() async {
-  final firestore = FirebaseFirestore.instance;
-  final batch = firestore.batch();
-  final now = FieldValue.serverTimestamp();
+class ActiveLaundryOrderCard extends StatelessWidget {
+  final String laundryName;
+  final String dateText;
+  final String currentStage;
+  final String nextStage;
+  final String currentTimeText;
+  final String nextTimeText;
+  final String durationText;
+  final double progress;
+  final VoidCallback? onTap;
 
-  final laundries = <Map<String, dynamic>>[
-    {
-      'id': 'quick_wash_east_legon',
-      'ownerUid': '',
-      'name': 'Quick Wash Laundry East Legon',
-      'description': 'Laundry and dry cleaning service in East Legon.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '+233502774789',
-      'email': '',
-      'addressLine':
-          'Nii Osae Ntiful Avenue, Otinshie, East Legon, Accra, Ghana',
-      'latitude': 5.6408,
-      'longitude': -0.1492,
-      'serviceRadiusKm': 8,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'rating': 4.6,
-      'totalReviews': 32,
-      'estimatedTurnaroundText': 'Same day',
-      'availabilityStatus': 'available',
-      'isOpenNow': true,
-      'acceptingOrders': true,
-      'isApproved': true,
-      'isFeatured': false,
-      'currentOrderCount': 2,
-      'maxConcurrentOrders': 10,
-      'openingHours': {
-        'monday': {'open': '08:00', 'close': '20:00'},
-        'tuesday': {'open': '08:00', 'close': '20:00'},
-        'wednesday': {'open': '08:00', 'close': '20:00'},
-        'thursday': {'open': '08:00', 'close': '20:00'},
-        'friday': {'open': '08:00', 'close': '20:00'},
-        'saturday': {'open': '09:00', 'close': '18:00'},
-        'sunday': {'open': '09:00', 'close': '16:00'},
-      },
-      'stats': {
-        'totalOrders': 140,
-        'completedOrders': 132,
-        'cancelledOrders': 8,
-      },
-    },
-    {
-      'id': 'laundry_chief_east_legon_shop',
-      'ownerUid': '',
-      'name': 'Laundry Chief - East Legon Shop',
-      'description': 'Pickup and delivery laundry and dry cleaning.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '',
-      'email': '',
-      'addressLine': '19 Boundary Road, East Legon, Accra, Ghana',
-      'latitude': 5.6396,
-      'longitude': -0.1468,
-      'serviceRadiusKm': 8,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'rating': 4.4,
-      'totalReviews': 21,
-      'estimatedTurnaroundText': 'Same day',
-      'availabilityStatus': 'available',
-      'isOpenNow': true,
-      'acceptingOrders': true,
-      'isApproved': true,
-      'isFeatured': true,
-      'currentOrderCount': 3,
-      'maxConcurrentOrders': 12,
-      'openingHours': {
-        'monday': {'open': '09:00', 'close': '20:00'},
-        'tuesday': {'open': '09:00', 'close': '20:00'},
-        'wednesday': {'open': '09:00', 'close': '20:00'},
-        'thursday': {'open': '09:00', 'close': '20:00'},
-        'friday': {'open': '09:00', 'close': '20:00'},
-        'saturday': {'open': '09:00', 'close': '20:00'},
-        'sunday': {'open': '12:00', 'close': '18:30'},
-      },
-      'stats': {
-        'totalOrders': 116,
-        'completedOrders': 111,
-        'cancelledOrders': 5,
-      },
-    },
-    {
-      'id': 'smile_laundry_east_legon',
-      'ownerUid': '',
-      'name': 'Smile Laundry East Legon',
-      'description': 'Specialist laundry and dry cleaning with pickup.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '+233208232788',
-      'email': '',
-      'addressLine': 'East Legon, Accra, Ghana',
-      'latitude': 5.6421,
-      'longitude': -0.1510,
-      'serviceRadiusKm': 8,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 17,
-      'washIronExtraPerKg': 2,
-      'rating': 4.2,
-      'totalReviews': 14,
-      'estimatedTurnaroundText': '3–5 hrs',
-      'availabilityStatus': 'busy',
-      'isOpenNow': true,
-      'acceptingOrders': true,
-      'isApproved': true,
-      'isFeatured': false,
-      'currentOrderCount': 7,
-      'maxConcurrentOrders': 10,
-      'openingHours': {
-        'monday': {'open': '08:00', 'close': '18:00'},
-        'tuesday': {'open': '08:00', 'close': '18:00'},
-        'wednesday': {'open': '08:00', 'close': '18:00'},
-        'thursday': {'open': '08:00', 'close': '18:00'},
-        'friday': {'open': '08:00', 'close': '18:00'},
-        'saturday': {'open': '09:00', 'close': '17:00'},
-        'sunday': {'open': 'closed', 'close': 'closed'},
-      },
-      'stats': {'totalOrders': 74, 'completedOrders': 69, 'cancelledOrders': 5},
-    },
-    {
-      'id': 'kabell_east_legon',
-      'ownerUid': '',
-      'name': 'Ka-Bell Laundry & Dry Cleaning',
-      'description': 'Laundry and dry cleaning with pickup and delivery.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '+233501394548',
-      'email': '',
-      'addressLine':
-          'East Legon-American House, Agbogba Junction, Shia-shi, Agbogba, Accra, Ghana',
-      'latitude': 5.6440,
-      'longitude': -0.1449,
-      'serviceRadiusKm': 9,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 20,
-      'washIronExtraPerKg': 3,
-      'rating': 4.5,
-      'totalReviews': 27,
-      'estimatedTurnaroundText': 'Next day',
-      'availabilityStatus': 'available',
-      'isOpenNow': true,
-      'acceptingOrders': true,
-      'isApproved': true,
-      'isFeatured': false,
-      'currentOrderCount': 4,
-      'maxConcurrentOrders': 10,
-      'openingHours': {
-        'monday': {'open': '07:00', 'close': '19:30'},
-        'tuesday': {'open': '07:00', 'close': '19:30'},
-        'wednesday': {'open': '07:00', 'close': '19:30'},
-        'thursday': {'open': '07:00', 'close': '19:30'},
-        'friday': {'open': '07:00', 'close': '19:30'},
-        'saturday': {'open': '07:00', 'close': '18:30'},
-        'sunday': {'open': 'closed', 'close': 'closed'},
-      },
-      'stats': {
-        'totalOrders': 102,
-        'completedOrders': 97,
-        'cancelledOrders': 5,
-      },
-    },
-    {
-      'id': 'dirttobright_east_legon',
-      'ownerUid': '',
-      'name': 'DirtToBright East Legon',
-      'description': 'Laundry and dry cleaning branch in East Legon.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '+233559324211',
-      'email': 'info@dirttobright.com',
-      'addressLine': 'Nii Sai Rd, East Legon, Accra, Ghana',
-      'latitude': 5.6387,
-      'longitude': -0.1523,
-      'serviceRadiusKm': 8,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'rating': 4.8,
-      'totalReviews': 41,
-      'estimatedTurnaroundText': 'Same day',
-      'availabilityStatus': 'available',
-      'isOpenNow': true,
-      'acceptingOrders': true,
-      'isApproved': true,
-      'isFeatured': true,
-      'currentOrderCount': 1,
-      'maxConcurrentOrders': 12,
-      'openingHours': {
-        'monday': {'open': '08:00', 'close': '18:00'},
-        'tuesday': {'open': '08:00', 'close': '18:00'},
-        'wednesday': {'open': '08:00', 'close': '18:00'},
-        'thursday': {'open': '08:00', 'close': '18:00'},
-        'friday': {'open': '08:00', 'close': '18:00'},
-        'saturday': {'open': '08:00', 'close': '18:00'},
-        'sunday': {'open': 'closed', 'close': 'closed'},
-      },
-      'stats': {
-        'totalOrders': 160,
-        'completedOrders': 153,
-        'cancelledOrders': 7,
-      },
-    },
-    {
-      'id': 'e_laundry_east_legon',
-      'ownerUid': '',
-      'name': 'E-Laundry & General Cleaning Services',
-      'description': 'Laundry and general cleaning service in East Legon.',
-      'photoUrl': '',
-      'logoUrl': '',
-      'phoneNumber': '+233241995917',
-      'email': '',
-      'addressLine': 'East Legon American, Accra, Ghana',
-      'latitude': 5.6415,
-      'longitude': -0.1477,
-      'serviceRadiusKm': 8,
-      'supportedServices': ['wash_fold', 'wash_iron'],
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'rating': 4.1,
-      'totalReviews': 11,
-      'estimatedTurnaroundText': 'Same day',
-      'availabilityStatus': 'offline',
-      'isOpenNow': false,
-      'acceptingOrders': false,
-      'isApproved': true,
-      'isFeatured': false,
-      'currentOrderCount': 0,
-      'maxConcurrentOrders': 10,
-      'openingHours': {
-        'monday': {'open': '08:00', 'close': '18:00'},
-        'tuesday': {'open': '08:00', 'close': '18:00'},
-        'wednesday': {'open': '08:00', 'close': '18:00'},
-        'thursday': {'open': '08:00', 'close': '18:00'},
-        'friday': {'open': '08:00', 'close': '18:00'},
-        'saturday': {'open': '09:00', 'close': '16:00'},
-        'sunday': {'open': 'closed', 'close': 'closed'},
-      },
-      'stats': {'totalOrders': 58, 'completedOrders': 54, 'cancelledOrders': 4},
-    },
-  ];
+  const ActiveLaundryOrderCard({
+    super.key,
+    required this.laundryName,
+    required this.dateText,
+    required this.currentStage,
+    required this.nextStage,
+    required this.currentTimeText,
+    required this.nextTimeText,
+    required this.durationText,
+    required this.progress,
+    this.onTap,
+  });
 
-  for (final laundry in laundries) {
-    final docRef = firestore
-        .collection('laundries')
-        .doc(laundry['id'] as String);
-    batch.set(docRef, {
-      ...laundry,
-      'createdAt': now,
-      'updatedAt': now,
-    }, SetOptions(merge: true));
+  @override
+  Widget build(BuildContext context) {
+    final safeProgress = progress.clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.fromARGB(255, 255, 248, 240),
+              Color.fromARGB(255, 255, 222, 195),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE67E22).withOpacity(0.12),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TopRow(dateText: dateText),
+            const SizedBox(height: 10),
+            Text(
+              laundryName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 25,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1F1F1F),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF2E7),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: const Color(0xFFE67E22).withOpacity(0.18),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      _StageText(
+                        title: currentStage,
+                        time: currentTimeText,
+                        alignRight: false,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Column(
+                            children: [
+                              Text(
+                                durationText,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF7A4A24),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _ProgressLine(progress: safeProgress),
+                            ],
+                          ),
+                        ),
+                      ),
+                      _StageText(
+                        title: nextStage,
+                        time: nextTimeText,
+                        alignRight: true,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  await batch.commit();
 }
 
-Future<void> seedBookingsDummy() async {
-  final firestore = FirebaseFirestore.instance;
-  final batch = firestore.batch();
-  final now = FieldValue.serverTimestamp();
-
-  final bookings = <Map<String, dynamic>>[
-    {
-      'id': 'booking_001',
-      'customerId': 'user_001',
-      'laundryId': 'quick_wash_east_legon',
-      'pickupRiderId': 'rider_001',
-      'deliveryRiderId': null,
-
-      'serviceType': 'wash_fold',
-      'supportedAddOns': ['express_delivery', 'scent_booster'],
-
-      'weightRange': '3-5kg',
-      'estimatedWeightKg': 4,
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'addOnTotal': 6,
-      'subtotal': 78,
-      'deliveryFee': 10,
-      'totalAmount': 88,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'East Legon, Accra',
-        'latitude': 5.6402,
-        'longitude': -0.1480,
-        'contactName': 'Josiah Commey',
-        'contactPhone': '+233240000001',
-        'pickupDate': '2026-04-20',
-        'pickupTimeSlot': '10:00 AM - 11:00 AM',
-        'pickupNotes': 'Call when you arrive.',
-      },
-
-      'dropoff': {
-        'addressLine': 'East Legon, Accra',
-        'latitude': 5.6402,
-        'longitude': -0.1480,
-        'contactName': 'Josiah Commey',
-        'contactPhone': '+233240000001',
-        'dropoffNotes': '',
-      },
-
-      'laundrySnapshot': {
-        'name': 'Quick Wash Laundry East Legon',
-        'phoneNumber': '+233502774789',
-        'photoUrl': '',
-        'addressLine':
-            'Nii Osae Ntiful Avenue, Otinshie, East Legon, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Josiah Commey',
-        'phoneNumber': '+233240000001',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': {
-        'name': 'Kwame Mensah',
-        'phoneNumber': '+233240000101',
-        'photoUrl': '',
-        'vehicleType': 'motorbike',
-        'plateNumber': 'GR-1234-24',
-      },
-
-      'deliveryRiderSnapshot': null,
-
-      'status': 'pickup_rider_assigned',
-      'paymentStatus': 'unpaid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': null,
-        'pickupRiderAssignedAt': now,
-        'pickupStartedAt': null,
-        'pickedUpAt': null,
-        'arrivedAtLaundryAt': null,
-        'processingStartedAt': null,
-        'readyForDropoffAt': null,
-        'deliveryRiderAssignedAt': null,
-        'deliveryStartedAt': null,
-        'deliveredAt': null,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {'cancelledBy': null, 'reason': null},
-
-      'notes': {
-        'customer': 'Please handle white shirts carefully.',
-        'laundry': '',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-    {
-      'id': 'booking_002',
-      'customerId': 'user_002',
-      'laundryId': 'laundry_chief_east_legon_shop',
-      'pickupRiderId': 'rider_002',
-      'deliveryRiderId': 'rider_003',
-
-      'serviceType': 'wash_iron',
-      'supportedAddOns': ['starch_treatment'],
-
-      'weightRange': '1-3kg',
-      'estimatedWeightKg': 2,
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'addOnTotal': 4,
-      'subtotal': 40,
-      'deliveryFee': 10,
-      'totalAmount': 50,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'Adjiringanor, Accra',
-        'latitude': 5.6418,
-        'longitude': -0.1459,
-        'contactName': 'Ama Boateng',
-        'contactPhone': '+233240000002',
-        'pickupDate': '2026-04-20',
-        'pickupTimeSlot': '1:00 PM - 2:00 PM',
-        'pickupNotes': '',
-      },
-
-      'dropoff': {
-        'addressLine': 'Adjiringanor, Accra',
-        'latitude': 5.6418,
-        'longitude': -0.1459,
-        'contactName': 'Ama Boateng',
-        'contactPhone': '+233240000002',
-        'dropoffNotes': 'Leave at reception if unavailable.',
-      },
-
-      'laundrySnapshot': {
-        'name': 'Laundry Chief - East Legon Shop',
-        'phoneNumber': '',
-        'photoUrl': '',
-        'addressLine': '19 Boundary Road, East Legon, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Ama Boateng',
-        'phoneNumber': '+233240000002',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': {
-        'name': 'Yaw Tetteh',
-        'phoneNumber': '+233240000102',
-        'photoUrl': '',
-        'vehicleType': 'motorbike',
-        'plateNumber': 'GT-2231-24',
-      },
-
-      'deliveryRiderSnapshot': {
-        'name': 'Kojo Asare',
-        'phoneNumber': '+233240000103',
-        'photoUrl': '',
-        'vehicleType': 'motorbike',
-        'plateNumber': 'GX-8831-24',
-      },
-
-      'status': 'processing',
-      'paymentStatus': 'paid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': now,
-        'pickupRiderAssignedAt': now,
-        'pickupStartedAt': now,
-        'pickedUpAt': now,
-        'arrivedAtLaundryAt': now,
-        'processingStartedAt': now,
-        'readyForDropoffAt': null,
-        'deliveryRiderAssignedAt': now,
-        'deliveryStartedAt': null,
-        'deliveredAt': null,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {'cancelledBy': null, 'reason': null},
-
-      'notes': {
-        'customer': '',
-        'laundry': 'Prioritize office wear.',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-    {
-      'id': 'booking_003',
-      'customerId': 'user_003',
-      'laundryId': 'dirttobright_east_legon',
-      'pickupRiderId': 'rider_004',
-      'deliveryRiderId': 'rider_004',
-
-      'serviceType': 'wash_fold',
-      'supportedAddOns': [],
-
-      'weightRange': '5-8kg',
-      'estimatedWeightKg': 6,
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'addOnTotal': 0,
-      'subtotal': 108,
-      'deliveryFee': 12,
-      'totalAmount': 120,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'Shiashie, Accra',
-        'latitude': 5.6389,
-        'longitude': -0.1511,
-        'contactName': 'Nana Adjei',
-        'contactPhone': '+233240000003',
-        'pickupDate': '2026-04-21',
-        'pickupTimeSlot': '9:00 AM - 10:00 AM',
-        'pickupNotes': '',
-      },
-
-      'dropoff': {
-        'addressLine': 'Shiashie, Accra',
-        'latitude': 5.6389,
-        'longitude': -0.1511,
-        'contactName': 'Nana Adjei',
-        'contactPhone': '+233240000003',
-        'dropoffNotes': '',
-      },
-
-      'laundrySnapshot': {
-        'name': 'DirtToBright East Legon',
-        'phoneNumber': '+233559324211',
-        'photoUrl': '',
-        'addressLine': 'Nii Sai Rd, East Legon, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Nana Adjei',
-        'phoneNumber': '+233240000003',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': {
-        'name': 'Eric Osei',
-        'phoneNumber': '+233240000104',
-        'photoUrl': '',
-        'vehicleType': 'motorbike',
-        'plateNumber': 'GW-4401-24',
-      },
-
-      'deliveryRiderSnapshot': {
-        'name': 'Eric Osei',
-        'phoneNumber': '+233240000104',
-        'photoUrl': '',
-        'vehicleType': 'motorbike',
-        'plateNumber': 'GW-4401-24',
-      },
-
-      'status': 'delivered',
-      'paymentStatus': 'paid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': now,
-        'pickupRiderAssignedAt': now,
-        'pickupStartedAt': now,
-        'pickedUpAt': now,
-        'arrivedAtLaundryAt': now,
-        'processingStartedAt': now,
-        'readyForDropoffAt': now,
-        'deliveryRiderAssignedAt': now,
-        'deliveryStartedAt': now,
-        'deliveredAt': now,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {'cancelledBy': null, 'reason': null},
-
-      'notes': {
-        'customer': '',
-        'laundry': '',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-    {
-      'id': 'booking_004',
-      'customerId': 'user_004',
-      'laundryId': 'kabell_east_legon',
-      'pickupRiderId': null,
-      'deliveryRiderId': null,
-
-      'serviceType': 'wash_iron',
-      'supportedAddOns': ['express_delivery', 'starch_treatment'],
-
-      'weightRange': '3-5kg',
-      'estimatedWeightKg': 5,
-      'basePricePerKg': 20,
-      'washIronExtraPerKg': 3,
-      'addOnTotal': 8,
-      'subtotal': 123,
-      'deliveryFee': 12,
-      'totalAmount': 135,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'American House, Accra',
-        'latitude': 5.6441,
-        'longitude': -0.1453,
-        'contactName': 'Efua Mensima',
-        'contactPhone': '+233240000004',
-        'pickupDate': '2026-04-21',
-        'pickupTimeSlot': '4:00 PM - 5:00 PM',
-        'pickupNotes': 'Ring bell twice.',
-      },
-
-      'dropoff': {
-        'addressLine': 'American House, Accra',
-        'latitude': 5.6441,
-        'longitude': -0.1453,
-        'contactName': 'Efua Mensima',
-        'contactPhone': '+233240000004',
-        'dropoffNotes': '',
-      },
-
-      'laundrySnapshot': {
-        'name': 'Ka-Bell Laundry & Dry Cleaning',
-        'phoneNumber': '+233501394548',
-        'photoUrl': '',
-        'addressLine':
-            'East Legon-American House, Agbogba Junction, Shia-shi, Agbogba, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Efua Mensima',
-        'phoneNumber': '+233240000004',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': null,
-      'deliveryRiderSnapshot': null,
-
-      'status': 'awaiting_pickup_rider_assignment',
-      'paymentStatus': 'unpaid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': now,
-        'pickupRiderAssignedAt': null,
-        'pickupStartedAt': null,
-        'pickedUpAt': null,
-        'arrivedAtLaundryAt': null,
-        'processingStartedAt': null,
-        'readyForDropoffAt': null,
-        'deliveryRiderAssignedAt': null,
-        'deliveryStartedAt': null,
-        'deliveredAt': null,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {'cancelledBy': null, 'reason': null},
-
-      'notes': {
-        'customer': 'Mostly formal wear.',
-        'laundry': '',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-    {
-      'id': 'booking_005',
-      'customerId': 'user_005',
-      'laundryId': 'smile_laundry_east_legon',
-      'pickupRiderId': null,
-      'deliveryRiderId': null,
-
-      'serviceType': 'wash_fold',
-      'supportedAddOns': ['scent_booster'],
-
-      'weightRange': '1-3kg',
-      'estimatedWeightKg': 3,
-      'basePricePerKg': 17,
-      'washIronExtraPerKg': 2,
-      'addOnTotal': 3,
-      'subtotal': 54,
-      'deliveryFee': 10,
-      'totalAmount': 64,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'East Legon Hills, Accra',
-        'latitude': 5.6450,
-        'longitude': -0.1530,
-        'contactName': 'Linda Owusu',
-        'contactPhone': '+233240000005',
-        'pickupDate': '2026-04-22',
-        'pickupTimeSlot': '11:00 AM - 12:00 PM',
-        'pickupNotes': '',
-      },
-
-      'dropoff': {
-        'addressLine': 'East Legon Hills, Accra',
-        'latitude': 5.6450,
-        'longitude': -0.1530,
-        'contactName': 'Linda Owusu',
-        'contactPhone': '+233240000005',
-        'dropoffNotes': '',
-      },
-
-      'laundrySnapshot': {
-        'name': 'Smile Laundry East Legon',
-        'phoneNumber': '+233208232788',
-        'photoUrl': '',
-        'addressLine': 'East Legon, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Linda Owusu',
-        'phoneNumber': '+233240000005',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': null,
-      'deliveryRiderSnapshot': null,
-
-      'status': 'pending_laundry_acceptance',
-      'paymentStatus': 'unpaid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': null,
-        'pickupRiderAssignedAt': null,
-        'pickupStartedAt': null,
-        'pickedUpAt': null,
-        'arrivedAtLaundryAt': null,
-        'processingStartedAt': null,
-        'readyForDropoffAt': null,
-        'deliveryRiderAssignedAt': null,
-        'deliveryStartedAt': null,
-        'deliveredAt': null,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {'cancelledBy': null, 'reason': null},
-
-      'notes': {
-        'customer': '',
-        'laundry': '',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-    {
-      'id': 'booking_006',
-      'customerId': 'user_006',
-      'laundryId': 'e_laundry_east_legon',
-      'pickupRiderId': null,
-      'deliveryRiderId': null,
-
-      'serviceType': 'wash_fold',
-      'supportedAddOns': [],
-
-      'weightRange': '3-5kg',
-      'estimatedWeightKg': 4,
-      'basePricePerKg': 18,
-      'washIronExtraPerKg': 2,
-      'addOnTotal': 0,
-      'subtotal': 72,
-      'deliveryFee': 10,
-      'totalAmount': 82,
-      'currency': 'GHS',
-
-      'pickup': {
-        'addressLine': 'East Legon American House, Accra',
-        'latitude': 5.6416,
-        'longitude': -0.1478,
-        'contactName': 'Bernice Aidoo',
-        'contactPhone': '+233240000006',
-        'pickupDate': '2026-04-23',
-        'pickupTimeSlot': '2:00 PM - 3:00 PM',
-        'pickupNotes': '',
-      },
-
-      'dropoff': {
-        'addressLine': 'East Legon American House, Accra',
-        'latitude': 5.6416,
-        'longitude': -0.1478,
-        'contactName': 'Bernice Aidoo',
-        'contactPhone': '+233240000006',
-        'dropoffNotes': '',
-      },
-
-      'laundrySnapshot': {
-        'name': 'E-Laundry & General Cleaning Services',
-        'phoneNumber': '+233241995917',
-        'photoUrl': '',
-        'addressLine': 'East Legon American, Accra, Ghana',
-      },
-
-      'customerSnapshot': {
-        'name': 'Bernice Aidoo',
-        'phoneNumber': '+233240000006',
-        'photoUrl': '',
-      },
-
-      'pickupRiderSnapshot': null,
-      'deliveryRiderSnapshot': null,
-
-      'status': 'laundry_rejected',
-      'paymentStatus': 'unpaid',
-
-      'timeline': {
-        'requestedAt': now,
-        'laundryAcceptedAt': null,
-        'pickupRiderAssignedAt': null,
-        'pickupStartedAt': null,
-        'pickedUpAt': null,
-        'arrivedAtLaundryAt': null,
-        'processingStartedAt': null,
-        'readyForDropoffAt': null,
-        'deliveryRiderAssignedAt': null,
-        'deliveryStartedAt': null,
-        'deliveredAt': null,
-        'cancelledAt': null,
-      },
-
-      'cancellation': {
-        'cancelledBy': 'laundry',
-        'reason': 'Laundry currently unavailable.',
-      },
-
-      'notes': {
-        'customer': '',
-        'laundry': 'Store closed for maintenance.',
-        'pickupRider': '',
-        'deliveryRider': '',
-      },
-    },
-  ];
-
-  for (final booking in bookings) {
-    final docRef = firestore
-        .collection('bookings')
-        .doc(booking['id'] as String);
-
-    batch.set(docRef, {
-      ...booking,
-      'createdAt': now,
-      'updatedAt': now,
-    }, SetOptions(merge: true));
+class _TopRow extends StatelessWidget {
+  final String dateText;
+
+  const _TopRow({required this.dateText});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          dateText,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF9A7153),
+          ),
+        ),
+        const Spacer(),
+        _CircleIconButton(
+          icon: Icons.local_laundry_service_outlined,
+          onTap: () {},
+        ),
+        const SizedBox(width: 10),
+        _CircleIconButton(icon: Icons.delivery_dining_rounded, onTap: () {}),
+      ],
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _CircleIconButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFECDB),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, size: 22, color: Color(0xFFE67E22)),
+        ),
+      ),
+    );
+  }
+}
+
+class _StageText extends StatelessWidget {
+  final String title;
+  final String time;
+  final bool alignRight;
+
+  const _StageText({
+    required this.title,
+    required this.time,
+    required this.alignRight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: alignRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F1F1F),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          time,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF9A7153),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressLine extends StatelessWidget {
+  final double progress;
+
+  const _ProgressLine({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          height: 3,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8C9AA),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        FractionallySizedBox(
+          widthFactor: progress,
+          child: Container(
+            height: 3,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE67E22),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ActiveLaundryOrderStackPreview extends StatelessWidget {
+  final ActiveLaundryOrderCardData cardData;
+  final int bookingCount;
+  final VoidCallback? onTap;
+
+  const ActiveLaundryOrderStackPreview({
+    super.key,
+    required this.cardData,
+    required this.bookingCount,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMultiple = bookingCount > 1;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          if (hasMultiple)
+            Positioned(
+              left: 18,
+              right: 18,
+              top: 22,
+              child: Container(
+                height: 160,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFDCC3),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+            ),
+          if (hasMultiple)
+            Positioned(
+              left: 9,
+              right: 9,
+              top: 11,
+              child: Container(
+                height: 170,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE8D6),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+              ),
+            ),
+          Padding(
+            padding: EdgeInsets.only(bottom: hasMultiple ? 18 : 0),
+            child: ActiveLaundryOrderCard(
+              dateText: cardData.dateText,
+              laundryName: cardData.laundryName,
+              currentStage: cardData.currentStage,
+              currentTimeText: cardData.currentTimeText,
+              nextStage: cardData.nextStage,
+              nextTimeText: cardData.nextTimeText,
+              durationText: cardData.durationText,
+              progress: cardData.progress,
+            ),
+          ),
+          if (hasMultiple)
+            Positioned(
+              top: 70,
+              right: 18,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE67E22),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$bookingCount active',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class ActiveLaundryOrderCardData {
+  final String laundryName;
+  final String dateText;
+  final String currentStage;
+  final String nextStage;
+  final String currentTimeText;
+  final String nextTimeText;
+  final String durationText;
+  final double progress;
+
+  const ActiveLaundryOrderCardData({
+    required this.laundryName,
+    required this.dateText,
+    required this.currentStage,
+    required this.nextStage,
+    required this.currentTimeText,
+    required this.nextTimeText,
+    required this.durationText,
+    required this.progress,
+  });
+
+  factory ActiveLaundryOrderCardData.fromBooking(Map<String, dynamic> booking) {
+    final status = (booking['status'] ?? '').toString();
+    final laundrySnapshot =
+        booking['laundrySnapshot'] as Map<String, dynamic>? ?? {};
+
+    final laundryName = (laundrySnapshot['name'] ?? 'Finding laundry')
+        .toString();
+
+    final createdAt = booking['createdAt'];
+    final date = createdAt is Timestamp ? createdAt.toDate() : DateTime.now();
+
+    final stage = _stageForStatus(status);
+
+    return ActiveLaundryOrderCardData(
+      laundryName: laundryName,
+      dateText: _formatDate(date),
+      currentStage: stage.currentStage,
+      nextStage: stage.nextStage,
+      currentTimeText: stage.currentTimeText,
+      nextTimeText: stage.nextTimeText,
+      durationText: stage.durationText,
+      progress: stage.progress,
+    );
   }
 
-  await batch.commit();
+  static _OrderStageData _stageForStatus(String status) {
+    switch (status) {
+      case 'awaiting_laundry_assignment':
+        return const _OrderStageData(
+          currentStage: 'Finding',
+          nextStage: 'Laundry',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Searching',
+          progress: 0.08,
+        );
+
+      case 'offered_to_laundry':
+        return const _OrderStageData(
+          currentStage: 'Offer sent',
+          nextStage: 'Accepted',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Waiting',
+          progress: 0.15,
+        );
+
+      case 'pending':
+        return const _OrderStageData(
+          currentStage: 'Accepted',
+          nextStage: 'Pickup',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Preparing',
+          progress: 0.25,
+        );
+
+      case 'looking_for_pickup_rider':
+        return const _OrderStageData(
+          currentStage: 'Finding rider',
+          nextStage: 'Pickup',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Searching',
+          progress: 0.35,
+        );
+
+      case 'pickup_rider_assigned':
+      case 'pickup_started':
+      case 'arrived_at_pickup':
+        return const _OrderStageData(
+          currentStage: 'Pickup',
+          nextStage: 'Laundry',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'In progress',
+          progress: 0.48,
+        );
+
+      case 'arrived_at_laundry':
+        return const _OrderStageData(
+          currentStage: 'Arrived',
+          nextStage: 'Washing',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Queued',
+          progress: 0.58,
+        );
+
+      case 'processing':
+        return const _OrderStageData(
+          currentStage: 'Washing',
+          nextStage: 'Delivery',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'In progress',
+          progress: 0.72,
+        );
+
+      case 'ready_for_dropoff':
+        return const _OrderStageData(
+          currentStage: 'Ready',
+          nextStage: 'Delivery',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'Waiting rider',
+          progress: 0.82,
+        );
+      case 'no_laundry_found':
+        return const _OrderStageData(
+          currentStage: 'No laundry',
+          nextStage: 'Retry',
+          currentTimeText: 'Now',
+          nextTimeText: 'Tap',
+          durationText: 'Not found',
+          progress: 0.12,
+        );
+
+      case 'delivery_in_progress':
+        return const _OrderStageData(
+          currentStage: 'Delivery',
+          nextStage: 'Complete',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'On the way',
+          progress: 0.92,
+        );
+
+      default:
+        return const _OrderStageData(
+          currentStage: 'Active',
+          nextStage: 'Next',
+          currentTimeText: 'Now',
+          nextTimeText: 'Soon',
+          durationText: 'In progress',
+          progress: 0.3,
+        );
+    }
+  }
+
+  static String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'June',
+      'July',
+      'Aug',
+      'Sept',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+
+    if (isToday) return 'Today, ${date.day} ${months[date.month - 1]}';
+
+    return '${date.day} ${months[date.month - 1]}';
+  }
+}
+
+class _OrderStageData {
+  final String currentStage;
+  final String nextStage;
+  final String currentTimeText;
+  final String nextTimeText;
+  final String durationText;
+  final double progress;
+
+  const _OrderStageData({
+    required this.currentStage,
+    required this.nextStage,
+    required this.currentTimeText,
+    required this.nextTimeText,
+    required this.durationText,
+    required this.progress,
+  });
+}
+
+class CustomerActiveBookingsPreview extends StatelessWidget {
+  const CustomerActiveBookingsPreview({super.key});
+
+  static const List<String> activeStatuses = [
+    'awaiting_laundry_assignment',
+    'offered_to_laundry',
+    'pending',
+    'looking_for_pickup_rider',
+    'pickup_rider_assigned',
+    'pickup_started',
+    'arrived_at_pickup',
+    'arrived_at_laundry',
+    'processing',
+    'ready_for_dropoff',
+    'delivery_in_progress',
+    'no_laundry_found',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('bookings')
+          .where('customerSnapshot.customerId', isEqualTo: user.uid)
+          .where('status', whereIn: activeStatuses)
+          .limit(10)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint('Active bookings preview error: ${snapshot.error}');
+          return const SizedBox.shrink();
+        }
+
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final docs = snapshot.data!.docs.toList();
+
+        docs.sort((a, b) {
+          final aCreatedAt = a.data()['createdAt'];
+          final bCreatedAt = b.data()['createdAt'];
+
+          final aDate = aCreatedAt is Timestamp
+              ? aCreatedAt.toDate()
+              : DateTime.fromMillisecondsSinceEpoch(0);
+
+          final bDate = bCreatedAt is Timestamp
+              ? bCreatedAt.toDate()
+              : DateTime.fromMillisecondsSinceEpoch(0);
+
+          return bDate.compareTo(aDate);
+        });
+
+        if (docs.isEmpty) return const SizedBox.shrink();
+
+        final firstBooking = docs.first.data();
+        final cardData = ActiveLaundryOrderCardData.fromBooking(firstBooking);
+
+        return ActiveLaundryOrderStackPreview(
+          cardData: cardData,
+          bookingCount: docs.length,
+          onTap: () {
+            if (docs.length == 1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ActiveLaundryOrderScreen(bookingId: docs.first.id),
+                ),
+              );
+              return;
+            }
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CustomerActiveBookingsScreen(),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class ClosestLaundrySinglePreview extends StatelessWidget {
+  const ClosestLaundrySinglePreview({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return FutureBuilder<ClosestLaundryService?>(
+      future: _loadClosestLaundryFromSavedUserLocation(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const LaundryServiceCardShimmer();
+        }
+
+        final closestLaundry = snapshot.data;
+        if (closestLaundry == null) return const SizedBox.shrink();
+
+        return LaundryServiceCard(
+          laundry: closestLaundry,
+          onTap: () {
+            // Route to the full closest laundries screen later if needed.
+            debugPrint('Tapped closest laundry: ${closestLaundry.id}');
+          },
+        );
+      },
+    );
+  }
+
+  Future<ClosestLaundryService?> _loadClosestLaundryFromSavedUserLocation(
+    String uid,
+  ) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    final userData = userDoc.data() ?? <String, dynamic>{};
+    final lastLocation = userData['lastCurrentLocation'];
+
+    GeoPoint? userGeoPoint;
+
+    if (lastLocation is GeoPoint) {
+      userGeoPoint = lastLocation;
+    } else if (lastLocation is Map) {
+      final map = Map<String, dynamic>.from(lastLocation);
+
+      final geopoint = map['geopoint'];
+      if (geopoint is GeoPoint) {
+        userGeoPoint = geopoint;
+      } else {
+        final lat = map['latitude'];
+        final lng = map['longitude'];
+
+        if (lat is num && lng is num) {
+          userGeoPoint = GeoPoint(lat.toDouble(), lng.toDouble());
+        }
+      }
+    }
+
+    if (userGeoPoint == null) return null;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('laundries')
+        .where('business.isApproved', isEqualTo: true)
+        .where('business.isOnline', isEqualTo: true)
+        .get();
+
+    final laundries = <ClosestLaundryService>[];
+
+    for (final doc in snapshot.docs) {
+      try {
+        final laundry = ClosestLaundryService.fromFirestore(
+          id: doc.id,
+          data: doc.data(),
+          pickupGeopoint: userGeoPoint,
+        );
+
+        laundries.add(laundry);
+      } catch (_) {
+        continue;
+      }
+    }
+
+    laundries.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+    return laundries.isEmpty ? null : laundries.first;
+  }
+}
+
+class LaundryServiceCard extends StatelessWidget {
+  final ClosestLaundryService laundry;
+  final VoidCallback onTap;
+
+  const LaundryServiceCard({
+    super.key,
+    required this.laundry,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _CardImageSection(laundry: laundry),
+            _CardBodySection(laundry: laundry),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardImageSection extends StatelessWidget {
+  final ClosestLaundryService laundry;
+
+  const _CardImageSection({required this.laundry});
+
+  @override
+  Widget build(BuildContext context) {
+    final imagePath = laundry.imagePath.trim();
+    final isNetwork =
+        imagePath.startsWith('http://') || imagePath.startsWith('https://');
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+      child: SizedBox(
+        height: 155,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (isNetwork)
+              Image.network(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const _ImageFallback(),
+              )
+            else if (imagePath.isNotEmpty)
+              Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const _ImageFallback(),
+              )
+            else
+              const _ImageFallback(),
+
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x1A000000),
+                    Color(0x00000000),
+                    Color(0xB2000000),
+                  ],
+                  stops: [0.0, 0.35, 1.0],
+                ),
+              ),
+            ),
+
+            Positioned(
+              top: 12,
+              right: 12,
+              child: _StatusBadge(
+                label: laundry.isOpen ? 'Open' : 'Closed',
+                textColor: laundry.isOpen
+                    ? const Color(0xFFE67E22)
+                    : const Color(0xFF6D6D6D),
+                bgColor: laundry.isOpen
+                    ? const Color(0xFFFFE8D6)
+                    : const Color(0xFFEEEEEE),
+              ),
+            ),
+
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    laundry.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x55000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    laundry.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Poppins',
+                      color: Color(0xCCFFFFFF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BODY SECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CardBodySection extends StatelessWidget {
+  final ClosestLaundryService laundry;
+
+  const _CardBodySection({required this.laundry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.near_me_rounded,
+                  label: '${laundry.distanceKm.toStringAsFixed(1)} km',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InfoChip(
+                  icon: Icons.schedule_rounded,
+                  label: '${laundry.etaMinutes} min',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: laundry.hasRating
+                    ? _InfoChip(
+                        icon: Icons.star_rounded,
+                        label: laundry.rating.toStringAsFixed(1),
+                        iconColor: const Color(0xFFE67E22),
+                      )
+                    : const _NewBadgeChip(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: laundry.tags
+                      .map((tag) => _ServiceTag(label: tag))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _PriceTag(price: laundry.basePricePerKg),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImageFallback extends StatelessWidget {
+  const _ImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFD4C5B0),
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.local_laundry_service_rounded,
+        size: 44,
+        color: Color(0x66000000),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color iconColor;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.iconColor = const Color(0xFFE67E22),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NewBadgeChip extends StatelessWidget {
+  const _NewBadgeChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE6F1FB),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF185FA5)),
+          SizedBox(width: 4),
+          Text(
+            'New',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Poppins',
+              color: Color(0xFF185FA5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServiceTag extends StatelessWidget {
+  final String label;
+
+  const _ServiceTag({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFECDB),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins',
+          color: Color(0xFFC05E10),
+        ),
+      ),
+    );
+  }
+}
+
+class _PriceTag extends StatelessWidget {
+  final int price;
+
+  const _PriceTag({required this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        'GH₵$price/kg',
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Poppins',
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _CircleButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 1.5,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: Colors.black87, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback? onTap;
+  final bool isLoading;
+
+  const _ActionButton({
+    required this.color,
+    required this.icon,
+    required this.iconColor,
+    this.onTap,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: onTap == null ? 0.45 : 1.0,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: isLoading
+              ? Padding(
+                  padding: const EdgeInsets.all(9),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: iconColor,
+                  ),
+                )
+              : Icon(icon, color: iconColor, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOADING / ERROR / EMPTY STATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 40),
+            const SizedBox(height: 12),
+            const Text(
+              'Could not load nearby laundries.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyView extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _EmptyView({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.store_mall_directory_outlined, size: 40),
+            const SizedBox(height: 12),
+            const Text(
+              'No nearby laundries found right now.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton(onPressed: onBack, child: const Text('Go back')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LaundryServiceCardShimmer extends StatefulWidget {
+  const LaundryServiceCardShimmer({super.key});
+
+  @override
+  State<LaundryServiceCardShimmer> createState() =>
+      _LaundryServiceCardShimmerState();
+}
+
+class _LaundryServiceCardShimmerState extends State<LaundryServiceCardShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _shine({required Widget child}) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, animatedChild) {
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment(-1.2 + _controller.value * 2.4, -0.3),
+              end: Alignment(0.2 + _controller.value * 2.4, 0.3),
+              colors: const [
+                Color(0xFFEFEFEF),
+                Color(0xFFFFFFFF),
+                Color(0xFFEFEFEF),
+              ],
+              stops: const [0.25, 0.5, 0.75],
+            ).createShader(bounds);
+          },
+          child: animatedChild,
+        );
+      },
+      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _shine(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: const [
+                _ShimmerBox(
+                  height: 155,
+                  width: double.infinity,
+                  radius: 26,
+                  topOnly: true,
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: _ShimmerBox(width: 64, height: 34, radius: 999),
+                ),
+                Positioned(
+                  left: 20,
+                  bottom: 42,
+                  child: _ShimmerBox(width: 210, height: 24, radius: 8),
+                ),
+                Positioned(
+                  left: 20,
+                  bottom: 16,
+                  child: _ShimmerBox(width: 285, height: 18, radius: 8),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              child: Column(
+                children: const [
+                  Row(
+                    children: [
+                      Expanded(child: _ShimmerBox(height: 36, radius: 999)),
+                      SizedBox(width: 10),
+                      Expanded(child: _ShimmerBox(height: 36, radius: 999)),
+                      SizedBox(width: 10),
+                      Expanded(child: _ShimmerBox(height: 36, radius: 999)),
+                    ],
+                  ),
+                  SizedBox(height: 14),
+                  Row(
+                    children: [
+                      _ShimmerBox(width: 118, height: 36, radius: 999),
+                      SizedBox(width: 8),
+                      _ShimmerBox(width: 120, height: 36, radius: 999),
+                    ],
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _ShimmerBox(width: 86, height: 36, radius: 999),
+                      SizedBox(width: 8),
+                      _ShimmerBox(width: 82, height: 36, radius: 999),
+                      Spacer(),
+                      _ShimmerBox(width: 96, height: 42, radius: 999),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShimmerBox extends StatelessWidget {
+  final double? width;
+  final double height;
+  final double radius;
+  final bool topOnly;
+
+  const _ShimmerBox({
+    this.width,
+    required this.height,
+    this.radius = 14,
+    this.topOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = topOnly
+        ? BorderRadius.vertical(top: Radius.circular(radius))
+        : BorderRadius.circular(radius);
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 255, 231, 216),
+        borderRadius: borderRadius,
+      ),
+    );
+  }
 }

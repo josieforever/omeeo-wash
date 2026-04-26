@@ -1,11 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/finding_laundry_screen.dart'
     show FindingLaundryScreen;
 
 import 'closest_laundries_screen.dart';
+
+// ---------------------------------------------------------------------------
+// Data model returned by location picker
+// ---------------------------------------------------------------------------
 
 class PickedLocationResult {
   final double latitude;
@@ -22,6 +27,10 @@ class PickedLocationResult {
     required this.serviceType,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 
 class PickupPreviewScreen extends StatefulWidget {
   final PickedLocationResult pickupLocation;
@@ -51,6 +60,12 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
 
   final Set<String> selectedAddOns = {};
 
+  // Washer instructions (null = not set, uses "now" on submit)
+  String? _washerInstructions;
+
+  // Scheduled pickup (null = immediate / ASAP)
+  DateTime? _scheduledPickupAt;
+
   static const int _baseWashFoldPricePerKg = 18;
   static const int _washIronExtraPerKg = 2;
   static const int _pickupFee = 0;
@@ -66,28 +81,22 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   };
 
   late final LatLng _pickupLatLng;
-
   final _bookingRepository = _BookingRepository.instance;
+
+  // -------------------------------------------------------------------------
+  // Lifecycle
+  // -------------------------------------------------------------------------
 
   @override
   void initState() {
     super.initState();
-
     _pickupLatLng = LatLng(
       widget.pickupLocation.latitude,
       widget.pickupLocation.longitude,
     );
-
     selectedService = widget.selectedService.trim();
     selectedServiceType = _mapSelectedServiceType(widget.selectedService);
-
     _sheetController.addListener(_sheetListener);
-  }
-
-  String _mapSelectedServiceType(String service) {
-    final value = service.toLowerCase().trim();
-    if (value.contains('iron')) return 'wash_iron';
-    return 'wash_fold';
   }
 
   @override
@@ -98,14 +107,21 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     super.dispose();
   }
 
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
+  String _mapSelectedServiceType(String service) {
+    final value = service.toLowerCase().trim();
+    if (value.contains('iron')) return 'wash_iron';
+    return 'wash_fold';
+  }
+
   void _sheetListener() {
     if (!_sheetController.isAttached) return;
-
     final expandedNow = _sheetController.size > 0.58;
     if (expandedNow != _isExpanded) {
-      setState(() {
-        _isExpanded = expandedNow;
-      });
+      setState(() => _isExpanded = expandedNow);
     }
   }
 
@@ -119,7 +135,6 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
 
   Future<void> _toggleSheet() async {
     if (!_sheetController.isAttached) return;
-
     final target = _isExpanded ? 0.51 : 1.0;
     await _sheetController.animateTo(
       target,
@@ -136,8 +151,16 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   }
 
   void _toggleManualSelection(bool? value) {
+    setState(() => isManualSelection = value ?? false);
+  }
+
+  void _toggleAddOn(String value) {
     setState(() {
-      isManualSelection = value ?? false;
+      if (selectedAddOns.contains(value)) {
+        selectedAddOns.remove(value);
+      } else {
+        selectedAddOns.add(value);
+      }
     });
   }
 
@@ -152,50 +175,83 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     };
   }
 
+  // -------------------------------------------------------------------------
+  // Pricing
+  // -------------------------------------------------------------------------
+
   int get _serviceExtraPerKg =>
       selectedServiceType == 'wash_iron' ? _washIronExtraPerKg : 0;
 
   int get _baseServiceRatePerKg => _baseWashFoldPricePerKg + _serviceExtraPerKg;
 
+  int get _addOnTotal =>
+      selectedAddOns.fold(0, (sum, item) => sum + (addOnPrices[item] ?? 0));
+
   int get _addOnRatePerKg => _addOnTotal ~/ _estimatedWeightKg;
 
   int get _pricePerKg => _baseServiceRatePerKg + _addOnRatePerKg;
-
-  int get _addOnTotal {
-    return selectedAddOns.fold(
-      0,
-      (sum, item) => sum + (addOnPrices[item] ?? 0),
-    );
-  }
 
   int get _estimatedLaundrySubtotal =>
       _baseServiceRatePerKg * _estimatedWeightKg + _addOnTotal;
 
   int get _totalPrice => _estimatedLaundrySubtotal + _pickupFee + _deliveryFee;
-  void _toggleAddOn(String value) {
-    setState(() {
-      if (selectedAddOns.contains(value)) {
-        selectedAddOns.remove(value);
-      } else {
-        selectedAddOns.add(value);
+
+  // -------------------------------------------------------------------------
+  // Bottom-sheet actions
+  // -------------------------------------------------------------------------
+
+  /// Opens the "Washer instructions" bottom sheet (Image 2 style).
+  void _openWasherInstructions() {
+    showModalBottomSheet<String?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          _WasherInstructionsSheet(initialValue: _washerInstructions),
+    ).then((result) {
+      if (result != null) {
+        setState(() => _washerInstructions = result.isEmpty ? null : result);
       }
     });
   }
 
+  /// Opens the "Schedule pickup" bottom sheet (Image 1 style).
+  void _openSchedulePickup() {
+    showModalBottomSheet<DateTime?>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SchedulePickupSheet(initialDateTime: _scheduledPickupAt),
+    ).then((result) {
+      if (result != null) {
+        setState(() => _scheduledPickupAt = result);
+      }
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Submit
+  // -------------------------------------------------------------------------
+
   Future<void> _handlePrimaryAction() async {
     if (_isSubmitting) return;
-
     setState(() => _isSubmitting = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-
       if (user == null) {
         _showSnackBar('Please sign in first.');
         return;
       }
 
       final userData = await _bookingRepository.getCustomerProfile(user.uid);
+
+      final pickupGeoFirePoint = GeoFirePoint(
+        GeoPoint(
+          widget.pickupLocation.latitude,
+          widget.pickupLocation.longitude,
+        ),
+      );
 
       final bookingDraft = _BookingDraft(
         customerId: user.uid,
@@ -214,20 +270,24 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
           keys: const ['photoUrl', 'avatarUrl', 'imageUrl'],
           fallback: user.photoURL ?? '',
         ),
-        estimatedWeightKg: 1,
+        estimatedWeightKg: _estimatedWeightKg,
         serviceType: selectedServiceType,
         selectedAddOns: selectedAddOns.toList()..sort(),
         pickupAddress: widget.pickupLocation.addressLine,
-        pickupLatitude: widget.pickupLocation.latitude,
-        pickupLongitude: widget.pickupLocation.longitude,
         pickupSubtitle: widget.pickupLocation.subtitle,
+        pickupGeoFirePoint: pickupGeoFirePoint,
         pricingBasePrice: _baseServiceRatePerKg * _estimatedWeightKg,
         pricingAddOnsPrice: _addOnTotal,
         pricingPickupFee: _pickupFee,
         pricingDeliveryFee: _deliveryFee,
         pricingTotalPrice: _totalPrice,
-        status: isManualSelection ? 'awaiting_laundry_selection' : 'pending',
+        status: isManualSelection
+            ? 'manual_laundry_selection'
+            : 'awaiting_laundry_assignment',
+        washerInstructions: _washerInstructions,
+        scheduledPickupAt: _scheduledPickupAt,
       );
+
       final bookingId = await _bookingRepository.createBooking(bookingDraft);
 
       if (!mounted) return;
@@ -235,7 +295,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
       if (isManualSelection) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => ClosestLaundriesScreen(
+            builder: (_) => ClosestLaundriesScreen(
               bookingId: bookingId,
               pickupTitle: widget.pickupLocation.addressLine,
               pickupLatitude: widget.pickupLocation.latitude,
@@ -248,7 +308,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
       } else {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => FindingLaundryScreen(
+            builder: (_) => FindingLaundryScreen(
               bookingId: bookingId,
               selectedAddOns: selectedAddOns.toList(),
               serviceType: selectedServiceType,
@@ -262,15 +322,12 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     } catch (e) {
       _showSnackBar('Failed to create booking. Please try again.');
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -282,16 +339,16 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     required String fallback,
   }) {
     if (map == null) return fallback;
-
     for (final key in keys) {
       final value = map[key];
-      if (value is String && value.trim().isNotEmpty) {
-        return value.trim();
-      }
+      if (value is String && value.trim().isNotEmpty) return value.trim();
     }
-
     return fallback;
   }
+
+  // -------------------------------------------------------------------------
+  // Build
+  // -------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -318,9 +375,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               zoomGesturesEnabled: false,
               rotateGesturesEnabled: false,
               tiltGesturesEnabled: false,
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
+              onMapCreated: (controller) => _mapController = controller,
             ),
           ),
           SafeArea(
@@ -409,10 +464,13 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                                   addOnPrices: addOnPrices,
                                   onCollapseTap: _toggleSheet,
                                   onPrimaryTap: _handlePrimaryAction,
-                                  actionText: isManualSelection
-                                      ? 'Browse Laundries'
-                                      : 'Request',
+                                  isManualSelection: isManualSelection,
                                   isSubmitting: _isSubmitting,
+                                  washerInstructions: _washerInstructions,
+                                  scheduledPickupAt: _scheduledPickupAt,
+                                  onWasherInstructionsTap:
+                                      _openWasherInstructions,
+                                  onSchedulePickupTap: _openSchedulePickup,
                                 )
                               : _CollapsedPickupSheet(
                                   key: const ValueKey('collapsed'),
@@ -436,6 +494,8 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                                   isSubmitting: _isSubmitting,
                                   addOnTotal: _addOnTotal,
                                   estimatedWeightKg: _estimatedWeightKg,
+                                  scheduledPickupAt: _scheduledPickupAt,
+                                  onSchedulePickupTap: _openSchedulePickup,
                                 ),
                         ),
                       ),
@@ -451,6 +511,491 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   }
 }
 
+// ===========================================================================
+// Washer Instructions Bottom Sheet  (matches Image 2)
+// ===========================================================================
+
+class _WasherInstructionsSheet extends StatefulWidget {
+  final String? initialValue;
+
+  const _WasherInstructionsSheet({this.initialValue});
+
+  @override
+  State<_WasherInstructionsSheet> createState() =>
+      _WasherInstructionsSheetState();
+}
+
+class _WasherInstructionsSheetState extends State<_WasherInstructionsSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 20),
+                child: Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2425),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ),
+
+            // Title
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Washer instructions',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Poppins',
+                  color: Colors.black,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Text field
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _controller,
+                autofocus: true,
+                maxLines: null,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontFamily: 'Poppins',
+                  color: Colors.black,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Washer instructions',
+                  hintStyle: TextStyle(
+                    color: Colors.black38,
+                    fontSize: 16,
+                    fontFamily: 'Poppins',
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black87, width: 1.2),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black87, width: 1.6),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Done button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(_controller.text.trim()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE74C3C),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Schedule Pickup Bottom Sheet  (matches Image 1)
+// ===========================================================================
+
+class _SchedulePickupSheet extends StatefulWidget {
+  final DateTime? initialDateTime;
+
+  const _SchedulePickupSheet({this.initialDateTime});
+
+  @override
+  State<_SchedulePickupSheet> createState() => _SchedulePickupSheetState();
+}
+
+class _SchedulePickupSheetState extends State<_SchedulePickupSheet> {
+  // We track day index (0=today, 1=tomorrow, …) and hour/minute independently
+  // so the three drums are always in sync.
+
+  late int _dayIndex; // 0 = today, 1 = tomorrow, etc. (up to 6 days ahead)
+  late int _hour; // 0–23
+  late int _minute; // 0, 10, 20, 30, 40, 50
+
+  static const List<int> _minuteSteps = [0, 10, 20, 30, 40, 50];
+
+  /// Returns the concrete DateTime for the currently selected values.
+  DateTime get _selectedDateTime {
+    final base = DateTime.now();
+    final day = DateTime(
+      base.year,
+      base.month,
+      base.day,
+    ).add(Duration(days: _dayIndex));
+    return DateTime(day.year, day.month, day.day, _hour, _minuteSteps[_minute]);
+  }
+
+  String get _arrivalWindowText {
+    final start = _selectedDateTime;
+    final end = start.add(const Duration(minutes: 10));
+    final fmt = (DateTime dt) =>
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '${fmt(start)}–${fmt(end)}';
+  }
+
+  String _dayLabel(int index) {
+    if (index == 0) return 'Today';
+    if (index == 1) return 'Tomorrow';
+    final d = DateTime.now().add(Duration(days: index));
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${d.day} ${months[d.month]}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = widget.initialDateTime ?? DateTime.now();
+    final todayMidnight = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final diff = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(todayMidnight).inDays;
+    _dayIndex = diff.clamp(0, 6);
+    _hour = now.hour;
+    // Find closest minute step
+    _minute = _minuteSteps.indexWhere((m) => m >= now.minute);
+    if (_minute == -1) _minute = 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle + close button row
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2425),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(null),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F0F0),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Title
+            const Text(
+              'Date and time of ride',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
+                color: Colors.black,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Three-drum picker
+            SizedBox(
+              height: 200,
+              child: Row(
+                children: [
+                  // Day column
+                  Expanded(
+                    flex: 5,
+                    child: _buildDrum(
+                      itemCount: 7,
+                      selectedIndex: _dayIndex,
+                      labelBuilder: _dayLabel,
+                      onChanged: (i) => setState(() => _dayIndex = i),
+                      alignment: Alignment.centerRight,
+                      rightPadding: 8,
+                    ),
+                  ),
+                  // Hour column
+                  Expanded(
+                    flex: 3,
+                    child: _buildDrum(
+                      itemCount: 24,
+                      selectedIndex: _hour,
+                      labelBuilder: (i) => i.toString().padLeft(2, '0'),
+                      onChanged: (i) => setState(() => _hour = i),
+                      alignment: Alignment.center,
+                    ),
+                  ),
+                  // Minute column
+                  Expanded(
+                    flex: 3,
+                    child: _buildDrum(
+                      itemCount: _minuteSteps.length,
+                      selectedIndex: _minute,
+                      labelBuilder: (i) =>
+                          _minuteSteps[i].toString().padLeft(2, '0'),
+                      onChanged: (i) => setState(() => _minute = i),
+                      alignment: Alignment.centerLeft,
+                      leftPadding: 8,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // "Driver will arrive at …" banner
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F7F7),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.directions_walk_rounded,
+                    size: 22,
+                    color: Colors.black87,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Poppins',
+                          color: Colors.black87,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Driver will arrive at '),
+                          TextSpan(
+                            text: _arrivalWindowText,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Done button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(_selectedDateTime),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE74C3C),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrum({
+    required int itemCount,
+    required int selectedIndex,
+    required String Function(int) labelBuilder,
+    required ValueChanged<int> onChanged,
+    Alignment alignment = Alignment.center,
+    double rightPadding = 0,
+    double leftPadding = 0,
+  }) {
+    return Stack(
+      children: [
+        // Selection highlight
+        Center(
+          child: Container(
+            height: 46,
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F3F3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        ListWheelScrollView.useDelegate(
+          itemExtent: 46,
+          diameterRatio: 2.8,
+          physics: const FixedExtentScrollPhysics(),
+          controller: FixedExtentScrollController(initialItem: selectedIndex),
+          onSelectedItemChanged: onChanged,
+          childDelegate: ListWheelChildBuilderDelegate(
+            childCount: itemCount,
+            builder: (context, index) {
+              final isSelected = index == selectedIndex;
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: rightPadding,
+                  left: leftPadding,
+                ),
+                child: Align(
+                  alignment: alignment,
+                  child: Text(
+                    labelBuilder(index),
+                    style: TextStyle(
+                      fontSize: isSelected ? 18 : 16,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w400,
+                      fontFamily: 'Poppins',
+                      color: isSelected ? Colors.black : Colors.black38,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===========================================================================
+// Booking draft & repository
+// ===========================================================================
+
 class _BookingDraft {
   final String customerId;
   final String customerName;
@@ -462,9 +1007,8 @@ class _BookingDraft {
   final List<String> selectedAddOns;
 
   final String pickupAddress;
-  final double pickupLatitude;
-  final double pickupLongitude;
   final String pickupSubtitle;
+  final GeoFirePoint pickupGeoFirePoint;
 
   final int pricingBasePrice;
   final int pricingAddOnsPrice;
@@ -473,6 +1017,13 @@ class _BookingDraft {
   final int pricingTotalPrice;
 
   final String status;
+
+  /// Free-text instructions left by the customer for the washer.
+  final String? washerInstructions;
+
+  /// When the customer wants the pickup to happen.
+  /// null = ASAP / immediate.
+  final DateTime? scheduledPickupAt;
 
   const _BookingDraft({
     required this.customerId,
@@ -483,15 +1034,16 @@ class _BookingDraft {
     required this.serviceType,
     required this.selectedAddOns,
     required this.pickupAddress,
-    required this.pickupLatitude,
-    required this.pickupLongitude,
     required this.pickupSubtitle,
+    required this.pickupGeoFirePoint,
     required this.pricingBasePrice,
     required this.pricingAddOnsPrice,
     required this.pricingPickupFee,
     required this.pricingDeliveryFee,
     required this.pricingTotalPrice,
     required this.status,
+    this.washerInstructions,
+    this.scheduledPickupAt,
   });
 
   Map<String, dynamic> toMap(String bookingId) {
@@ -499,15 +1051,24 @@ class _BookingDraft {
       'id': bookingId,
       'bookingCode': _buildBookingCode(bookingId),
 
-      'customerId': customerId,
-      'customerName': customerName,
-      'customerPhone': customerPhone,
-      'customerPhotoUrl': customerPhotoUrl,
+      'customerSnapshot': {
+        'customerId': customerId,
+        'customerName': customerName,
+        'customerPhone': customerPhone,
+        'customerPhotoUrl': customerPhotoUrl,
+      },
 
-      'laundryId': null,
-      'laundryName': null,
-      'laundryPhone': null,
-      'laundryPhotoUrl': null,
+      'laundrySnapshot': {
+        'id': null,
+        'name': null,
+        'phoneNumber': null,
+        'photoUrl': null,
+        'addressLine': null,
+        'geohash': null,
+        'geopoint': null,
+        'rating': null,
+        'totalRatings': null,
+      },
 
       'serviceType': serviceType,
       'selectedAddOns': selectedAddOns,
@@ -520,20 +1081,31 @@ class _BookingDraft {
         },
       ],
 
-      'customerNotes': null,
+      // ── NEW FIELDS ──────────────────────────────────────────────────────
+      /// Stored under 'customerNotes' to stay consistent with the existing
+      /// schema field name used by laundry-side readers.
+      'customerNotes': washerInstructions,
 
-      'pickupAddress': {
-        'address': pickupAddress,
-        'latitude': pickupLatitude,
-        'longitude': pickupLongitude,
+      /// Null means immediate / ASAP. Stored as a Firestore Timestamp when set.
+      'scheduledPickupAt': scheduledPickupAt != null
+          ? Timestamp.fromDate(scheduledPickupAt!)
+          : null,
+
+      // ────────────────────────────────────────────────────────────────────
+      'pickup': {
+        'addressLine': pickupAddress,
         'subtitle': pickupSubtitle,
+        'geohash': pickupGeoFirePoint.geohash,
+        'geopoint': pickupGeoFirePoint.geopoint,
       },
 
-      'deliveryAddress': {
-        'address': pickupAddress,
-        'latitude': pickupLatitude,
-        'longitude': pickupLongitude,
+      'pickupAddress': pickupAddress,
+
+      'customerAddress': {
+        'addressLine': pickupAddress,
         'subtitle': pickupSubtitle,
+        'geohash': pickupGeoFirePoint.geohash,
+        'geopoint': pickupGeoFirePoint.geopoint,
         'isSameAsPickup': true,
       },
 
@@ -584,15 +1156,32 @@ class _BookingDraft {
         'lastMessageAt': null,
       },
 
+      'laundryAssignment': {'assignedAutomatically': false, 'assignedAt': null},
+
+      'laundryOffer': {
+        'offeredLaundryId': null,
+        'offeredAt': null,
+        'offerExpiresAt': null,
+      },
+
+      'rejectedLaundryIds': [],
+
+      'searchMeta': {
+        'assignmentAttempts': 0,
+        'lastAssignmentAttemptAt': null,
+        'maxSearchRadiusKm': 8,
+      },
+
       'timeline': {
         'requestedAt': FieldValue.serverTimestamp(),
         'acceptedAt': null,
-        'pickedUpAt': null,
+        'pickupRiderAssignedAt': null,
+        'pickupStartedAt': null,
         'arrivedAtLaundryAt': null,
-        'washingStartedAt': null,
-        'washingCompletedAt': null,
-        'outForDeliveryAt': null,
-        'deliveredAt': null,
+        'processingStartedAt': null,
+        'readyForDropoffAt': null,
+        'deliveryStartedAt': null,
+        'completedAt': null,
         'cancelledAt': null,
       },
 
@@ -618,11 +1207,6 @@ class _BookingRepository {
   CollectionReference<Map<String, dynamic>> get _bookings =>
       _firestore.collection('bookings');
 
-  static String generateBookingCode() {
-    final now = DateTime.now().millisecondsSinceEpoch.toString();
-    return 'LND-${now.substring(now.length - 6)}';
-  }
-
   Future<Map<String, dynamic>> getCustomerProfile(String userId) async {
     final doc = await _firestore.collection('users').doc(userId).get();
     return doc.data() ?? <String, dynamic>{};
@@ -637,19 +1221,93 @@ class _BookingRepository {
     final historyRef = doc.collection('status_history').doc();
     batch.set(historyRef, {
       'status': draft.status,
-      'title': draft.status == 'choosing_laundry'
-          ? 'Choosing Laundry'
-          : 'Booking Requested',
-      'description': draft.status == 'choosing_laundry'
-          ? 'Customer started booking and is selecting a laundry.'
-          : 'Customer submitted a laundry request.',
+      'title': _historyTitleForStatus(draft.status),
+      'description': _historyDescriptionForStatus(draft.status),
       'createdAt': FieldValue.serverTimestamp(),
     });
 
     await batch.commit();
     return doc.id;
   }
+
+  String _historyTitleForStatus(String status) {
+    switch (status) {
+      case 'awaiting_laundry_assignment':
+        return 'Finding Laundry';
+      case 'manual_laundry_selection':
+        return 'Manual Laundry Selection';
+      case 'offered_to_laundry':
+        return 'Offer Sent To Laundry';
+      case 'pending':
+        return 'Booking Confirmed';
+      case 'looking_for_pickup_rider':
+        return 'Looking For Pickup Rider';
+      case 'pickup_rider_assigned':
+        return 'Pickup Rider Assigned';
+      case 'pickup_started':
+        return 'Pickup Started';
+      case 'arrived_at_laundry':
+        return 'Arrived At Laundry';
+      case 'processing':
+        return 'Laundry Processing';
+      case 'ready_for_dropoff':
+        return 'Ready For Dropoff';
+      case 'delivery_in_progress':
+        return 'Delivery In Progress';
+      case 'completed':
+        return 'Booking Completed';
+      case 'cancelled':
+        return 'Booking Cancelled';
+      case 'rejected_by_laundry':
+        return 'Rejected By Laundry';
+      case 'no_laundry_found':
+        return 'No Laundry Found';
+      default:
+        return 'Booking Updated';
+    }
+  }
+
+  String _historyDescriptionForStatus(String status) {
+    switch (status) {
+      case 'awaiting_laundry_assignment':
+        return 'We are searching for the best laundry near the customer.';
+      case 'manual_laundry_selection':
+        return 'The customer chose to manually select a laundry.';
+      case 'offered_to_laundry':
+        return 'This booking was offered to a laundry for acceptance.';
+      case 'pending':
+        return 'A laundry accepted this booking.';
+      case 'looking_for_pickup_rider':
+        return 'The system is searching for a pickup rider.';
+      case 'pickup_rider_assigned':
+        return 'A pickup rider has been assigned.';
+      case 'pickup_started':
+        return 'Pickup is now in progress.';
+      case 'arrived_at_laundry':
+        return 'The clothes have arrived at the laundry.';
+      case 'processing':
+        return 'The laundry is processing the clothes.';
+      case 'ready_for_dropoff':
+        return 'The order is ready for delivery.';
+      case 'delivery_in_progress':
+        return 'The order is currently being delivered.';
+      case 'completed':
+        return 'The booking has been completed successfully.';
+      case 'cancelled':
+        return 'This booking was cancelled.';
+      case 'rejected_by_laundry':
+        return 'A laundry rejected this booking.';
+      case 'no_laundry_found':
+        return 'No suitable laundry was found for this booking.';
+      default:
+        return 'Booking status was updated.';
+    }
+  }
 }
+
+// ===========================================================================
+// Collapsed sheet
+// ===========================================================================
 
 class _CollapsedPickupSheet extends StatelessWidget {
   final String pickupTitle;
@@ -669,6 +1327,8 @@ class _CollapsedPickupSheet extends StatelessWidget {
   final bool isSubmitting;
   final int addOnTotal;
   final int estimatedWeightKg;
+  final DateTime? scheduledPickupAt;
+  final VoidCallback onSchedulePickupTap;
 
   const _CollapsedPickupSheet({
     super.key,
@@ -689,15 +1349,60 @@ class _CollapsedPickupSheet extends StatelessWidget {
     required this.isSubmitting,
     required this.addOnTotal,
     required this.estimatedWeightKg,
+    required this.scheduledPickupAt,
+    required this.onSchedulePickupTap,
   });
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  /// True when the selected date is strictly in the future (not today).
+  bool get _isFutureScheduled {
+    if (scheduledPickupAt == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = DateTime(
+      scheduledPickupAt!.year,
+      scheduledPickupAt!.month,
+      scheduledPickupAt!.day,
+    );
+    return picked.isAfter(today);
+  }
+
+  String get _actionText {
+    if (isManualSelection) return 'Browse Laundries';
+    if (_isFutureScheduled) return 'Schedule Pickup';
+    return 'Request';
+  }
+
+  String _formatScheduleChip(DateTime dt) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '${months[dt.month]} ${dt.day}, $h:$m';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final actionText = isManualSelection ? 'Browse Laundries' : 'Request';
+    final bool hasSchedule = scheduledPickupAt != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Address row ────────────────────────────────────────────────────
         Row(
           children: [
             const Icon(Icons.location_on, size: 30, color: Color(0xFFE67E22)),
@@ -717,6 +1422,8 @@ class _CollapsedPickupSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
+
+        // ── Price card ─────────────────────────────────────────────────────
         PricePerKgCard(
           pricePerKg: pricePerKg,
           washIronExtra: serviceExtraPerKg,
@@ -725,6 +1432,8 @@ class _CollapsedPickupSheet extends StatelessWidget {
           isWashIron: selectedServiceType == 'wash_iron',
         ),
         const SizedBox(height: 20),
+
+        // ── Service type selectors ─────────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -747,60 +1456,127 @@ class _CollapsedPickupSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        GestureDetector(
-          onTap: () {
-            onManualSelectionChanged(!isManualSelection);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F7F7),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: isManualSelection
-                    ? const Color(0xFFFFD6A5)
-                    : Colors.transparent,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: const [
-                    CircleAvatar(
-                      backgroundColor: Color(0xFFFFD6A5),
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Icon(Icons.touch_app, color: Colors.black),
+
+        // ── Schedule chip  +  Select laundry myself  (shared row) ─────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Schedule date/time chip (Image 1 style)
+            hasSchedule
+                ? Expanded(
+                    flex: 9,
+                    child: GestureDetector(
+                      onTap: onSchedulePickupTap,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F3F3),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Calendar icon badge
+                            const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 17,
+                              color: Colors.black87,
+                            ),
+
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                hasSchedule
+                                    ? _formatScheduleChip(scheduledPickupAt!)
+                                    : 'ASAP',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: hasSchedule
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  fontFamily: 'Poppins',
+                                  color: hasSchedule
+                                      ? Colors.black
+                                      : Colors.black54,
+                                ),
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: Colors.black45,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    SizedBox(width: 7),
-                    Text(
-                      'Select laundry myself',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Poppins',
-                        color: Colors.black87,
-                      ),
+                  )
+                : SizedBox(),
+
+            hasSchedule ? const SizedBox(width: 5) : SizedBox(),
+
+            // Select laundry myself toggle
+            Expanded(
+              flex: 11,
+              child: GestureDetector(
+                onTap: () => onManualSelectionChanged(!isManualSelection),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F7F7),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: isManualSelection
+                          ? const Color(0xFFFFD6A5)
+                          : Colors.transparent,
+                      width: 1.4,
                     ),
-                  ],
-                ),
-                Checkbox(
-                  value: isManualSelection,
-                  onChanged: onManualSelectionChanged,
-                  activeColor: const Color(0xFFE67E22),
-                  checkColor: Colors.black,
-                  side: const BorderSide(color: Colors.black26, width: 1.3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 17,
+                        backgroundColor: const Color(0xFFFFD6A5),
+                        child: const Icon(
+                          Icons.touch_app,
+                          size: 17,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Select laundry myself',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'Poppins',
+                          color: Colors.black87,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 20),
+
+        // ── Action bar ─────────────────────────────────────────────────────
         Row(
           children: [
             Container(
@@ -815,7 +1591,7 @@ class _CollapsedPickupSheet extends StatelessWidget {
                 color: Color(0xFF3D8B2D),
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 10),
             Expanded(
               child: SizedBox(
                 height: 60,
@@ -839,19 +1615,23 @@ class _CollapsedPickupSheet extends StatelessWidget {
                             ),
                           ),
                         )
-                      : Text(
-                          actionText,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFE67E22),
-                            fontFamily: 'Poppins',
+                      : AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Text(
+                            _actionText,
+                            key: ValueKey(_actionText),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFE67E22),
+                              fontFamily: 'Poppins',
+                            ),
                           ),
                         ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             GestureDetector(
               onTap: onTuneTap,
               child: Container(
@@ -871,6 +1651,10 @@ class _CollapsedPickupSheet extends StatelessWidget {
   }
 }
 
+// ===========================================================================
+// Expanded sheet
+// ===========================================================================
+
 class _ExpandedServiceSheet extends StatelessWidget {
   final String pickupTitle;
   final String selectedService;
@@ -880,8 +1664,14 @@ class _ExpandedServiceSheet extends StatelessWidget {
   final Map<String, int> addOnPrices;
   final VoidCallback onCollapseTap;
   final VoidCallback onPrimaryTap;
-  final String actionText;
+  // actionText is no longer passed in — computed from scheduledPickupAt below.
   final bool isSubmitting;
+  final bool isManualSelection;
+
+  final String? washerInstructions;
+  final DateTime? scheduledPickupAt;
+  final VoidCallback onWasherInstructionsTap;
+  final VoidCallback onSchedulePickupTap;
 
   const _ExpandedServiceSheet({
     super.key,
@@ -893,9 +1683,52 @@ class _ExpandedServiceSheet extends StatelessWidget {
     required this.addOnPrices,
     required this.onCollapseTap,
     required this.onPrimaryTap,
-    required this.actionText,
     required this.isSubmitting,
+    required this.isManualSelection,
+    required this.washerInstructions,
+    required this.scheduledPickupAt,
+    required this.onWasherInstructionsTap,
+    required this.onSchedulePickupTap,
   });
+
+  bool get _isFutureScheduled {
+    if (scheduledPickupAt == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final picked = DateTime(
+      scheduledPickupAt!.year,
+      scheduledPickupAt!.month,
+      scheduledPickupAt!.day,
+    );
+    return picked.isAfter(today);
+  }
+
+  String get _actionText {
+    if (isManualSelection) return 'Browse Laundries';
+    if (_isFutureScheduled) return 'Schedule Pickup';
+    return 'Request';
+  }
+
+  String _formatScheduled(DateTime dt) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '${dt.day} ${months[dt.month]}, $h:$m';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -913,20 +1746,33 @@ class _ExpandedServiceSheet extends StatelessWidget {
               : 'assets/images/wash_fold_backdropp.png',
         ),
         const SizedBox(height: 16),
+
         _ExpandedOptionCard(
           child: Column(
-            children: const [
-              _OptionRow(title: 'Washer instructions'),
-              Divider(
+            children: [
+              _OptionRow(
+                title: 'Washer instructions',
+                subtitle: washerInstructions,
+                onTap: onWasherInstructionsTap,
+              ),
+              const Divider(
                 height: 1,
                 color: Color.fromARGB(255, 185, 185, 185),
                 endIndent: 20,
                 indent: 20,
               ),
-              _OptionRow(title: 'Schedule pickup'),
+              _OptionRow(
+                title: 'Schedule pickup',
+                subtitle: scheduledPickupAt != null
+                    ? _formatScheduled(scheduledPickupAt!)
+                    : 'ASAP',
+                onTap: onSchedulePickupTap,
+                subtitleHighlighted: scheduledPickupAt != null,
+              ),
             ],
           ),
         ),
+
         const SizedBox(height: 16),
         _ExpandedAddOnCard(
           selectedAddOns: selectedAddOns,
@@ -938,7 +1784,7 @@ class _ExpandedServiceSheet extends StatelessWidget {
           totalPrice: totalPrice,
           onCollapseTap: onCollapseTap,
           onPrimaryTap: onPrimaryTap,
-          actionText: actionText,
+          actionText: _actionText,
           isSubmitting: isSubmitting,
         ),
         const SizedBox(height: 10),
@@ -946,6 +1792,10 @@ class _ExpandedServiceSheet extends StatelessWidget {
     );
   }
 }
+
+// ===========================================================================
+// Shared sub-widgets
+// ===========================================================================
 
 class _ExpandedServiceHeroCard extends StatelessWidget {
   final String pickupTitle;
@@ -1076,30 +1926,67 @@ class _ExpandedOptionCard extends StatelessWidget {
   }
 }
 
+/// Refactored _OptionRow — now tappable and shows optional subtitle + chevron.
 class _OptionRow extends StatelessWidget {
   final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool subtitleHighlighted;
 
-  const _OptionRow({required this.title});
+  const _OptionRow({
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.subtitleHighlighted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Poppins',
-                color: Colors.black,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(26),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Poppins',
+                      color: Colors.black,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: subtitleHighlighted
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        fontFamily: 'Poppins',
+                        color: subtitleHighlighted
+                            ? const Color(0xFFE67E22)
+                            : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: Colors.black87),
-        ],
+            const Icon(Icons.chevron_right_rounded, color: Colors.black87),
+          ],
+        ),
       ),
     );
   }
@@ -1128,6 +2015,21 @@ class _ExpandedAddOnCard extends StatelessWidget {
       {'label': 'Delicate Wash', 'asset': 'assets/images/delicate_wash.png'},
     ];
 
+    Widget pillRow(List<Map<String, String>> items) => Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: items.map((item) {
+        final label = item['label']!;
+        final asset = item['asset']!;
+        return SelectablePill(
+          text: label,
+          assetPath: asset,
+          trailingSize: 22,
+          isSelected: selectedAddOns.contains(label),
+          onTap: () => onToggleAddOn(label),
+        );
+      }).toList(),
+    );
+
     return _ExpandedOptionCard(
       child: Padding(
         padding: const EdgeInsets.all(5),
@@ -1144,37 +2046,9 @@ class _ExpandedAddOnCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: addOns1.map((item) {
-                final label = item['label'] as String;
-                final asset = item['asset'] as String;
-
-                return SelectablePill(
-                  text: label,
-                  assetPath: asset,
-                  trailingSize: 22,
-                  isSelected: selectedAddOns.contains(label),
-                  onTap: () => onToggleAddOn(label),
-                );
-              }).toList(),
-            ),
+            pillRow(addOns1),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: addOns2.map((item) {
-                final label = item['label'] as String;
-                final asset = item['asset'] as String;
-
-                return SelectablePill(
-                  text: label,
-                  assetPath: asset,
-                  trailingSize: 22,
-                  isSelected: selectedAddOns.contains(label),
-                  onTap: () => onToggleAddOn(label),
-                );
-              }).toList(),
-            ),
+            pillRow(addOns2),
           ],
         ),
       ),
@@ -1276,7 +2150,6 @@ class _RoundMapButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = small ? 40.0 : 56.0;
-
     return Material(
       color: Colors.white,
       shape: const CircleBorder(),
@@ -1293,6 +2166,10 @@ class _RoundMapButton extends StatelessWidget {
     );
   }
 }
+
+// ===========================================================================
+// Public reusable widgets
+// ===========================================================================
 
 class SelectedService extends StatelessWidget {
   final String title;
@@ -1443,15 +2320,8 @@ class PricePerKgCard extends StatelessWidget {
 
   String _buildRateBreakdownText() {
     final parts = <String>['GH₵18'];
-
-    if (isWashIron) {
-      parts.add('GH₵$washIronExtra');
-    }
-
-    if (addOnTotal > 0) {
-      parts.add('GH₵$addOnTotal add-ons');
-    }
-
+    if (isWashIron) parts.add('GH₵$washIronExtra');
+    if (addOnTotal > 0) parts.add('GH₵$addOnTotal add-ons');
     return '$estimatedWeightKg kg = ${parts.join(' + ')}';
   }
 

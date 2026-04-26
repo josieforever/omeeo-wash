@@ -16,7 +16,7 @@ import 'package:omeeowash/pages/bookings/booking%20flow/confirm_booking.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 
-const String kGoogleApiKey = 'AIzaSyAhUAyOfnZrilFp3OVqH1vEmpn0j5fL8SY';
+const String kGoogleApiKey = 'AIzaSyBVg_L9lz2x5IdK9yvuNkVYfpDYVyy6zbA';
 const LatLng kDefaultMapCenter = LatLng(5.6288569, -0.2725429);
 
 class LaundryServicestDateScreen extends StatefulWidget {

@@ -13,7 +13,7 @@ class BookingsChat extends StatefulWidget {
   final String bookingSenderId;
 
   const BookingsChat({
-    super.key,
+    // super.key,
     required this.bookingId,
     required this.bookingSenderId,
     required this.bookingRecieverId,

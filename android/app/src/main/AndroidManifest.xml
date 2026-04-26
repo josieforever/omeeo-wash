@@ -17,7 +17,8 @@
     <application
         android:name="${applicationName}"
         android:label="omeeo wash"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
 
         <!-- For file sharing (camera/gallery) -->
         <provider
@@ -55,7 +56,7 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAhUAyOfnZrilFp3OVqH1vEmpn0j5fL8SY" />
+            android:value="AIzaSyBVg_L9lz2x5IdK9yvuNkVYfpDYVyy6zbA" />
 
         <!-- Flutter -->
         <meta-data
