@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Omeeowash</string>
+		<string>Lundri</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -42,13 +42,13 @@
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
 		<key>NSLocationWhenInUseUsageDescription</key>
-<string>We use your location to navigate to and from customers.</string>
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>We need background location so customers can track the valet in real-time.</string>
-<key>UIBackgroundModes</key>
-<array>
-  <string>location</string>
-</array>
+		<string>We use your location to navigate to and from customers.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>We need background location so customers can track the valet in real-time.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>

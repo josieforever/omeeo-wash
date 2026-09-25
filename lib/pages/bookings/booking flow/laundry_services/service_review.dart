@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/finding_laundry_screen.dart'
     show FindingLaundryScreen;
-
 import 'closest_laundries_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -54,6 +54,25 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   bool _isExpanded = false;
   bool isManualSelection = false;
   bool _isSubmitting = false;
+  bool _isRecentering = false;
+
+  static const double _pickupOverlayWidth = 240;
+  static const double _pickupOverlayHeight = 200;
+  static const double _pickupPinTipBottomInset = 14;
+
+  // -------------------------------------------------------------------------
+  // PIN VISUAL TUNING
+  // -------------------------------------------------------------------------
+  //
+  // The GoogleMap camera is always centered on the TRUE pickup LatLng.
+  // Since gestures are disabled, the pickup point always remains at the exact
+  // center of the visible map.
+  //
+  // These only fine-tune the artwork itself:
+  // positive X = right, negative X = left
+  // positive Y = down, negative Y = up
+  static const double _pinVisualOffsetX = 0;
+  static const double _pinVisualOffsetY = 0;
 
   late String selectedService;
   late String selectedServiceType;
@@ -125,12 +144,36 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     }
   }
 
+  void _handleMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      await controller.moveCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: _pickupLatLng, zoom: 16),
+        ),
+      );
+    });
+  }
+
   Future<void> _goToPickup() async {
-    await _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: _pickupLatLng, zoom: 17),
-      ),
-    );
+    if (_isRecentering) return;
+
+    HapticFeedback.selectionClick();
+    setState(() => _isRecentering = true);
+
+    try {
+      await _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: _pickupLatLng, zoom: 17),
+        ),
+      );
+    } finally {
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      if (mounted) setState(() => _isRecentering = false);
+    }
   }
 
   Future<void> _toggleSheet() async {
@@ -144,6 +187,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   }
 
   void _changeServiceType(String value) {
+    HapticFeedback.selectionClick();
     setState(() {
       selectedServiceType = value;
       selectedService = value == 'wash_iron' ? 'Wash & Iron' : 'Wash & Fold';
@@ -151,10 +195,12 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
   }
 
   void _toggleManualSelection(bool? value) {
+    HapticFeedback.selectionClick();
     setState(() => isManualSelection = value ?? false);
   }
 
   void _toggleAddOn(String value) {
+    HapticFeedback.selectionClick();
     setState(() {
       if (selectedAddOns.contains(value)) {
         selectedAddOns.remove(value);
@@ -164,15 +210,146 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     });
   }
 
-  Set<Marker> _markers() {
+  Set<Circle> _pickupCircles() {
     return {
-      Marker(
-        markerId: const MarkerId('pickup'),
-        position: _pickupLatLng,
-        infoWindow: InfoWindow(title: widget.pickupLocation.addressLine),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+      Circle(
+        circleId: const CircleId('pickup_glow_outer'),
+        center: _pickupLatLng,
+        radius: 42,
+        fillColor: const Color(0xFFE67E22).withOpacity(0.08),
+        strokeColor: const Color(0xFFE67E22).withOpacity(0.18),
+        strokeWidth: 1,
+      ),
+      Circle(
+        circleId: const CircleId('pickup_glow_inner'),
+        center: _pickupLatLng,
+        radius: 18,
+        fillColor: const Color(0xFFE67E22).withOpacity(0.12),
+        strokeColor: const Color(0xFFE67E22).withOpacity(0.26),
+        strokeWidth: 1,
       ),
     };
+  }
+
+  void _showPickupInfo() {
+    HapticFeedback.lightImpact();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2425),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFECDB),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Color(0xFFE67E22),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Your pickup point',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.pickupLocation.addressLine,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                if (widget.pickupLocation.subtitle.trim().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.pickupLocation.subtitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: Colors.black45,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'Your pickup rider will come to this location. Make sure it matches where you want your laundry collected.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.45,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF212121),
+                      foregroundColor: const Color(0xFFE67E22),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                    ),
+                    child: const Text(
+                      'Got it',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -202,6 +379,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
 
   /// Opens the "Washer instructions" bottom sheet (Image 2 style).
   void _openWasherInstructions() {
+    HapticFeedback.lightImpact();
     showModalBottomSheet<String?>(
       context: context,
       isScrollControlled: true,
@@ -217,6 +395,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
 
   /// Opens the "Schedule pickup" bottom sheet (Image 1 style).
   void _openSchedulePickup() {
+    HapticFeedback.lightImpact();
     showModalBottomSheet<DateTime?>(
       context: context,
       isScrollControlled: true,
@@ -355,19 +534,32 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
     final displayTitle = widget.pickupLocation.addressLine;
     final displaySubtitle = widget.pickupLocation.subtitle;
 
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
+    // The collapsed sheet occupies 51% of the screen. Make the GoogleMap end
+    // exactly where the visible sheet begins instead of allowing a large part
+    // of the map to sit hidden behind the sheet.
+    //
+    // Because the GoogleMap camera target is _pickupLatLng, this makes the
+    // true pickup coordinate the visual center of the exposed map.
+    final mapBottomInset = screenHeight * 0.51;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          Positioned.fill(
-            bottom: 200,
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: mapBottomInset,
             child: GoogleMap(
               initialCameraPosition: CameraPosition(
                 target: _pickupLatLng,
                 zoom: 16,
               ),
-              markers: _markers(),
-              zoomControlsEnabled: true,
+              circles: _pickupCircles(),
+              zoomControlsEnabled: false,
               myLocationButtonEnabled: false,
               mapToolbarEnabled: false,
               compassEnabled: false,
@@ -375,9 +567,51 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
               zoomGesturesEnabled: false,
               rotateGesturesEnabled: false,
               tiltGesturesEnabled: false,
-              onMapCreated: (controller) => _mapController = controller,
+              onMapCreated: _handleMapCreated,
             ),
           ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: mapBottomInset,
+            child: IgnorePointer(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOut,
+                color: _isExpanded
+                    ? Colors.black.withOpacity(0.055)
+                    : Colors.transparent,
+              ),
+            ),
+          ),
+
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: mapBottomInset,
+            child: IgnorePointer(
+              child: Center(
+                child: Transform.translate(
+                  offset: Offset(
+                    _pinVisualOffsetX,
+                    -((_pickupOverlayHeight / 2) - _pickupPinTipBottomInset) +
+                        _pinVisualOffsetY,
+                  ),
+                  child: SizedBox(
+                    width: _pickupOverlayWidth,
+                    height: _pickupOverlayHeight,
+                    child: _AnimatedPickupPin(
+                      title: 'Pickup here',
+                      subtitle: widget.pickupLocation.addressLine,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -391,7 +625,7 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
                   const Spacer(),
                   _RoundMapButton(
                     icon: Icons.info_outline_rounded,
-                    onTap: () {},
+                    onTap: _showPickupInfo,
                     small: true,
                   ),
                 ],
@@ -400,10 +634,21 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
           ),
           Positioned(
             right: 16,
-            bottom: 300,
-            child: _RoundMapButton(
-              icon: Icons.navigation_outlined,
-              onTap: _goToPickup,
+            bottom: mapBottomInset + 16,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutBack,
+              scale: _isRecentering ? 0.88 : 1.0,
+              child: AnimatedRotation(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                turns: _isRecentering ? 0.06 : 0.0,
+                child: _RoundMapButton(
+                  icon: Icons.navigation_rounded,
+                  onTap: _goToPickup,
+                  highlighted: _isRecentering,
+                ),
+              ),
             ),
           ),
           DraggableScrollableSheet(
@@ -414,15 +659,21 @@ class _PickupPreviewScreenState extends State<PickupPreviewScreen> {
             snap: true,
             snapSizes: const [0.51, 1.0],
             builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOut,
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0x18000000),
-                      blurRadius: 18,
-                      offset: Offset(0, -4),
+                      color: Colors.black.withOpacity(
+                        _isExpanded ? 0.15 : 0.09,
+                      ),
+                      blurRadius: _isExpanded ? 28 : 18,
+                      offset: const Offset(0, -5),
                     ),
                   ],
                 ),
@@ -696,7 +947,7 @@ class _SchedulePickupSheetState extends State<_SchedulePickupSheet> {
   String get _arrivalWindowText {
     final start = _selectedDateTime;
     final end = start.add(const Duration(minutes: 10));
-    final fmt = (DateTime dt) =>
+    fmt(DateTime dt) =>
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     return '${fmt(start)}–${fmt(end)}';
   }
@@ -1605,15 +1856,30 @@ class _CollapsedPickupSheet extends StatelessWidget {
                     ),
                   ),
                   child: isSubmitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFFE67E22),
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFE67E22),
+                                ),
+                              ),
                             ),
-                          ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Creating request...',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFE67E22),
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                          ],
                         )
                       : AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
@@ -2100,15 +2366,30 @@ class _ExpandedRequestBar extends StatelessWidget {
                 ),
               ),
               child: isSubmitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFFE67E22),
+                  ? const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFE67E22),
+                            ),
+                          ),
                         ),
-                      ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Creating request...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFE67E22),
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
                     )
                   : Text(
                       actionText,
@@ -2140,27 +2421,356 @@ class _ExpandedRequestBar extends StatelessWidget {
   }
 }
 
+class _AnimatedPickupPin extends StatefulWidget {
+  final String title;
+  final String subtitle;
+
+  const _AnimatedPickupPin({required this.title, required this.subtitle});
+
+  @override
+  State<_AnimatedPickupPin> createState() => _AnimatedPickupPinState();
+}
+
+class _AnimatedPickupPinState extends State<_AnimatedPickupPin>
+    with TickerProviderStateMixin {
+  static const Color _orange = Color(0xFFE67E22);
+  static const Color _black = Color(0xFF111111);
+
+  late final AnimationController _introController;
+  late final AnimationController _pulseController;
+  late final AnimationController _floatController;
+
+  late final Animation<double> _dropAnimation;
+  late final Animation<double> _pinScaleAnimation;
+  late final Animation<double> _labelOpacityAnimation;
+  late final Animation<double> _floatAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // One-time entrance: the pin drops onto the pickup point and settles.
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 780),
+    );
+
+    // Repeating ground ripple.
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    // Slow idle hover after the entrance animation has completed.
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1750),
+    );
+
+    _dropAnimation = Tween<double>(begin: -84, end: 0).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.0, 0.72, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _pinScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.72,
+          end: 1.08,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 72,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.08,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 28,
+      ),
+    ]).animate(_introController);
+
+    _labelOpacityAnimation = CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.58, 1.0, curve: Curves.easeOut),
+    );
+
+    // Negative Y moves the complete pin/label upward.
+    // 8 logical pixels is enough to feel alive without looking jumpy.
+    _floatAnimation = Tween<double>(begin: 0, end: -8).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOutSine),
+    );
+
+    _introController.forward().whenComplete(() {
+      if (!mounted) return;
+
+      _pulseController.repeat();
+      _floatController.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _introController.dispose();
+    _pulseController.dispose();
+    _floatController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shortSubtitle = widget.subtitle.trim();
+
+    return SizedBox(
+      width: 240,
+      height: 200,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          // -----------------------------------------------------------------
+          // Soft contact shadow.
+          //
+          // As the pin rises, the shadow becomes smaller and lighter. This is
+          // what makes the up/down movement read as floating instead of simply
+          // sliding vertically.
+          // -----------------------------------------------------------------
+          Positioned(
+            bottom: 7,
+            child: AnimatedBuilder(
+              animation: _floatController,
+              builder: (context, child) {
+                final progress = _floatController.value;
+
+                final scaleX = 1.0 - (0.20 * progress);
+                final opacity = 0.16 - (0.08 * progress);
+
+                return Transform.scale(
+                  scaleX: scaleX,
+                  scaleY: 1.0 - (0.10 * progress),
+                  child: Container(
+                    width: 46,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: _black.withOpacity(opacity),
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _black.withOpacity(opacity * 0.55),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // -----------------------------------------------------------------
+          // Orange pickup pulse stays attached to the map location while the
+          // pin itself floats above it.
+          // -----------------------------------------------------------------
+          Positioned(
+            bottom: 2,
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                final value = _pulseController.value;
+                final scale = 0.55 + value;
+                final opacity = (1.0 - value) * 0.14;
+
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 74,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _orange.withOpacity(opacity * 0.20),
+                      border: Border.all(
+                        color: _orange.withOpacity(opacity),
+                        width: 0.8,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // -----------------------------------------------------------------
+          // Pin + label.
+          //
+          // During startup:
+          //   drop from above -> overshoot -> settle
+          //
+          // After startup:
+          //   slowly float from 0 to -8 px and back forever.
+          // -----------------------------------------------------------------
+          Positioned(
+            bottom: 14,
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_introController, _floatController]),
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(
+                    0,
+                    _dropAnimation.value + _floatAnimation.value,
+                  ),
+                  child: Transform.scale(
+                    scale: _pinScaleAnimation.value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FadeTransition(
+                    opacity: _labelOpacityAnimation,
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 210),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.13),
+                            blurRadius: 18,
+                            offset: const Offset(0, 7),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _black,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (shortSubtitle.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              shortSubtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.black45,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Main Lundri pickup marker.
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white70,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color.fromARGB(108, 0, 0, 0),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _orange.withOpacity(0.36),
+                          blurRadius: 20,
+                          offset: const Offset(0, 9),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(1),
+                      child: Image.asset(
+                        'assets/images/lundri_scooter_pin.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+
+                  // Pin stem.
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: _black,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RoundMapButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
   final bool small;
+  final bool highlighted;
 
-  const _RoundMapButton({required this.icon, this.onTap, this.small = false});
+  const _RoundMapButton({
+    required this.icon,
+    this.onTap,
+    this.small = false,
+    this.highlighted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final size = small ? 40.0 : 56.0;
-    return Material(
-      color: Colors.white,
-      shape: const CircleBorder(),
-      elevation: 3,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Icon(icon, color: Colors.black87, size: small ? 20 : 24),
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: highlighted
+                ? const Color(0xFFE67E22).withOpacity(0.20)
+                : Colors.black.withOpacity(0.10),
+            blurRadius: highlighted ? 18 : 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: highlighted ? const Color(0xFFFFECDB) : Colors.white,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(
+              icon,
+              color: highlighted ? const Color(0xFFE67E22) : Colors.black87,
+              size: small ? 20 : 24,
+            ),
+          ),
         ),
       ),
     );

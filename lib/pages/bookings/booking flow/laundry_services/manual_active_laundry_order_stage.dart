@@ -563,7 +563,7 @@ class _CustomerActionSection extends StatelessWidget {
   }
 
   void _openLaundryChat(BuildContext context) {
-    final laundryId = booking.laundryId?.trim() ?? '';
+    final laundryId = booking.laundryId.trim() ?? '';
     if (laundryId.isEmpty) {
       _showSnack(context, 'Laundry is not available yet.');
       return;
@@ -605,7 +605,7 @@ class _CustomerActionSection extends StatelessWidget {
   Future<void> _callLaundry(BuildContext context) async {
     final phone = (booking.laundrySnapshotPhone?.trim().isNotEmpty == true)
         ? booking.laundrySnapshotPhone!.trim()
-        : (booking.laundryPhone?.trim() ?? '');
+        : (booking.laundryPhone.trim() ?? '');
 
     if (phone.isEmpty) {
       _showSnack(context, 'Laundry phone number is not available.');
@@ -925,8 +925,8 @@ class _HeaderData {
   ) {
     final laundryName = (booking.laundrySnapshotName?.trim().isNotEmpty == true)
         ? booking.laundrySnapshotName!
-        : ((booking.laundryName?.trim().isNotEmpty == true)
-              ? booking.laundryName!
+        : ((booking.laundryName.trim().isNotEmpty == true)
+              ? booking.laundryName
               : 'Laundry');
 
     switch (stage) {
