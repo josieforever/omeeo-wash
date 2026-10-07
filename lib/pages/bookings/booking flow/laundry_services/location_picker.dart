@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,6 +27,7 @@ class _GoogleMapLocationPickerScreenState
   GoogleMapController? _mapController;
   LatLng _mapCenter = _defaultCenter;
 
+  bool _isInitializing = true;
   bool _isMapReady = false;
   bool _isResolvingAddress = true;
   bool _isFetchingCurrentLocation = false;
@@ -37,7 +40,153 @@ class _GoogleMapLocationPickerScreenState
   @override
   void initState() {
     super.initState();
-    _reverseGeocode(_mapCenter);
+    _initializeFromLastCurrentLocation();
+  }
+
+  Future<void> _initializeFromLastCurrentLocation() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      await _useDefaultCenter();
+      return;
+    }
+
+    try {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+
+      DocumentSnapshot<Map<String, dynamic>>? userDoc;
+
+      try {
+        userDoc = await userRef.get(const GetOptions(source: Source.cache));
+      } catch (_) {
+        // Ignore cache miss and try the normal Firestore read below.
+      }
+
+      if (userDoc == null || !userDoc.exists) {
+        try {
+          userDoc = await userRef.get();
+        } catch (e) {
+          debugPrint('Could not load last current location: $e');
+        }
+      }
+
+      final data = userDoc?.data() ?? <String, dynamic>{};
+      final rawLocation = data['lastCurrentLocation'];
+
+      if (rawLocation is! Map) {
+        await _useDefaultCenter();
+        return;
+      }
+
+      final location = Map<String, dynamic>.from(rawLocation);
+
+      double? latitude = _readDouble(location['latitude'] ?? location['lat']);
+      double? longitude = _readDouble(
+        location['longitude'] ?? location['lng'] ?? location['lon'],
+      );
+
+      final geopoint = location['geopoint'];
+
+      if ((latitude == null || longitude == null) && geopoint is GeoPoint) {
+        latitude = geopoint.latitude;
+        longitude = geopoint.longitude;
+      }
+
+      if (latitude == null || longitude == null) {
+        await _useDefaultCenter();
+        return;
+      }
+
+      final target = LatLng(latitude, longitude);
+      final savedAddress = (location['addressLine'] ?? '').toString().trim();
+
+      final savedName = _firstNonEmpty([
+        (location['name'] ?? '').toString(),
+        (location['placeName'] ?? '').toString(),
+        (location['title'] ?? '').toString(),
+      ]);
+
+      final savedLocality = _firstNonEmpty([
+        (location['locality'] ?? '').toString(),
+        (location['subtitle'] ?? '').toString(),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _mapCenter = target;
+        _title = savedName.isNotEmpty
+            ? savedName
+            : _firstAddressPart(savedAddress);
+        _subtitle = savedLocality.isNotEmpty
+            ? savedLocality
+            : _remainingAddress(savedAddress);
+        _isInitializing = false;
+      });
+
+      if (savedAddress.isEmpty && savedName.isEmpty && savedLocality.isEmpty) {
+        await _reverseGeocode(target);
+      }
+
+      debugPrint(
+        'Location picker started from lastCurrentLocation: '
+        '${target.latitude}, ${target.longitude}',
+      );
+    } catch (e) {
+      debugPrint('Failed to initialize picker from lastCurrentLocation: $e');
+      await _useDefaultCenter();
+    }
+  }
+
+  Future<void> _useDefaultCenter() async {
+    if (!mounted) return;
+
+    setState(() {
+      _mapCenter = _defaultCenter;
+      _isInitializing = false;
+    });
+
+    await _reverseGeocode(_defaultCenter);
+  }
+
+  static double? _readDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value == null) return null;
+    return double.tryParse(value.toString());
+  }
+
+  static String _firstNonEmpty(List<String> values) {
+    for (final value in values) {
+      final clean = value.trim();
+      if (clean.isNotEmpty) return clean;
+    }
+    return '';
+  }
+
+  static String _firstAddressPart(String address) {
+    final clean = address.trim();
+    if (clean.isEmpty) return 'Selected location';
+
+    final parts = clean.split(',');
+    final first = parts.first.trim();
+
+    return first.isEmpty ? 'Selected location' : first;
+  }
+
+  static String _remainingAddress(String address) {
+    final clean = address.trim();
+    if (clean.isEmpty) return '';
+
+    final parts = clean.split(',');
+    if (parts.length <= 1) return clean;
+
+    return parts
+        .skip(1)
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .join(', ');
   }
 
   @override
@@ -212,13 +361,20 @@ class _GoogleMapLocationPickerScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: SizedBox.expand(),
+      );
+    }
+
     return Scaffold(
       body: Stack(
         children: [
           Positioned.fill(
             child: GoogleMap(
-              initialCameraPosition: const CameraPosition(
-                target: _defaultCenter,
+              initialCameraPosition: CameraPosition(
+                target: _mapCenter,
                 zoom: 16,
               ),
               myLocationEnabled: false,

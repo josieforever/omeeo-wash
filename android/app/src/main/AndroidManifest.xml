@@ -16,7 +16,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:name="${applicationName}"
-        android:label="omeeo wash"
+        android:label="Lundri"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
 
@@ -56,7 +56,7 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBVg_L9lz2x5IdK9yvuNkVYfpDYVyy6zbA" />
+            android:value="AIzaSyABK1eJNZmo0VNvGabx4JZDTQvPppSpnA0" />
 
         <!-- Flutter -->
         <meta-data
