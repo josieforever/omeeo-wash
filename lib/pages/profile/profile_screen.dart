@@ -1,20 +1,24 @@
-import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:omeeowash/authentication/login_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/profile/app_settings.dart';
-import 'package:omeeowash/pages/profile/help_and_support/help_annd_support.dart';
-import 'package:omeeowash/pages/profile/notifications.dart';
+import 'package:omeeowash/pages/profile/about.dart';
 import 'package:omeeowash/pages/profile/addresses.dart';
+import 'package:omeeowash/pages/profile/all_support.dart';
+import 'package:omeeowash/pages/profile/settings.dart';
+import 'package:omeeowash/pages/profile/discounts_gifts.dart';
+import 'package:omeeowash/pages/profile/help/help.dart';
+import 'package:omeeowash/pages/profile/history/history.dart';
 import 'package:omeeowash/pages/profile/payment_methods.dart';
 import 'package:omeeowash/pages/profile/personal_information.dart';
 import 'package:omeeowash/providers/user_provider.dart';
 import 'package:omeeowash/widgets.dart/responsiveness.dart';
 import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
+
+import 'help/live_chat/app.config.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,61 +28,149 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String? _uid;
+
   @override
   void initState() {
     super.initState();
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    userProvider.loadUser(uid: FirebaseAuth.instance.currentUser!.uid);
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    _uid = currentUser?.uid;
+
+    if (_uid != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.loadUser(uid: _uid!);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, _) {
-        final user = userProvider.user;
-
-        if (user == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return Scaffold(
-          body: SingleChildScrollView(
-            child: Container(
-              color: Colors.transparent,
-              child: Column(
-                children: [
-                  ProfileScreenTopBar(user: user),
-                  ProfileScreenMiddleSection(loyaltyPoints: user.loyaltyPoints),
-                ],
-              ),
+    if (_uid == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.account_circle_outlined,
+                  size: 72,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No user signed in',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please log in to view your profile.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withOpacity(.7),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    child: const Text('Go to Login'),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    return Material(
+      color: const Color(0xFFFFFFFF),
+      child: SafeArea(
+        child: Consumer<UserProvider>(
+          builder: (context, userProvider, _) {
+            final user = userProvider.user;
+
+            if (user == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final horizontalPadding = constraints.maxWidth < 360
+                    ? 10.0
+                    : 14.0;
+
+                return SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Column(
+                        children: [
+                          ProfileScreenTopBar(user: user),
+                          const SizedBox(height: 8),
+                          ProfileScreenMiddleSection(
+                            loyalty: (user.loyalty['points'] ?? 0) as int,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
 class ProfileScreenTopBar extends StatelessWidget {
   final UserModel user;
-
   const ProfileScreenTopBar({super.key, required this.user});
 
-  // Generate initials from name
-  String getInitials(String name) {
-    final parts = name.trim().split(' ');
+  String _safeInitials({required String? name, required String? email}) {
+    final parts = (name ?? '')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
+
     if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    } else if (parts.isNotEmpty) {
-      return parts[0][0].toUpperCase();
-    } else {
-      return '';
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
+    if (parts.length == 1) {
+      return parts[0][0].toUpperCase();
+    }
+
+    final e = (email ?? '').trim();
+    if (e.isNotEmpty) return e[0].toUpperCase();
+    return 'U';
   }
 
-  // Generate a random color
-  Color getRandomColor() {
-    final colors = [
+  Color _avatarColor(String seed) {
+    final palette = <Color>[
       Colors.deepPurple,
       Colors.indigo,
       Colors.teal,
@@ -86,336 +178,383 @@ class ProfileScreenTopBar extends StatelessWidget {
       Colors.redAccent,
       Colors.blueGrey,
     ];
-    return colors[Random().nextInt(colors.length)];
+    final idx = seed.hashCode.abs() % palette.length;
+    return palette[idx];
   }
 
   @override
   Widget build(BuildContext context) {
-    final initials = getInitials(user.name);
-    final randomColor = getRandomColor();
+    final auth = FirebaseAuth.instance.currentUser;
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 360;
 
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerRight,
-          end: Alignment.centerLeft,
-          colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-        ),
-      ),
+    String displayName = user.name.trim();
+    if (displayName.isEmpty) {
+      displayName = (auth?.displayName ?? '').trim();
+    }
+    if (displayName.isEmpty) {
+      final emailLocal = user.email.split('@').first;
+      displayName = emailLocal.isNotEmpty ? emailLocal : 'User';
+    }
+
+    final initials = _safeInitials(name: displayName, email: user.email);
+    final avatarBg = _avatarColor(user.uid);
+
+    final avatarRadius = isSmallPhone ? 38.0 : 45.0;
+    final nameFontSize = isSmallPhone ? 20.0 : TextSizes.heading2.toDouble();
+    final emailFontSize = isSmallPhone ? 12.0 : TextSizes.bodyText1.toDouble();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 8),
       child: Column(
         children: [
-          const SizedBox(height: 50),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              CustomText(
-                text: 'Profile',
-                textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                textSize: TextSizes.heading1,
-                textWeight: FontWeight.w900,
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => PersonalInformation()),
-                  );
-                },
-                icon: Icon(
-                  FontAwesomeIcons.penToSquare,
-                  size: IconSizes.midSmall,
-                  color: Theme.of(context).textTheme.headlineLarge?.color,
-                ),
-              ),
-            ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GoBack(
+              bgColor: Theme.of(context).colorScheme.tertiary,
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: randomColor,
-                backgroundImage: (user.photoUrl.isNotEmpty)
-                    ? NetworkImage(user.photoUrl)
-                    : null,
-                child: (user.photoUrl.isEmpty)
-                    ? Text(
-                        initials,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomText(
-                    text: user.name,
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.heading2,
-                    textWeight: FontWeight.w900,
+
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PersonalInformation()),
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: avatarRadius,
+                  backgroundColor: avatarBg,
+                  backgroundImage: user.photoUrl.isNotEmpty
+                      ? NetworkImage(user.photoUrl)
+                      : null,
+                  child: user.photoUrl.isEmpty
+                      ? Text(
+                          initials,
+                          style: TextStyle(
+                            fontSize: isSmallPhone ? 20 : 24,
+                            color: Theme.of(context).colorScheme.inversePrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    displayName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: nameFontSize,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  CustomText(
-                    text: user.email,
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.normal,
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    user.email,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: emailFontSize,
+                    ),
                   ),
-                  CustomText(
-                    text: 'Member since ${user.memberSince}',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.bodyText1,
-                    textWeight: FontWeight.normal,
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                child: IconStackTextButton(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-                  icon: Icon(
-                    Icons.local_car_wash,
-                    size: IconSizes.small,
-                    color: Theme.of(context).textTheme.headlineLarge?.color,
-                  ),
-                  numberWidget: CustomText(
-                    text: user.totalWashes.toString(),
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.subtitle1,
-                    textWeight: FontWeight.w900,
-                  ),
-                  textWidget: CustomText(
-                    text: 'Total Washes',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.caption,
-                    textWeight: FontWeight.normal,
-                  ),
-                  onPressed: () {},
-                  borderRadius: 7,
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: IconStackTextButton(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-                  icon: Icon(
-                    FontAwesomeIcons.calendar,
-                    size: IconSizes.small,
-                    color: Theme.of(context).textTheme.headlineLarge?.color,
-                  ),
-                  numberWidget: CustomText(
-                    text: user.washesThisMonth.toString(),
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.subtitle1,
-                    textWeight: FontWeight.w900,
-                  ),
-                  textWidget: CustomText(
-                    text: 'This month',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.caption,
-                    textWeight: FontWeight.normal,
-                  ),
-                  onPressed: () {},
-                  borderRadius: 7,
-                ),
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: IconStackTextButton(
-                  padding: EdgeInsets.symmetric(vertical: 10, horizontal: 0),
-                  icon: Icon(
-                    FontAwesomeIcons.solidStar,
-                    size: IconSizes.small,
-                    color: Colors.amber,
-                  ),
-                  numberWidget: CustomText(
-                    text: user.rating.toString(),
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.subtitle1,
-                    textWeight: FontWeight.w900,
-                  ),
-                  textWidget: CustomText(
-                    text: 'Rating',
-                    textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                    textSize: TextSizes.caption,
-                    textWeight: FontWeight.normal,
-                  ),
-                  onPressed: () {},
-                  borderRadius: 7,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
         ],
       ),
     );
   }
 }
 
-class ProfileScreenMiddleSection extends StatelessWidget {
-  final int loyaltyPoints;
+class ProfileScreenMiddleSection extends StatefulWidget {
+  final int loyalty;
 
-  const ProfileScreenMiddleSection({super.key, required this.loyaltyPoints});
+  const ProfileScreenMiddleSection({super.key, required this.loyalty});
+
+  @override
+  State<ProfileScreenMiddleSection> createState() =>
+      _ProfileScreenMiddleSectionState();
+}
+
+class _ProfileScreenMiddleSectionState
+    extends State<ProfileScreenMiddleSection> {
+  bool isAdmin = AppConfig().isAdmin;
+
+  Widget _sectionCard({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
+      vertical: 18,
+      horizontal: 0,
+    ),
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(106, 255, 236, 219),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _sectionDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Divider(
+        color: Color(0xFF919191),
+        indent: 40,
+        endIndent: 20,
+        height: 1,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    String remainingPoints = (200 - loyaltyPoints).toString();
-    String loyaltyPointsString = loyaltyPoints.toString();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallPhone = screenWidth < 360;
+    final verticalGap = isSmallPhone ? 16.0 : 20.0;
 
     return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProfileButton(
-              textWidget1: 'Personal Infomation',
-              textWidget2: 'Update your details',
-              icon: Icon(
-                Icons.supervised_user_circle,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PersonalInformation()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Payment Methods',
-              textWidget2: 'Manage cards & payments',
-              icon: Icon(
-                Icons.payment,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PaymentMethods()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Addresses',
-              textWidget2: 'Home, work & other locations',
-              icon: Icon(
-                Icons.add_location_alt,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => Addresses()),
-                );
-              },
-            ),
-            ProfileButton(
-              textWidget1: 'Notifications',
-              textWidget2: 'Push notifications & alerts',
-              svg: SvgPicture.asset(
-                'assets/icons/notification_settings.svg',
-                height: 24,
-                width: 24,
-                colorFilter: ColorFilter.mode(
-                  Theme.of(
-                    context,
-                  ).colorScheme.primary, // 🎨 Replace with your desired color
-                  BlendMode.srcIn,
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: 8,
+        left: isSmallPhone ? 2 : 0,
+        right: isSmallPhone ? 2 : 0,
+        bottom: 12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionCard(
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Discounts and gifts',
+                  textWidget2: 'Enter promo code',
+                  svg: SvgPicture.asset(
+                    'assets/icons/percent_discount.svg',
+                    height: isSmallPhone ? 24 : 30,
+                    width: isSmallPhone ? 24 : 30,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.black,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const GiftsAndDiscountsScreen(),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => Notifications()),
-                );
-              },
+                const SizedBox(height: 4),
+                _sectionDivider(),
+                const SizedBox(height: 4),
+                ProfileButton(
+                  textWidget1: 'Payment Methods',
+                  selectedPaymentMethod: 'card',
+                  icon2: Icons.payment,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PaymentMethodsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-            ProfileButton(
-              textWidget1: 'App Settings',
-              textWidget2: 'Language, theme & more',
-              icon: Icon(
-                Icons.settings,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AppSettings()),
-                );
-              },
+          ),
+
+          SizedBox(height: verticalGap),
+
+          _sectionCard(
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Addresses',
+                  icon: Icon(
+                    Icons.add_location_alt,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyAddressesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
+                _sectionDivider(),
+                const SizedBox(height: 4),
+                ProfileButton(
+                  textWidget1: 'History',
+                  icon: Icon(
+                    Icons.assignment_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const History()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
+                _sectionDivider(),
+                const SizedBox(height: 4),
+                ProfileButton(
+                  textWidget1: 'Support',
+                  icon: Icon(
+                    FontAwesomeIcons.headset,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AllSupportScreen(isAdmin: false),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-            ProfileButton(
-              textWidget1: 'Help & Support',
-              textWidget2: 'FAQs & contact us',
+          ),
+
+          SizedBox(height: verticalGap),
+
+          GestureDetector(
+            onTap: () {
+              // TODO: connect to rider onboarding screen
+            },
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                vertical: isSmallPhone ? 13 : 15,
+                horizontal: isSmallPhone ? 12 : 14,
+              ),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 32, 32, 32),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: isSmallPhone ? 14 : 15,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      FontAwesomeIcons.cediSign,
+                      color: const Color.fromARGB(255, 255, 217, 0),
+                      size: isSmallPhone ? 14 : 16,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Earn as a rider',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: isSmallPhone ? 14 : 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    FontAwesomeIcons.chevronRight,
+                    size: 13,
+                    color: Color.fromARGB(255, 206, 0, 0),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SizedBox(height: verticalGap),
+
+          _sectionCard(
+            child: ProfileButton(
+              textWidget1: 'Help',
               icon: Icon(
                 Icons.help,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              scale: 1.2,
+              scale: 1,
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => HelpAndSupport()),
+                  MaterialPageRoute(builder: (_) => const Help()),
                 );
               },
             ),
-            LoyaltyPointsBar(
-              padding: const EdgeInsets.all(10),
-              textWidget1: CustomText(
-                text: 'Loyalty Points',
-                textColor: Theme.of(context).textTheme.bodyLarge?.color,
-                textSize: TextSizes.subtitle2,
-                textWeight: FontWeight.w900,
-              ),
-              textWidget2: CustomText(
-                text: 'You have $loyaltyPointsString points',
-                textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                textSize: TextSizes.caption,
-                textWeight: FontWeight.normal,
-              ),
-              textWidget3: CustomText(
-                text: '$remainingPoints more points for a free wash!',
-                textColor: Theme.of(context).textTheme.headlineLarge?.color,
-                textSize: TextSizes.caption,
-                textWeight: FontWeight.normal,
-              ),
-              point: loyaltyPointsString,
-              onPressed: () {},
-              borderRadius: 7,
+          ),
+
+          SizedBox(height: verticalGap),
+
+          _sectionCard(
+            child: Column(
+              children: [
+                ProfileButton(
+                  textWidget1: 'Settings',
+                  icon: Icon(
+                    Icons.settings,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const Settings()),
+                    );
+                  },
+                ),
+                _sectionDivider(),
+                ProfileButton(
+                  textWidget1: 'About',
+                  icon: const Icon(Icons.info_rounded),
+                  scale: 1,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AboutScreen()),
+                    );
+                  },
+                ),
+              ],
             ),
-            SignOut(
-              textWidget1: 'Sign Out',
-              textWidget2: 'Sign out of your account',
-              icon: Icon(
-                Icons.logout,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              scale: 1.2,
-              onPressed: () {
-                FirebaseService().signOut(context);
-              },
-            ),
-            const SizedBox(height: 75),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

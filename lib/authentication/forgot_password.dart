@@ -73,9 +73,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromARGB(26, 7, 0, 133),
+                            color: Theme.of(context).colorScheme.shadow,
                             blurRadius: 12,
                             spreadRadius: 2,
                             offset: Offset(0, 6),
@@ -243,7 +243,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                                               child: CustomText(
                                                 text:
                                                     'Reset link sent successfully',
-                                                textColor: AppColors.white,
+                                                textColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.inversePrimary,
                                               ),
                                             ),
                                             backgroundColor: Colors.green,
@@ -264,7 +266,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                                               child: CustomText(
                                                 text:
                                                     'Error sending reset link',
-                                                textColor: AppColors.white,
+                                                textColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.inversePrimary,
                                               ),
                                             ),
                                             backgroundColor: Colors.red,
@@ -284,7 +288,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                                             child: CustomText(
                                               text:
                                                   'Please correct the errors in the form.',
-                                              textColor: AppColors.white,
+                                              textColor: Theme.of(
+                                                context,
+                                              ).colorScheme.inversePrimary,
                                             ),
                                           ),
                                           backgroundColor: Colors.orange,
@@ -500,9 +506,9 @@ class _PasswordResetLinkConfirmationState
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color.fromARGB(26, 7, 0, 133),
+                            color: Theme.of(context).colorScheme.shadow,
                             blurRadius: 12,
                             spreadRadius: 2,
                             offset: Offset(0, 6),

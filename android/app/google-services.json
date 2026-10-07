@@ -7,6 +7,42 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:464337931141:android:5df132e4eb6b5683c7d2ec",
+        "android_client_info": {
+          "package_name": "com.example.lundri_connect"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "464337931141-oi8q1e72dpe9mfipdhh5m07pho6hq9gi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.lundri_connect",
+            "certificate_hash": "e5d2a95a27b6a9b1978c8bf673642722ac40afec"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABK1eJNZmo0VNvGabx4JZDTQvPppSpnA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "464337931141-02ag2d1rsrie3bdmglu6673r8oaeikfd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.lundriConnect"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:464337931141:android:9bba13821fd8cd71c7d2ec",
         "android_client_info": {
           "package_name": "com.omeeowash"
@@ -14,43 +50,27 @@
       },
       "oauth_client": [
         {
-          "client_id": "464337931141-2rdgeqg9lemgm169cn6clhujiqquiav0.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.omeeowash",
-            "certificate_hash": "e5d2a95a27b6a9b1978c8bf673642722ac40afec"
-          }
-        },
-        {
           "client_id": "464337931141-hrtnk0dr2d676cede7qh1m1ilb58k31u.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.omeeowash",
             "certificate_hash": "6f6a8feab86d77aaece76642f3c283c0800b20eb"
           }
-        },
-        {
-          "client_id": "464337931141-g3l5c60rtusfkpkmpb3jt2rep8o84dlk.apps.googleusercontent.com",
-          "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBXTGJHue1DyE3vLG6Uf6dNVRV2yvHAS5c"
+          "current_key": "AIzaSyABK1eJNZmo0VNvGabx4JZDTQvPppSpnA0"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "464337931141-g3l5c60rtusfkpkmpb3jt2rep8o84dlk.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "464337931141-pl3mo51kfe97sk9331b16fl8l600qdvu.apps.googleusercontent.com",
+              "client_id": "464337931141-02ag2d1rsrie3bdmglu6673r8oaeikfd.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.omeeowash"
+                "bundle_id": "com.example.lundriConnect"
               }
             }
           ]

@@ -1,17 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'
+    show FirebaseMessaging;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:intl/intl.dart';
-import 'package:lottie/lottie.dart';
 import 'package:omeeowash/authentication/forgot_password.dart';
 import 'package:omeeowash/authentication/signup_screen.dart';
 import 'package:omeeowash/models/user_model.dart';
-import 'package:omeeowash/pages/home_screen_with_nav.dart';
+import 'package:omeeowash/pages/bookings/booking%20flow/laundry_services/laundry_services.dart';
 import 'package:omeeowash/providers/user_provider.dart';
-import 'package:omeeowash/widgets.dart/colors.dart';
-import 'package:omeeowash/widgets.dart/responsiveness.dart';
-import 'package:omeeowash/widgets.dart/utility_widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,670 +21,677 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const Color _orange = Color(0xFFE67E22);
+  static const Color _orangeSoft = Color(0xFFFFF0E4);
+  static const Color _ink = Color(0xFF111111);
+  static const Color _field = Color(0xFFF6F6F6);
+  static const Color _muted = Color(0xFF7A7A7A);
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _rememberMe = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rememberedEmail = prefs.getString('remembered_login_email') ?? '';
+    final remember = prefs.getBool('remember_login_email') ?? true;
+
+    if (!mounted) return;
+
+    setState(() {
+      _rememberMe = remember;
+      if (rememberedEmail.trim().isNotEmpty) {
+        _emailController.text = rememberedEmail.trim();
+      }
+    });
+  }
+
+  Future<void> _saveRememberPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('remember_login_email', _rememberMe);
+
+    if (_rememberMe) {
+      await prefs.setString(
+        'remembered_login_email',
+        _emailController.text.trim(),
+      );
+    } else {
+      await prefs.remove('remembered_login_email');
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+    final userCredential = await FirebaseService().signInWithGoogle(context);
+
+    if (!mounted) return;
+
+    if (userCredential != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LaundryServicesScreen()),
+      );
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Google sign-in failed')));
+    }
+  }
+
+  Future<void> _handleEmailLogin() async {
+    if (_isLoading) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    FocusScope.of(context).unfocus();
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    setState(() => _isLoading = true);
+
+    try {
+      await FirebaseService().signInWithEmailAndPassword(
+        email: email,
+        password: password,
+        context: context,
+      );
+
+      await _saveRememberPreference();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LaundryServicesScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String displayMessage;
+
+      switch (e.code) {
+        case 'user-data-not-found':
+          displayMessage =
+              'Account not found. Please register or check your credentials.';
+          break;
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          displayMessage = 'Invalid email or password.';
+          break;
+        case 'user-disabled':
+          displayMessage = 'This user account has been disabled.';
+          break;
+        case 'too-many-requests':
+          displayMessage =
+              'Too many failed login attempts. Please try again later.';
+          break;
+        default:
+          displayMessage =
+              'Login failed: ${e.message ?? 'An unknown error occurred.'}';
+      }
+
+      if (mounted) _showError(displayMessage);
+    } catch (_) {
+      if (mounted) _showError('Something went wrong. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: Color(0xFFA7A7A7),
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: Icon(icon, color: Colors.black45, size: 20),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: _field,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: _orange, width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: Colors.red.shade400, width: 1.2),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _brandHeader() {
+    return Column(
+      children: [
+        SizedBox(
+          width: 132,
+          height: 96,
+          child: Image.asset(
+            'assets/images/lundri_logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) {
+              return Container(
+                width: 82,
+                height: 82,
+                decoration: BoxDecoration(
+                  color: _ink,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(
+                  Icons.local_laundry_service_rounded,
+                  color: _orange,
+                  size: 40,
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Fresh laundry, one tap away.',
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: Colors.black45,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _rememberRow() {
+    return Row(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _rememberMe = !_rememberMe),
+          borderRadius: BorderRadius.circular(8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: _rememberMe ? _orange : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: _rememberMe ? _orange : const Color(0xFFD6D6D6),
+                  ),
+                ),
+                child: _rememberMe
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Remember me',
+                style: TextStyle(
+                  color: _muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ForgotPassword()),
+            );
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: _orange,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+          child: const Text(
+            'Forgot password?',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _loginButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleEmailLogin,
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: _orange,
+          disabledBackgroundColor: _orange.withOpacity(0.65),
+          foregroundColor: _ink,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: _isLoading
+              ? const SizedBox(
+                  key: ValueKey('loading'),
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: _ink,
+                  ),
+                )
+              : const Row(
+                  key: ValueKey('text'),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Sign in',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_rounded, size: 19),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _socialButton({
+    required Widget icon,
+    required String text,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 52,
+        child: OutlinedButton(
+          onPressed: _isLoading ? null : onTap,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _ink,
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFFE8E8E8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  text,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 244, 248, 255),
+      resizeToAvoidBottomInset: true,
+      backgroundColor: const Color(0xFFF7F3EE),
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
+          Positioned(
+            left: -90,
+            top: -120,
+            child: Container(
+              width: 270,
+              height: 270,
+              decoration: BoxDecoration(
+                color: _orange.withOpacity(0.15),
+                shape: BoxShape.circle,
               ),
             ),
           ),
-          Positioned.fill(
+          Positioned(
+            right: -65,
+            top: 115,
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(213, 255, 255, 255),
-            ),
-          ),
-          Positioned.fill(
-            child: Lottie.asset(
-              'assets/animations/background_animation_light.json',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.9,
-              color: const Color.fromARGB(100, 255, 255, 255),
+              width: 175,
+              height: 175,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.045),
+                shape: BoxShape.circle,
+              ),
             ),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.only(
-                left: 15,
-                right: 15,
-                top: 70,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.fromLTRB(
+                16,
+                24,
+                16,
+                media.viewInsets.bottom + 24,
               ),
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Theme.of(context).textTheme.headlineLarge?.color,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color.fromARGB(26, 7, 0, 133),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 10,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GradientText(
-                            text: 'omeeo wash',
-                            style: TextStyle(
-                              fontSize: TextSizes.heading1,
-                              fontWeight: FontWeight.w900,
-                            ),
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerRight,
-                              end: Alignment.centerLeft,
-                              colors: [Color(0xFF6D66F6), Color(0xFFA558F2)],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          CustomText(
-                            text: 'Sign in to your omeeo wash account',
-                            textColor: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.color,
-                            textSize: TextSizes.bodyText1,
-                          ),
-                          const SizedBox(height: 10),
-                          ContinueSignInButton(
-                            text: 'Continue with Google',
-                            animation: 'assets/animations/google.json',
-                            scale: 3,
-                            onPressed: () async {
-                              setState(() {
-                                _isLoading = true;
-                              });
-                              final userCredential = await FirebaseService()
-                                  .signInWithGoogle(context);
-                              if (userCredential != null) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const HomeScreenWithNav(view: 'home'),
-                                  ),
-                                );
-                              } else {
-                                setState(() {
-                                  _isLoading = false;
-                                });
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Google sign-in failed"),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
-                          ContinueSignInButton(
-                            text: 'Continue with Apple',
-                            animation: 'assets/animations/apple.json',
-                            scale: 1.5,
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Apple sign-in not implemented yet",
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  thickness: 0.5,
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.color,
-                                ),
-                              ),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text("or"),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  thickness: 0.5,
-                                  color: Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Form(
-                            key: _formKey,
-                            autovalidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Email
-                                Text(
-                                  "Email",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge?.color,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                TextFormField(
-                                  cursorColor: Theme.of(
-                                    context,
-                                  ).textTheme.bodyLarge?.color,
-                                  controller: _emailController,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    // CORRECTED REGEX: Removed the backslash before $
-                                    else if (!RegExp(
-                                      r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                    ).hasMatch(value)) {
-                                      return 'Enter a valid email address';
-                                    }
-                                    return null;
-                                  },
-                                  decoration: InputDecoration(
-                                    // Moved generic border to the top to allow specific borders to override
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 0,
-                                      horizontal: 0,
-                                    ),
-                                    hintText: 'Enter your email',
-                                    hintStyle: TextStyle(
-                                      fontSize: TextSizes.bodyText1,
-                                      color: const Color.fromARGB(
-                                        255,
-                                        91,
-                                        91,
-                                        91,
-                                      ),
-                                    ),
-                                    prefixIcon: const Icon(
-                                      Icons.email_outlined,
-                                      color: Color.fromARGB(255, 127, 127, 127),
-                                      size: IconSizes.midSmall,
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      gapPadding: 10,
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.bodyLarge?.color ??
-                                            AppColors.textPrimary,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.red,
-                                      ),
-                                    ),
-                                    focusedErrorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.red,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                // Password
-                                Text(
-                                  "Password",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge?.color,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                TextFormField(
-                                  cursorColor: Theme.of(
-                                    context,
-                                  ).textTheme.bodyLarge?.color,
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
-                                    } else if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
-                                    return null;
-                                  },
-                                  decoration: InputDecoration(
-                                    // Moved generic border to the top to allow specific borders to override
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 0,
-                                      horizontal: 0,
-                                    ),
-                                    hintText: 'Create a password',
-                                    hintStyle: TextStyle(
-                                      fontSize: TextSizes.bodyText1,
-                                      color: const Color.fromARGB(
-                                        255,
-                                        91,
-                                        91,
-                                        91,
-                                      ),
-                                    ),
-                                    prefixIcon: const Icon(
-                                      Icons.lock_outline,
-                                      color: Color.fromARGB(255, 127, 127, 127),
-                                      size: IconSizes.midSmall,
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      gapPadding: 10,
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).textTheme.bodyLarge?.color ??
-                                            AppColors.textPrimary,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                    errorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.red,
-                                      ),
-                                    ),
-                                    focusedErrorBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(
-                                        color: Colors.red,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                        color: const Color.fromARGB(
-                                          255,
-                                          127,
-                                          127,
-                                          127,
-                                        ),
-                                        size: 18,
-                                      ),
-                                      onPressed: () {
-                                        setState(
-                                          () => _obscurePassword =
-                                              !_obscurePassword,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              GradientText(
-                                onPressed: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const ForgotPassword(),
-                                    ),
-                                  );
-                                },
-                                text: 'Forgot password?',
-                                style: TextStyle(
-                                  fontSize: TextSizes.bodyText1,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.centerRight,
-                                  end: Alignment.centerLeft,
-                                  colors: [
-                                    Color.fromARGB(255, 73, 64, 241),
-                                    Color.fromARGB(255, 149, 60, 237),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          _isLoading
-                              ? LoadingButton(height: 50, width: 50, scale: 1)
-                              : RegularButton(
-                                  onPressed: () async {
-                                    if (_formKey.currentState!.validate()) {
-                                      final email = _emailController.text
-                                          .trim();
-                                      final password = _passwordController.text
-                                          .trim();
-
-                                      setState(() {
-                                        _isLoading = true;
-                                      });
-
-                                      try {
-                                        await FirebaseService()
-                                            .signInWithEmailAndPassword(
-                                              email: email,
-                                              password: password,
-                                              context: context,
-                                            );
-
-                                        // Fetch and set user data from Firestore into Provider
-                                        final userDoc = await FirebaseFirestore
-                                            .instance
-                                            .collection('users')
-                                            .doc(
-                                              FirebaseAuth
-                                                  .instance
-                                                  .currentUser!
-                                                  .uid,
-                                            )
-                                            .get();
-
-                                        final userModel = UserModel.fromMap(
-                                          userDoc.data()!,
-                                        );
-                                        await context
-                                            .read<UserProvider>()
-                                            .setUser(userModel);
-
-                                        // Show success feedback
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Login successful! 🎉",
-                                              ),
-                                              backgroundColor: Colors.green,
-                                            ),
-                                          );
-
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const HomeScreenWithNav(
-                                                    view: 'home',
-                                                  ),
-                                            ),
-                                          );
-                                        }
-                                      } on FirebaseAuthException catch (e) {
-                                        String displayMessage;
-
-                                        switch (e.code) {
-                                          case 'user-data-not-found':
-                                            displayMessage =
-                                                'Account not found. Please register or check your credentials.';
-                                            break;
-                                          case 'user-not-found':
-                                            displayMessage =
-                                                'invalid email or password.';
-                                            break;
-                                          case 'wrong-password':
-                                            displayMessage =
-                                                'invalid email or password.';
-                                            break;
-                                          case 'invalid-credential':
-                                            displayMessage =
-                                                'invalid email or password.';
-                                            break;
-                                          case 'user-disabled':
-                                            displayMessage =
-                                                'This user account has been disabled.';
-                                            break;
-                                          case 'too-many-requests':
-                                            displayMessage =
-                                                'Too many failed login attempts. Please try again later.';
-                                            break;
-                                          default:
-                                            displayMessage =
-                                                'Login failed: ${e.message ?? 'An unknown error occurred.'}';
-                                        }
-
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Center(
-                                                child: Text(
-                                                  displayMessage,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              duration: const Duration(
-                                                seconds: 4,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Center(
-                                                child: Text(
-                                                  'An unexpected error occurred: ${e.toString()}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              duration: const Duration(
-                                                seconds: 4,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } finally {
-                                        if (mounted) {
-                                          setState(() {
-                                            _isLoading = false;
-                                          });
-                                        }
-                                      }
-                                    }
-                                  },
-                                  borderRadius: 7,
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.centerRight,
-                                    end: Alignment.centerLeft,
-                                    colors: [
-                                      Color.fromARGB(255, 73, 64, 241),
-                                      Color.fromARGB(255, 149, 60, 237),
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 15,
-                                  ),
-                                  textWidget: CustomText(
-                                    text: 'Sign In',
-                                    textColor: Theme.of(
-                                      context,
-                                    ).textTheme.headlineLarge?.color,
-                                    textSize: TextSizes.bodyText1,
-                                    textWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                          const SizedBox(height: 30),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CustomText(
-                                text: "Don't have an account?",
-                                textColor: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
-                                textSize: TextSizes.bodyText1,
-                              ),
-                              const SizedBox(width: 5),
-                              GradientText(
-                                onPressed: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const SignupScreen(),
-                                    ),
-                                  );
-                                },
-                                text: 'Sign Up',
-                                style: TextStyle(
-                                  fontSize: TextSizes.bodyText1,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.centerRight,
-                                  end: Alignment.centerLeft,
-                                  colors: [
-                                    Color.fromARGB(255, 73, 64, 241),
-                                    Color.fromARGB(255, 149, 60, 237),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CustomText(
-                              text: 'By signing in, you agree to our',
-                              textColor: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              textSize: 9,
-                            ),
-                            const SizedBox(width: 5),
-                            GradientText(
-                              text: 'Terms of Service',
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              gradient: const LinearGradient(
-                                begin: Alignment.centerRight,
-                                end: Alignment.centerLeft,
-                                colors: [
-                                  Color.fromARGB(255, 73, 64, 241),
-                                  Color.fromARGB(255, 149, 60, 237),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            CustomText(
-                              text: 'and',
-                              textColor: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.color,
-                              textSize: 9,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Column(
+                    children: [
+                      _brandHeader(),
+                      const SizedBox(height: 28),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.07),
+                              blurRadius: 28,
+                              offset: const Offset(0, 14),
                             ),
                           ],
                         ),
-                        GradientText(
-                          text: 'Privacy Policy',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          gradient: const LinearGradient(
-                            begin: Alignment.centerRight,
-                            end: Alignment.centerLeft,
-                            colors: [
-                              Color.fromARGB(255, 73, 64, 241),
-                              Color.fromARGB(255, 149, 60, 237),
+                        child: Form(
+                          key: _formKey,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Center(
+                                child: Text(
+                                  'Welcome ',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 27,
+                                    letterSpacing: -0.7,
+                                    fontWeight: FontWeight.w900,
+                                    color: _ink,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 15),
+                              _fieldLabel('Email'),
+                              TextFormField(
+                                controller: _emailController,
+                                focusNode: _emailFocusNode,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                cursorColor: _orange,
+                                onFieldSubmitted: (_) =>
+                                    _passwordFocusNode.requestFocus(),
+                                validator: (value) {
+                                  final email = value?.trim() ?? '';
+                                  if (email.isEmpty)
+                                    return 'Please enter your email';
+                                  if (!RegExp(
+                                    r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$',
+                                  ).hasMatch(email)) {
+                                    return 'Enter a valid email address';
+                                  }
+                                  return null;
+                                },
+                                decoration: _inputDecoration(
+                                  hint: 'you@example.com',
+                                  icon: Icons.mail_outline_rounded,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              _fieldLabel('Password'),
+                              TextFormField(
+                                controller: _passwordController,
+                                focusNode: _passwordFocusNode,
+                                obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                cursorColor: _orange,
+                                onFieldSubmitted: (_) => _handleEmailLogin(),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                                decoration: _inputDecoration(
+                                  hint: 'Enter your password',
+                                  icon: Icons.lock_outline_rounded,
+                                  suffix: IconButton(
+                                    tooltip: _obscurePassword
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    onPressed: () {
+                                      setState(
+                                        () => _obscurePassword =
+                                            !_obscurePassword,
+                                      );
+                                    },
+                                    icon: Icon(
+                                      _obscurePassword
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 19,
+                                      color: Colors.black38,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _rememberRow(),
+                              const SizedBox(height: 12),
+                              _loginButton(),
+                              const SizedBox(height: 24),
+                              const Row(
+                                children: [
+                                  Expanded(
+                                    child: Divider(color: Color(0xFFE7E7E7)),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      'or continue with',
+                                      style: TextStyle(
+                                        color: Colors.black38,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Divider(color: Color(0xFFE7E7E7)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                children: [
+                                  _socialButton(
+                                    icon: Container(
+                                      width: 22,
+                                      height: 22,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: _orangeSoft,
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: const Text(
+                                        'G',
+                                        style: TextStyle(
+                                          color: _orange,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ),
+                                    text: 'Google',
+                                    onTap: _handleGoogleSignIn,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  _socialButton(
+                                    icon: const Icon(
+                                      Icons.apple,
+                                      size: 22,
+                                      color: _ink,
+                                    ),
+                                    text: 'Apple',
+                                    onTap: () {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Apple sign-in is coming soon.',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'New to Lundri?',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SignupScreen(),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: _orange,
+                            ),
+                            child: const Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'By continuing, you agree to Lundri’s Terms of Service and Privacy Policy.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          height: 1.4,
+                          color: Colors.black38,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -697,201 +702,392 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class FirebaseService {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseMessaging fcm = FirebaseMessaging.instance;
+  final GoogleSignIn googleSignIn = GoogleSignIn(scopes: const ['email']);
 
-  String _monthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  String _monthName(int month) => _months[month - 1];
+  FieldValue _serverNow() => FieldValue.serverTimestamp();
+
+  DocumentReference<Map<String, dynamic>> _userRef(String uid) =>
+      firestore.collection('users').doc(uid);
+
+  void _logError(String title, Object e, StackTrace st) {
+    debugPrint('❌ $title: $e\n$st');
+  }
+
+  Future<bool> _hasInternet() async {
+    final res = await Connectivity().checkConnectivity();
+    return res != ConnectivityResult.none;
+  }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _getUserDocResolved(
+    String uid,
+  ) async {
+    final ref = _userRef(uid);
+
+    final online = await _hasInternet();
+    if (!online) {
+      return ref.get(const GetOptions(source: Source.cache));
+    }
+
+    try {
+      return await ref
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      return ref.get(const GetOptions(source: Source.cache));
+    }
+  }
+
+  Map<String, dynamic> _readMap(dynamic value) {
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+
+  Map<String, bool> _mergeFcmToken(
+    Map<String, dynamic>? existing,
+    String? token,
+  ) {
+    final updated = <String, bool>{};
+
+    existing?.forEach((key, value) {
+      updated[key] = value == true;
+    });
+
+    if (token != null && token.isNotEmpty) {
+      updated[token] = true;
+    }
+
+    return updated;
+  }
+
+  Map<String, dynamic> _sanitizeUserMap(Map<String, dynamic> data) {
+    final now = Timestamp.fromDate(DateTime.now());
+
+    data['uid'] ??= '';
+    data['accountType'] ??= 'customer';
+    data['status'] ??= 'active';
+
+    data['name'] ??= '';
+    data['firstName'] ??= '';
+    data['lastName'] ??= '';
+    data['email'] ??= '';
+    data['phoneNumber'] ??= '';
+    data['photoUrl'] ??= '';
+
+    data['savedAddresses'] ??= [];
+
+    data['notificationSettings'] ??= {
+      'push': true,
+      'email': true,
+      'bookingUpdates': true,
+      'promoOffers': true,
+    };
+
+    data['settings'] ??= {
+      'languageCode': 'en',
+      'regionCode': 'GH',
+      'darkMode': false,
+    };
+
+    data['stats'] ??= {
+      'totalOrders': 0,
+      'completedOrders': 0,
+      'cancelledOrders': 0,
+      'totalSpent': 0,
+      'lastOrderAt': null,
+      'memberSince': 'Apr 2026',
+    };
+
+    data['loyalty'] ??= {'points': 0, 'tier': 'standard'};
+
+    data['fcmTokens'] ??= <String, bool>{};
+    data['fcmUpdatedAt'] ??= now;
+
+    data['isOnline'] ??= false;
+    data['lastLoginAt'] ??= now;
+    data['lastSeen'] ??= now;
+
+    data['createdAt'] ??= now;
+    data['updatedAt'] ??= now;
+
+    return data;
+  }
+
+  Future<void> _saveLoggedInFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
+  }
+
+  Future<void> _loadUserIntoProvider(BuildContext context, String uid) async {
+    final doc = await _getUserDocResolved(uid);
+    final data = doc.data();
+    if (data == null) {
+      throw Exception('User document has no data for uid=$uid');
+    }
+
+    final safe = _sanitizeUserMap(data);
+    final userModel = UserModel.fromMap(safe);
+
+    if (context.mounted) {
+      await context.read<UserProvider>().setUser(userModel);
+    }
+  }
+
+  Future<void> _ensureUserProfile({
+    required User user,
+    required String? fcmToken,
+  }) async {
+    final ref = _userRef(user.uid);
+    final snapshot = await ref.get();
+
+    final existing = snapshot.data() ?? {};
+    final now = DateTime.now();
+    final memberSince = '${_monthName(now.month)} ${now.year}';
+
+    final existingTokens = _readMap(existing['fcmTokens']);
+    final updatedTokens = _mergeFcmToken(existingTokens, fcmToken);
+
+    final update = <String, dynamic>{
+      'uid': user.uid,
+      'accountType': existing['accountType'] ?? 'customer',
+      'status': existing['status'] ?? 'active',
+
+      'name':
+          existing['name'] ??
+          user.displayName ??
+          user.email?.split('@').first ??
+          '',
+      'firstName': existing['firstName'] ?? '',
+      'lastName': existing['lastName'] ?? '',
+      'email': existing['email'] ?? user.email ?? '',
+      'phoneNumber': existing['phoneNumber'] ?? user.phoneNumber ?? '',
+      'photoUrl': existing['photoUrl'] ?? user.photoURL ?? '',
+
+      'defaultAddressId': existing['defaultAddressId'],
+      'defaultPaymentMethodId': existing['defaultPaymentMethodId'],
+      'savedAddresses': existing['savedAddresses'] ?? [],
+
+      'notificationSettings': {
+        'push': true,
+        'email': true,
+        'bookingUpdates': true,
+        'promoOffers': true,
+        ..._readMap(existing['notificationSettings']),
+      },
+
+      'settings': {
+        'languageCode': 'en',
+        'regionCode': 'GH',
+        'darkMode': false,
+        ..._readMap(existing['settings']),
+      },
+
+      'stats': {
+        'totalOrders': 0,
+        'completedOrders': 0,
+        'cancelledOrders': 0,
+        'totalSpent': 0,
+        'lastOrderAt': null,
+        'memberSince': memberSince,
+        ..._readMap(existing['stats']),
+      },
+
+      'loyalty': {
+        'points': 0,
+        'tier': 'standard',
+        ..._readMap(existing['loyalty']),
+      },
+
+      'currentBookingId': existing['currentBookingId'],
+      'currentBookingStatus': existing['currentBookingStatus'],
+
+      'fcmTokens': updatedTokens,
+      'fcmUpdatedAt': _serverNow(),
+
+      'isOnline': true,
+      'lastLoginAt': _serverNow(),
+      'lastSeen': _serverNow(),
+      'updatedAt': _serverNow(),
+    };
+
+    if (!snapshot.exists) {
+      update['createdAt'] = _serverNow();
+    }
+
+    await ref.set(update, SetOptions(merge: true));
   }
 
   Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) return null;
 
-      if (googleUser == null) return null; // User cancelled
+      final googleAuth = await googleUser.authentication;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if ((idToken == null || idToken.isEmpty) &&
+          (accessToken == null || accessToken.isEmpty)) {
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        return null;
+      }
 
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        accessToken: accessToken,
+        idToken: idToken,
       );
 
       final userCredential = await auth.signInWithCredential(credential);
       final user = userCredential.user;
 
-      if (user == null || user.email == null) return null;
-
-      final userDoc = await firestore.collection('users').doc(user.uid).get();
-
-      if (!userDoc.exists) {
-        final now = DateTime.now();
-        final memberSince = "${_monthName(now.month)} ${now.year}";
-
-        final newUser = UserModel(
-          uid: user.uid,
-          name: user.displayName ?? user.email!.split('@')[0],
-          email: user.email!,
-          emailAddress: user.email!,
-          phoneNumber: user.phoneNumber ?? '',
-          address: '',
-          dateOfBirth: '',
-          memberSince: memberSince,
-          totalWashes: 0,
-          washesThisMonth: 0,
-          rating: 0.0,
-          loyaltyPoints: 0,
-          photoUrl: '',
-          locations: [],
-          notificationSettings: {
-            "push": true,
-            "email": true,
-            "bookingConfirmed": true,
-            "washStarted": true,
-            "washCompleted": true,
-            "appUpdates": true,
-          },
-          settings: {
-            "autoLock": false,
-            "biometricAuth": false,
-            "darkMode": false,
-          },
-        );
-
-        await firestore.collection('users').doc(user.uid).set(newUser.toMap());
-
-        // Save to Provider
-        await context.read<UserProvider>().setUser(newUser);
-      } else {
-        // Existing user – load from Firestore
-        final existingUser = UserModel.fromMap(userDoc.data()!);
-        await context.read<UserProvider>().setUser(existingUser);
+      if (user == null) {
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        return null;
       }
 
-      // ✅ Save login status
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
+      final fcmToken = await fcm.getToken();
+      await _ensureUserProfile(user: user, fcmToken: fcmToken);
+      await _loadUserIntoProvider(context, user.uid);
+      await _saveLoggedInFlag();
 
       return userCredential;
-    } catch (e) {
-      debugPrint('Google Sign-In Error: $e');
+    } catch (e, st) {
+      _logError('Google Sign-In Error', e, st);
+
+      try {
+        await auth.signOut();
+      } catch (_) {}
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
       return null;
     }
   }
 
-  /// Handles user sign-in with email and password.
-  /// It verifies the user's existence in Firebase Auth and then in Firestore.
-  /// If the user's Firestore document does not exist, it prevents login.
   Future<void> signInWithEmailAndPassword({
     required String email,
     required String password,
     required BuildContext context,
   }) async {
     try {
-      // Authenticate user
       final userCredential = await auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      final user = userCredential.user!;
-      final docSnapshot = await firestore
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final user = userCredential.user;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'invalid-user',
+          message: 'Login failed: user is null.',
+        );
+      }
 
-      // If Firestore user profile is missing, treat as failed login
-      if (!docSnapshot.exists) {
-        await auth.signOut(); // Sign out for safety
+      final uid = user.uid;
+      final docSnapshot = await _userRef(
+        uid,
+      ).get().timeout(const Duration(seconds: 8));
+
+      if (!docSnapshot.exists || docSnapshot.data() == null) {
+        await auth.signOut();
         throw FirebaseAuthException(
           code: 'user-data-not-found',
           message: 'User profile not found. Please register before logging in.',
         );
       }
 
-      // Parse and store user data using your UserProvider
-      final userModel = UserModel.fromMap(docSnapshot.data()!);
-      // Optionally: leave this part to the caller
-      // await userProvider.setUser(userModel);
+      final existingData = docSnapshot.data()!;
+      final existingTokens = _readMap(existingData['fcmTokens']);
+      final fcmToken = await fcm.getToken();
+      final updatedTokens = _mergeFcmToken(existingTokens, fcmToken);
 
-      // Update last login timestamp
-      await firestore.collection('users').doc(user.uid).update({
-        'lastLogin': FieldValue.serverTimestamp(),
-      });
+      final updateMap = <String, dynamic>{
+        'isOnline': true,
+        'updatedAt': _serverNow(),
+        'lastLoginAt': _serverNow(),
+        'lastSeen': _serverNow(),
+        'fcmTokens': updatedTokens,
+        'fcmUpdatedAt': _serverNow(),
+      };
 
-      // ✅ Save login status
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
-    } on FirebaseAuthException catch (e) {
-      // Rethrow specific Firebase auth exceptions
-      throw e;
+      await _userRef(uid).set(updateMap, SetOptions(merge: true));
+      await _ensureUserProfile(user: user, fcmToken: fcmToken);
+
+      await _loadUserIntoProvider(context, uid);
+      await _saveLoggedInFlag();
+    } on FirebaseAuthException {
+      rethrow;
     } catch (e) {
-      // Rethrow any other general errors
       throw Exception('Unexpected error: $e');
     }
   }
 
-  //----------------------------------------------------------------------------
-  /// Handles user sign-out from Firebase, Google (if applicable),
-  /// clears user data from the provider and cache, and navigates to the login screen.
+  Future<void> toggleIsOnline(bool value) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await _userRef(user.uid).set({
+        'isOnline': value,
+        'updatedAt': _serverNow(),
+        'lastSeen': _serverNow(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('❌ Failed to update online status: $e');
+    }
+  }
+
   Future<void> signOut(BuildContext context) async {
     try {
-      final auth = FirebaseAuth.instance;
-      final googleSignIn = GoogleSignIn();
+      await toggleIsOnline(false);
 
-      // Sign out from Firebase Authentication
-      await auth.signOut();
-
-      // Sign out from Google if the user was signed in with Google
-      if (await googleSignIn.isSignedIn()) {
+      final wasGoogleSignedIn = await googleSignIn.isSignedIn();
+      if (wasGoogleSignedIn) {
         await googleSignIn.signOut();
       }
 
-      // Clear user data from the UserProvider
+      await auth.signOut();
+
       if (context.mounted) {
         await context.read<UserProvider>().clearCache();
       }
 
-      // Remove login flag from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_logged_in');
 
-      // Navigate to LoginScreen and remove all previous routes
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
+      if (!context.mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     } catch (e) {
       debugPrint('Error signing out: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error signing out: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 }
